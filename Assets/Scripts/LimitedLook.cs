@@ -1,8 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class LimitedLook : MonoBehaviour
-{
+public class LimitedLook : MonoBehaviour {
     [Header("Sensitivity")]
     public float sensitivity = 1.0f;
 
