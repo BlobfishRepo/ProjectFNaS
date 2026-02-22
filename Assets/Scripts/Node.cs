@@ -1,73 +1,72 @@
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 using UnityEngine;
 
 public class Node : MonoBehaviour {
     [Header("Look")]
     public Transform lookTarget;
 
-    [Header("Neighbors (WASD)")]
-    public Node w;
-    public Node a;
-    public Node s;
-    public Node d;
+    [Header("Directed transitions (per key)")]
+    public NodeTransition[] transitions;
 
-    public Node GetNeighbor(Direction dir) {
-        return dir switch {
-            Direction.W => w,
-            Direction.A => a,
-            Direction.S => s,
-            Direction.D => d,
-            _ => null
-        };
+    public NodeTransition GetTransition(Direction dir) {
+        if (transitions == null) return null;
+        for (int i = 0; i < transitions.Length; i++) {
+            if (transitions[i] != null && transitions[i].input == dir) return transitions[i];
+        }
+        return null;
     }
 
 #if UNITY_EDITOR
     private void OnDrawGizmos() {
+        // Always-visible marker
         Vector3 pos = transform.position;
-        Vector3 forward = (lookTarget.position - pos).normalized;
         Gizmos.color = Color.green;
-        float length = 0.8f;
-
-
-        // Gizmos Marker
         Gizmos.DrawSphere(pos, 0.15f);
-        Vector3 tip = pos + forward * length;
-        Gizmos.DrawLine(pos, tip);
 
-        Vector3 right = Vector3.Cross(forward, Vector2.up).normalized;
-        float headSize = 0.25f;
-
-        Gizmos.DrawLine(tip, tip - forward * headSize + right * headSize * 0.5f);
-        Gizmos.DrawLine(tip, tip - forward * headSize - right * headSize * 0.5f);
+        if (lookTarget != null) {
+            Vector3 forward = (lookTarget.position - pos);
+            forward.y = 0f;
+            if (forward.sqrMagnitude > 0.0001f) {
+                forward.Normalize();
+                Gizmos.DrawLine(pos, pos + forward * 0.8f);
+            }
+        }
     }
 
     private void OnDrawGizmosSelected() {
-        // Neighbor Connections
-        Vector3 pos = transform.position;
-        if (w != null)
-        {
-            Gizmos.color = Color.blue;
-            Gizmos.DrawLine(pos, w.transform.position);
-        }
+        if (transitions == null) return;
 
-        if (a != null)
-        {
-            Gizmos.color = Color.red;
-            Gizmos.DrawLine(pos, a.transform.position);
-        }
+        foreach (var tr in transitions) {
+            if (tr == null || tr.target == null) continue;
 
-        if (s != null)
-        {
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawLine(pos, s.transform.position);
-        }
+            // Color per key (optional)
+            Gizmos.color = tr.input switch {
+                Direction.W => Color.blue,
+                Direction.A => Color.red,
+                Direction.S => Color.yellow,
+                Direction.D => Color.cyan,
+                _ => Color.white
+            };
 
-        if (d != null)
-        {
-            Gizmos.color = Color.cyan;
-            Gizmos.DrawLine(pos, d.transform.position);
+            // Draw polyline: this node -> waypoints -> target node
+            Vector3 prev = transform.position;
+
+            if (tr.waypoints != null) {
+                for (int i = 0; i < tr.waypoints.Length; i++) {
+                    var wp = tr.waypoints[i];
+                    if (wp == null || wp.point == null) continue;
+
+                    Vector3 p = wp.point.position;
+                    Gizmos.DrawLine(prev, p);
+                    Gizmos.DrawSphere(p, 0.08f);
+                    prev = p;
+                }
+            }
+
+            Gizmos.DrawLine(prev, tr.target.transform.position);
         }
     }
 #endif
 }
-
-public enum Direction { W, A, S, D }

@@ -1,5 +1,13 @@
 # Changelog
 
+## February 22
+## Removed
+- Limited Camera Movement
+
+### Changes
+- Movement Nodes modified to allow for rotations per node (but it's very janky right now)
+
+
 ## February 21
 
 ### Added
