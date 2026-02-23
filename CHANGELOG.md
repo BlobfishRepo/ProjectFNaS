@@ -2,12 +2,12 @@
 
 ## February 23
 ### Added
-- "View" system allowing for looking in different places within the same node
+- "View" system allowing for looking in different places within the same node, affecting WASD movement
 - GUI connected to View system
 
 ### Changed
 - Camera now fits aspect ratio
-- Movement system improved and cleaned up
+- Movement system transitions made smoother
 
 
 ## February 22
