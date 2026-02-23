@@ -1,11 +1,14 @@
 # Changelog
 
 ## February 22
-## Removed
-- Limited Camera Movement
+### Added
+- Camera System (Live feed, camera screen)
 
 ### Changes
 - Movement Nodes modified to allow for rotations per node (but it's very janky right now)
+
+### Removed
+- Limited Camera Movement
 
 
 ## February 21
