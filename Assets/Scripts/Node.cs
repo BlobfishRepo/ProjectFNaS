@@ -18,6 +18,37 @@ public class Node : MonoBehaviour {
         return null;
     }
 
+    [Header("Views (optional)")]
+    public NodeView defaultView;
+
+    [Header("Entry view rules (optional)")]
+    public EntryRule[] entryRules;
+
+    [System.Serializable]
+    public class EntryRule {
+        public Node fromNode;
+        public NodeView startView;
+    }
+
+    public NodeView GetEntryView(Node fromNode) {
+        if (fromNode != null && entryRules != null) {
+            for (int i = 0; i < entryRules.Length; i++) {
+                var r = entryRules[i];
+                if (r != null && r.fromNode == fromNode) return r.startView;
+            }
+        }
+        return defaultView != null ? defaultView : GetComponentInChildren<NodeView>();
+    }
+
+    public NodeTransition GetTransitionTo(Node target) {
+        if (transitions == null || target == null) return null;
+        for (int i = 0; i < transitions.Length; i++) {
+            var tr = transitions[i];
+            if (tr != null && tr.target == target) return tr;
+        }
+        return null;
+    }
+
 #if UNITY_EDITOR
     private void OnDrawGizmos() {
         // Always-visible marker

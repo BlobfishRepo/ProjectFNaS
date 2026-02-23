@@ -1,36 +1,21 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class PlayerNodeController : MonoBehaviour {
     [Header("References")]
-    public Transform rigTransform;
-    public Transform yawPivot;
-    public Transform pitchPivot;
+    public Transform rigTransform;   // MOVE THIS (player root)
+    public Transform yawPivot;       // ROTATE THIS (yaw)
+    public Transform pitchPivot;     // ROTATE THIS (pitch) - kept neutral during movement
     public Node startingNode;
 
     [Header("Movement")]
-    public float moveSpeed = 6.0f; // units/sec (tune in Inspector)
+    public float moveSpeed = 6.0f; // units/sec
 
     [Header("State (read-only)")]
     public Node CurrentNode;
 
-    private PlayerInputActions input;
-    private Vector2 lastMove;
     private bool isMoving;
-
-    private void Awake() {
-        input = new PlayerInputActions();
-    }
-
-    private void OnEnable() {
-        input.Enable();
-    }
-
-    private void OnDisable() {
-        input.Disable();
-    }
+    public bool IsMoving => isMoving;
 
     private void Start() {
         if (startingNode == null) {
@@ -41,37 +26,18 @@ public class PlayerNodeController : MonoBehaviour {
         SetCurrentNodeInstant(startingNode);
     }
 
-    private void Update() {
+    public void BeginTransition(NodeTransition tr) {
         if (isMoving) return;
-
-        Vector2 move = input.Player.Move.ReadValue<Vector2>();
-        bool pressedNow = move.sqrMagnitude > 0.25f;
-        bool pressedBefore = lastMove.sqrMagnitude > 0.25f;
-
-        if (pressedNow && !pressedBefore) {
-            Direction dir = VectorToDir(move);
-            TryMove(dir);
-        }
-
-        lastMove = move;
-    }
-
-    private void TryMove(Direction dir) {
-        if (CurrentNode == null) return;
-
-        NodeTransition tr = CurrentNode.GetTransition(dir);
         if (tr == null || tr.target == null) return;
-
         StartCoroutine(MoveAlongTransition(tr));
     }
 
     private IEnumerator MoveAlongTransition(NodeTransition tr) {
         isMoving = true;
 
-        // --- Tunables (put these as public fields if you want to tweak in Inspector) ---
-        float minTurnDuration = 0.01f;           // safety
-        float turnAnticipationSeconds = 0.15f;   // start turning this many seconds BEFORE reaching a turn point
-        float settleToNodeViewSeconds = 0.08f;   // small final "snap/settle" into node view
+        // --- Tunables ---
+        float minTurnDuration = 0.01f;         // safety for waypoint turns
+        float turnAnticipationSeconds = 0.15f; // start turn slightly before waypoint
 
         // --- Helpers ---
         static Vector3 FlattenY(Vector3 v) { v.y = 0f; return v; }
@@ -90,6 +56,33 @@ public class PlayerNodeController : MonoBehaviour {
             return Quaternion.LookRotation(dir.normalized, Vector3.up);
         }
 
+        void ApplyTravelFacing(Vector3 pos, Vector3 moveDir) {
+            if (yawPivot == null) return;
+
+            Quaternion current = yawPivot.rotation;
+            Quaternion desired = current;
+
+            if (tr.facingMode == MoveFacingMode.FaceMoveDirection) {
+                desired = LookYawDir(moveDir, current);
+            }
+            else if (tr.facingMode == MoveFacingMode.FaceLookTarget) {
+                desired = LookYawAt(pos, tr.travelLookTarget, current);
+            }
+            else {
+                return; // KeepFacing
+            }
+
+            float dur = Mathf.Max(0f, tr.travelTurnDuration);
+            if (dur <= 0f) {
+                yawPivot.rotation = desired;
+                return;
+            }
+
+            // Smooth in a framerate-independent way (time-constant style)
+            float k = 1f - Mathf.Exp(-Time.deltaTime / dur);
+            yawPivot.rotation = Quaternion.Slerp(current, desired, k);
+        }
+
         // --- Capture start state ---
         Vector3 startPos = rigTransform.position;
         Quaternion startYaw = yawPivot != null ? yawPivot.rotation : rigTransform.rotation;
@@ -98,14 +91,14 @@ public class PlayerNodeController : MonoBehaviour {
         Vector3 endPos = tr.target.transform.position;
         endPos.y = startPos.y;
 
-        int midCount = (tr.waypoints != null) ? tr.waypoints.Length : 0; // <- adjust name if yours differs
+        int midCount = (tr.waypoints != null) ? tr.waypoints.Length : 0;
         int totalPts = midCount + 2;
 
         Vector3[] pts = new Vector3[totalPts];
         pts[0] = startPos;
 
         for (int i = 0; i < midCount; i++) {
-            Transform pT = tr.waypoints[i].point; // <- adjust: your screenshot shows "Point"
+            Transform pT = tr.waypoints[i].point;
             Vector3 p = (pT != null) ? pT.position : pts[i];
             p.y = startPos.y;
             pts[i + 1] = p;
@@ -113,7 +106,7 @@ public class PlayerNodeController : MonoBehaviour {
 
         pts[totalPts - 1] = endPos;
 
-        // --- Compute cumulative lengths for constant-speed travel ---
+        // --- Compute segment lengths for constant-speed travel ---
         float[] segLen = new float[totalPts - 1];
         float totalLen = 0f;
 
@@ -124,7 +117,6 @@ public class PlayerNodeController : MonoBehaviour {
         }
 
         if (totalLen < 0.0001f) {
-            // nothing to do
             rigTransform.position = endPos;
             if (pitchPivot != null) pitchPivot.localRotation = Quaternion.identity;
             CurrentNode = tr.target;
@@ -132,34 +124,17 @@ public class PlayerNodeController : MonoBehaviour {
             yield break;
         }
 
-        // --- Determine movement duration from speed (constant speed across entire path) ---
-        float speed = Mathf.Max(0.01f, moveSpeed);   // units/sec
+        float speed = Mathf.Max(0.01f, moveSpeed);
 
-        // --- Rotation plan ---
-        // Base rotation mode:
-        // - FaceMoveDirection: always face instantaneous motion dir
-        // - HoldStartRotation: never rotate while moving; only settle at end
-        // - BlendStartToEnd: blend startYaw -> endYaw across whole path, BUT allow sharp waypoint turns too
-
-        Transform endLook = tr.endLookTarget != null ? tr.endLookTarget : tr.target.lookTarget; // you can reuse lookTarget
-        Quaternion endYaw = LookYawAt(endPos, endLook, startYaw);
-
-        // Waypoint turn scheduling:
-        // Each waypoint can optionally specify:
-        //   - lookTarget (Transform)
-        //   - turnDuration (float)
-        //   - enabled (bool)  [optional]
-        // Your screenshot shows: "Optional turn at this point", Look Target, Turn Duration, and a checkbox.
-        // We'll honor them if present.
-        int nextTurnIndex = 0; // index into tr.waypoints[]
+        // --- Waypoint turn scheduling (optional) ---
+        int nextTurnIndex = 0;
         Quaternion turnFrom = startYaw;
         Quaternion turnTo = startYaw;
-        float turnT = 1f;      // 1 means not currently turning
+        float turnT = 1f;
         float turnDuration = minTurnDuration;
         bool turningActive = false;
 
-        // function to start a turn towards some look target
-        void BeginTurn(Transform lookT, Vector3 pos, float dur) {
+        void BeginWaypointTurn(Transform lookT, Vector3 pos, float dur) {
             Quaternion current = (yawPivot != null) ? yawPivot.rotation : rigTransform.rotation;
             turnFrom = current;
             turnTo = LookYawAt(pos, lookT, current);
@@ -168,25 +143,22 @@ public class PlayerNodeController : MonoBehaviour {
             turningActive = true;
         }
 
-        // --- Travel loop by distance along path (no per-segment easing slowdown) ---
-        float traveled = 0f;
-
-        // Precompute distances-at-waypoints so we can anticipate turns by distance
+        // distances-at-points for anticipation
         float[] distAtPoint = new float[totalPts];
         distAtPoint[0] = 0f;
-        for (int i = 1; i < totalPts; i++) {
+        for (int i = 1; i < totalPts; i++)
             distAtPoint[i] = distAtPoint[i - 1] + segLen[i - 1];
-        }
 
-        // Waypoint i in tr.waypoints corresponds to pts index i+1 in pts/distAtPoint
-        // We will start a turn when we're within anticipation distance of that waypoint.
-        float anticipationDist() { return speed * Mathf.Max(0f, turnAnticipationSeconds); }
+        float AnticipationDist() => speed * Mathf.Max(0f, turnAnticipationSeconds);
+
+        // --- Travel loop by traveled distance ---
+        float traveled = 0f;
 
         while (traveled < totalLen) {
             traveled += speed * Time.deltaTime;
             traveled = Mathf.Min(traveled, totalLen);
 
-            // --- Sample position by traveled distance along polyline ---
+            // locate segment
             int seg = 0;
             float segStartDist = 0f;
             for (int i = 0; i < segLen.Length; i++) {
@@ -206,104 +178,53 @@ public class PlayerNodeController : MonoBehaviour {
             Vector3 pos = Vector3.Lerp(p0, p1, u);
             rigTransform.position = pos;
 
-            // --- Rotation while moving ---
+            // travel facing uses current segment direction
+            Vector3 moveDir = (p1 - p0);
+            moveDir.y = 0f;
+            ApplyTravelFacing(pos, moveDir);
+
+            // fire waypoint turns (optional) with anticipation
             if (yawPivot != null) {
-                // 1) Fire waypoint turns (sharp/rushed) with anticipation
                 while (nextTurnIndex < midCount) {
-                    // waypoint idx -> point idx in pts
-                    int ptIdx = nextTurnIndex + 1;
+                    int ptIdx = nextTurnIndex + 1; // waypoint i corresponds to pts[i+1]
                     float dToWaypoint = distAtPoint[ptIdx] - traveled;
 
-                    // check enabled if you have it; otherwise treat as enabled
-                    bool enabled = true;
-                    // If your Waypoint struct has a bool like "turnHere", uncomment and rename:
-                    // enabled = tr.waypoints[nextTurnIndex].turnHere;
+                    if (dToWaypoint <= AnticipationDist()) {
+                        Transform lt = tr.waypoints[nextTurnIndex].lookTarget;
+                        float dur = tr.waypoints[nextTurnIndex].turnDuration;
 
-                    if (enabled && dToWaypoint <= anticipationDist()) {
-                        Transform lt = tr.waypoints[nextTurnIndex].lookTarget;     // <- adjust name if needed
-                        float dur = tr.waypoints[nextTurnIndex].turnDuration;      // <- adjust name if needed
-                        if (lt != null) {
-                            BeginTurn(lt, pos, dur);
-                        }
+                        if (lt != null)
+                            BeginWaypointTurn(lt, pos, dur);
+
                         nextTurnIndex++;
                     }
-                    else {
-                        break;
-                    }
+                    else break;
                 }
 
-                // 2) Apply chosen base rotation mode
-                Quaternion baseYaw = yawPivot.rotation;
-
-                // 3) Blend in active sharp turn (overrides base while turning)
+                // apply waypoint override turn if active
                 if (turningActive) {
                     turnT += Time.deltaTime / Mathf.Max(minTurnDuration, turnDuration);
                     float a = Mathf.Clamp01(turnT);
                     yawPivot.rotation = Quaternion.Slerp(turnFrom, turnTo, a);
-
                     if (a >= 1f) turningActive = false;
                 }
-                else {
-                    yawPivot.rotation = baseYaw;
-                }
             }
 
-            // keep pitch neutral for now (since you're doing node-based look)
-            if (pitchPivot != null) pitchPivot.localRotation = Quaternion.identity;
+            // keep pitch neutral during movement
+            if (pitchPivot != null)
+                pitchPivot.localRotation = Quaternion.identity;
 
             yield return null;
         }
 
-        // --- Snap to final position ---
+        // snap to final position
         rigTransform.position = endPos;
-
-        // --- Final settle into node view (very short; makes it feel "locked in") ---
-        if (yawPivot != null) {
-            Quaternion from = yawPivot.rotation;
-            Quaternion to = LookYawAt(endPos, endLook, from);
-
-            float t = 0f;
-            while (t < 1f) {
-                t += Time.deltaTime / Mathf.Max(0.0001f, settleToNodeViewSeconds);
-                yawPivot.rotation = Quaternion.Slerp(from, to, Mathf.Clamp01(t));
-                yield return null;
-            }
-        }
-
         if (pitchPivot != null) pitchPivot.localRotation = Quaternion.identity;
 
+        // IMPORTANT: do NOT “settle into node view” here anymore.
+        // NodeViewController will set the correct arrival view & yaw/pitch.
         CurrentNode = tr.target;
         isMoving = false;
-    }
-
-    private float DistanceAlongPathToPoint(List<Vector3> pts, float[] segLen, Vector3 pointPos) {
-        // Find exact waypoint position in pts and sum lengths up to it.
-        // This assumes waypoint positions are exactly one of the pts entries.
-        float accum = 0f;
-        for (int i = 0; i < pts.Count; i++) {
-            if ((pts[i] - pointPos).sqrMagnitude < 0.0001f) {
-                return accum;
-            }
-            if (i < segLen.Length) accum += segLen[i];
-        }
-        return accum;
-    }
-
-    private IEnumerator TurnTo(Quaternion targetYaw, float duration) {
-        if (yawPivot == null) yield break;
-
-        if (duration <= 0f) {
-            yawPivot.rotation = targetYaw;
-            yield break;
-        }
-
-        Quaternion start = yawPivot.rotation;
-        float t = 0f;
-        while (t < 1f) {
-            t += Time.deltaTime / Mathf.Max(0.0001f, duration);
-            yawPivot.rotation = Quaternion.Slerp(start, targetYaw, Mathf.Clamp01(t));
-            yield return null;
-        }
     }
 
     private void SetCurrentNodeInstant(Node node) {
@@ -313,17 +234,15 @@ public class PlayerNodeController : MonoBehaviour {
         pos.y = rigTransform.position.y;
         rigTransform.position = pos;
 
+        // do not force yaw here unless you want starting orientation from node.lookTarget
         if (yawPivot != null && node.lookTarget != null) {
             Vector3 d = node.lookTarget.position - pos;
             d.y = 0f;
-            if (d.sqrMagnitude > 0.0001f) yawPivot.rotation = Quaternion.LookRotation(d.normalized, Vector3.up);
+            if (d.sqrMagnitude > 0.0001f)
+                yawPivot.rotation = Quaternion.LookRotation(d.normalized, Vector3.up);
         }
 
-        if (pitchPivot != null) pitchPivot.localRotation = Quaternion.identity;
-    }
-
-    private static Direction VectorToDir(Vector2 v) {
-        if (Mathf.Abs(v.x) > Mathf.Abs(v.y)) return v.x > 0 ? Direction.D : Direction.A;
-        return v.y > 0 ? Direction.W : Direction.S;
+        if (pitchPivot != null)
+            pitchPivot.localRotation = Quaternion.identity;
     }
 }
