@@ -20,10 +20,12 @@ public class NodeViewController : MonoBehaviour {
     [Header("Runtime (read-only)")]
     [SerializeField] private Node currentNode;
     [SerializeField] private NodeView currentView;
-
+    public Node CurrentNode => currentNode;
     public NodeView CurrentView => currentView;
     public System.Action OnEnteredNodeOrView;
     public System.Action OnBeginMove;
+
+    public Direction? ActiveMoveDir { get; private set; }
 
     private readonly Stack<NodeView> history = new();
 
@@ -251,6 +253,7 @@ public class NodeViewController : MonoBehaviour {
 
         if (tr == null || tr.target == null) return;
 
+        ActiveMoveDir = dir;
         StartCoroutine(MoveAndApplyEntry(tr));
     }
 
@@ -265,6 +268,7 @@ public class NodeViewController : MonoBehaviour {
 
         // mover.CurrentNode is now updated
         EnterNode(mover.CurrentNode, from);
+        ActiveMoveDir = null;
     }
 
     private static Direction VectorToDir(Vector2 v) {

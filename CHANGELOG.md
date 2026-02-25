@@ -1,4 +1,11 @@
 # Changelog
+## February 25
+### Added
+- Movement compass indicator in bottom-left corner showing possible directions
+
+### Changed
+- Edge view icons changed to solid lines
+
 
 ## February 23
 ### Added
