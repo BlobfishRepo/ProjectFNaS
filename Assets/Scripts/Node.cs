@@ -2,6 +2,7 @@
 using UnityEditor;
 #endif
 using UnityEngine;
+using FNaS.MasterNodes;
 
 public class Node : MonoBehaviour {
     [Header("Look")]
@@ -17,6 +18,9 @@ public class Node : MonoBehaviour {
         }
         return null;
     }
+
+    [Header("Master Node Link (canonical location)")]
+    public MasterNode masterNode;
 
     [Header("Views (optional)")]
     public NodeView defaultView;

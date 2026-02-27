@@ -8,6 +8,14 @@ public enum MoveFacingMode {
     FaceLookTarget
 }
 
+public enum TransitionTag {
+    Forward,
+    Back,
+    Left,
+    Right,
+    Other
+}
+
 [System.Serializable]
 public class TransitionWaypoint {
     public Transform point;
@@ -21,6 +29,8 @@ public class TransitionWaypoint {
 public class NodeTransition {
     public Direction input;
     public Node target;
+
+    public TransitionTag tag = TransitionTag.Other;
 
     [Header("Waypoints (in order)")]
     public TransitionWaypoint[] waypoints;

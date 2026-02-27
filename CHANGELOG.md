@@ -1,4 +1,12 @@
 # Changelog
+## February 27
+### Added
+- Stalker basic AI
+- Flashlight, activated using F (literally no visual indication though)
+
+### Changed
+- Node system overhauled to keep track of node, player, and camera positions
+
 ## February 25
 ### Added
 - Movement compass indicator in bottom-left corner showing possible directions
