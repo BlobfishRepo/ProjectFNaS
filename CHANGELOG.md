@@ -1,4 +1,12 @@
 # Changelog
+## February 28
+### Added
+- Lighting overhauled to try to match a dark atmosphere
+- Flashlight has light
+
+### Fixed
+- Stalker now properly gets stalled by camera/player, and pushed back by flashlight
+
 ## February 27
 ### Added
 - Stalker basic AI
