@@ -1,0 +1,547 @@
+using System.Collections.Generic;
+using UnityEngine;
+using FNaS.MasterNodes;
+using FNaS.Gameplay;
+using FNaS.Systems;
+
+namespace FNaS.Entities.Stalker {
+    public class StalkerEntity : MonoBehaviour {
+        [Header("Path (GUID-based)")]
+        public LinearPathDefinition pathDef;
+
+        [Range(0, 20)] public int ai = 10;
+
+        [Header("Movement Opportunities")]
+        public float opportunityIntervalSeconds = 5f;
+
+        [Header("Freeze Rules")]
+        public bool freezeIfSeenOnCamera = true;
+        public bool freezeIfSeenInPerson = true;
+
+        [Header("Player Collision Rule")]
+        [Tooltip("If true, the stalker is allowed to enter the player's current MasterNode (share the same node).")]
+        public bool allowShareNodeWithPlayer = false;
+
+        [Header("Door Loss")]
+        public float doorKillSeconds = 10f;
+
+        [Header("Stun")]
+        public float stunSecondsAfterPushback = 5f;
+
+        [Header("Flashlight Pushback")]
+        public bool flashlightIsOnlyPushback = true;
+        public float flashlightHoldSecondsToPush = 3f;
+        public bool pushBackTwoNodes = false;
+
+        [Header("Flashlight Vanish")]
+        public bool flashlightCausesVanish = true;
+        public float vanishSeconds = 10f;
+        [Tooltip("Reappear only in the first N nodes of the path (typically 2).")]
+        public int reappearFirstNNodes = 2;
+
+        [Header("Spatial Placement")]
+        [Tooltip("Teleport to a per-node anchor (EntityAnchorSet) on node changes.")]
+        public bool teleportToAnchors = true;
+
+        [Tooltip("If null, uses this GameObject's transform.")]
+        public Transform teleportTarget;
+
+        [Tooltip("If no stalker anchors exist on the node, snap to the node transform.")]
+        public bool fallbackToNodeTransform = true;
+
+        [Header("Camera FX")]
+        [Tooltip("Pulse a black fade when the stalker ENTERS the currently active camera node.")]
+        public ScreenFader cameraFader;
+
+        [Header("Player POV FX")]
+        [Tooltip("Pulse a black fade on the player's main view (HUD canvas).")]
+        public ScreenFader playerFader;
+
+        [Header("Audio")]
+        [Tooltip("One AudioSource is enough. Use 2D or 3D depending on what you want.")]
+        public AudioSource audioSource;
+
+        [Tooltip("Played once each time the stalker changes nodes (forward or pushback).")]
+        public AudioClip footstepClip;
+
+        [Tooltip("Random ambient groan (rare).")]
+        public AudioClip groanClip;
+
+        [Tooltip("Groan used when at the final node (door). If null, falls back to groanClip.")]
+        public AudioClip doorGroanClip;
+
+        [Range(0f, 1f)] public float sfxVolume = 0.9f;
+
+        [Header("Random Groan Tuning")]
+        [Tooltip("Min seconds between random groans while roaming.")]
+        public float groanMinInterval = 18f;
+
+        [Tooltip("Max seconds between random groans while roaming.")]
+        public float groanMaxInterval = 35f;
+
+        [Tooltip("If true, random groans stop once AtDoor.")]
+        public bool disableRandomGroansAtDoor = true;
+
+        [Header("Door Groan Tuning")]
+        [Tooltip("If >0, repeat door groan while at door every N seconds. If 0, play once when entering door.")]
+        public float doorGroanRepeatSeconds = 0f;
+
+        [Header("References")]
+        public PlayerWaypointController player;
+        public FlashlightTool flashlight;
+        public ViewController viewController;
+        public GameAttentionState attentionState;
+        public BlockerRegistry blockerRegistry;
+        public LoseState loseState;
+
+        [Header("Groan when sharing node")]
+        public bool groanWhenSameNode = true;
+        public float sameNodeGroanCooldownSeconds = 6f;
+
+        [Header("Runtime")]
+        [SerializeField] private int currentIndex = 0;
+
+        private readonly List<MasterNode> resolvedPath = new();
+
+        private MasterNode lastBlockedNode;
+        private MasterNode lastCameraPulseNode;
+
+        private float opportunityTimer;
+        private float doorTimer;
+        private float stunTimer;
+        private float flashlightHoldTimer;
+
+        // Random groans
+        private float nextGroanTime;
+        private bool doorGroanPlayedOnce;
+        private float doorGroanTimer;
+
+        // Same node groan
+        private bool wasSameNodeLastFrame;
+        private float sameNodeGroanCooldownTimer;
+
+        private bool isVanished;
+        private float vanishTimer;
+
+        private Renderer[] cachedRenderers;
+        private Collider[] cachedColliders;
+
+        // Teleport guard
+        private int lastTeleportedIndex = int.MinValue;
+
+        // Current anchor slot (ties placement to required view / door blocker)
+        private EntityAnchorSet.StalkerAnchorSlot currentAnchorSlot;
+
+        public MasterNode CurrentMasterNode =>
+            (currentIndex >= 0 && currentIndex < resolvedPath.Count) ? resolvedPath[currentIndex] : null;
+
+        public bool AtDoor =>
+            resolvedPath.Count > 0 && currentIndex >= resolvedPath.Count - 1;
+
+        private void Awake() {
+            if (teleportTarget == null) teleportTarget = transform;
+            cachedRenderers = GetComponentsInChildren<Renderer>(includeInactive: true);
+            cachedColliders = GetComponentsInChildren<Collider>(includeInactive: true);
+            SetVisible(true);
+        }
+
+        private void Start() {
+            if (viewController == null) viewController = FindFirstObjectByType<ViewController>();
+
+            ResolvePath();
+            if (resolvedPath.Count == 0) {
+                Debug.LogError("StalkerEntity: Resolved path is empty. Check pathDef + registry.", this);
+            }
+
+            EnsureAudioSource();
+            UpdateBlocking();
+            lastCameraPulseNode = CurrentMasterNode;
+
+            // Initial placement
+            TeleportToCurrentNodeIfNeeded(force: true);
+
+            ScheduleNextRandomGroan();
+        }
+
+        private void Update() {
+            if (loseState != null && loseState.hasLost) return;
+
+            if (isVanished) {
+                vanishTimer -= Time.deltaTime;
+                if (vanishTimer <= 0f) {
+                    ReappearAtStart();
+                }
+                return; // don't move/kill/update blockers while vanished
+            }
+
+            UpdateBlocking();
+
+            if (stunTimer > 0f) stunTimer -= Time.deltaTime;
+
+            // Door loss timer
+            if (AtDoor) {
+                doorTimer += Time.deltaTime;
+                if (doorTimer >= doorKillSeconds) {
+                    loseState?.TriggerLose("Stalker waited at the door too long.");
+                    return;
+                }
+            }
+            else {
+                doorTimer = 0f;
+            }
+
+            HandleFlashlightPushback();
+            HandleMovementOpportunities();
+            HandleGroans();
+            HandleSameNodeGroan();
+
+            // If anything moved the index this frame, snap now.
+            TeleportToCurrentNodeIfNeeded();
+        }
+
+        private void ResolvePath() {
+            resolvedPath.Clear();
+
+            if (pathDef == null) {
+                Debug.LogError("StalkerEntity: pathDef not assigned.", this);
+                return;
+            }
+
+            if (MasterNodeRegistry.Instance == null) {
+                Debug.LogError("StalkerEntity: No MasterNodeRegistry in scene.", this);
+                return;
+            }
+
+            foreach (var guid in pathDef.nodeGuids) {
+                var node = MasterNodeRegistry.Instance.GetOrNull(guid);
+                if (node == null) {
+                    Debug.LogError($"StalkerEntity: Could not resolve MasterNode GUID '{guid}'.", this);
+                    resolvedPath.Clear();
+                    return;
+                }
+                resolvedPath.Add(node);
+            }
+
+            currentIndex = resolvedPath.Count == 0
+                ? 0
+                : Mathf.Clamp(currentIndex, 0, resolvedPath.Count - 1);
+        }
+
+        private void EnsureAudioSource() {
+            if (audioSource == null) {
+                audioSource = GetComponent<AudioSource>();
+                if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
+            }
+            audioSource.playOnAwake = false;
+            audioSource.loop = false;
+        }
+
+        private void HandleMovementOpportunities() {
+            if (stunTimer > 0f) return;
+
+            opportunityTimer += Time.deltaTime;
+            if (opportunityTimer < opportunityIntervalSeconds) return;
+            opportunityTimer = 0f;
+
+            if (IsFrozen()) return;
+            if (resolvedPath.Count == 0) return;
+
+            float p = Mathf.Clamp01(ai / 20f);
+            if (Random.value <= p) MoveForwardOne();
+        }
+
+        private void HandleFlashlightPushback() {
+            if (!flashlightIsOnlyPushback) return;
+
+            if (flashlight == null || !flashlight.isOn) { flashlightHoldTimer = 0f; return; }
+            if (player == null) { flashlightHoldTimer = 0f; return; }
+
+            // Need a current anchor slot to know the rules
+            if (currentAnchorSlot == null) { flashlightHoldTimer = 0f; return; }
+
+            // --- Rule:
+            // If requiredView is set -> use view-gated (cross-room allowed).
+            // If requiredView is null -> fallback to same-room (master node) gating.
+            if (currentAnchorSlot.requiredView != null) {
+                if (viewController == null || viewController.CurrentView != currentAnchorSlot.requiredView) {
+                    flashlightHoldTimer = 0f;
+                    return;
+                }
+            }
+            else {
+                // fallback: same-room
+                if (player.CurrentMasterNode == null || CurrentMasterNode == null || player.CurrentMasterNode != CurrentMasterNode) {
+                    flashlightHoldTimer = 0f;
+                    return;
+                }
+            }
+
+            // Door blocks flashlight (per-slot), if specified
+            if (currentAnchorSlot.doorBlocker != null) {
+                if (!currentAnchorSlot.doorBlocker.isOpen) { // or .IsOpen in your Door script
+                    flashlightHoldTimer = 0f;
+                    return;
+                }
+            }
+
+            flashlightHoldTimer += Time.deltaTime;
+            if (flashlightHoldTimer >= flashlightHoldSecondsToPush) {
+                flashlightHoldTimer = 0f;
+
+                if (flashlightCausesVanish) {
+                    VanishForSeconds(vanishSeconds);
+                }
+                else {
+                    PushBack(pushBackTwoNodes ? 2 : 1);
+                    stunTimer = Mathf.Max(stunTimer, stunSecondsAfterPushback);
+                }
+
+                playerFader?.Pulse();
+            }
+        }
+
+        private bool IsFrozen() {
+            if (CurrentMasterNode == null) return false;
+
+            if (freezeIfSeenOnCamera && attentionState != null && attentionState.isCameraActive) {
+                if (attentionState.activeCameraNode != null && attentionState.activeCameraNode == CurrentMasterNode)
+                    return true;
+            }
+
+            if (freezeIfSeenInPerson && player != null && player.CurrentMasterNode != null) {
+                if (player.CurrentMasterNode == CurrentMasterNode)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void MoveForwardOne() {
+            if (resolvedPath.Count == 0) return;
+
+            int next = Mathf.Min(currentIndex + 1, resolvedPath.Count - 1);
+            if (next == currentIndex) return;
+
+            if (!allowShareNodeWithPlayer && player != null && player.CurrentMasterNode != null) {
+                var nextNode = resolvedPath[next];
+                if (nextNode == player.CurrentMasterNode) return;
+            }
+
+            currentIndex = next;
+            OnChangedNode();
+        }
+
+        private void PushBack(int steps) {
+            if (resolvedPath.Count == 0) return;
+
+            int next = Mathf.Max(0, currentIndex - Mathf.Max(1, steps));
+            if (next == currentIndex) return;
+
+            currentIndex = next;
+            Debug.Log($"Stalker pushed back to index {currentIndex} ({CurrentMasterNode?.Id})", this);
+
+            OnChangedNode();
+        }
+
+        private void OnChangedNode() {
+            PlayFootstep();
+
+            // If we backed away from door, allow door groan again next time we re-enter
+            if (!AtDoor) {
+                doorGroanPlayedOnce = false;
+                doorGroanTimer = 0f;
+            }
+
+            PulseIfEnteredActiveCamera();
+            ScheduleNextRandomGroan();
+
+            // Snap immediately on node change
+            TeleportToCurrentNodeIfNeeded(force: true);
+        }
+
+        private void TeleportToCurrentNodeIfNeeded(bool force = false) {
+            if (!teleportToAnchors) return;
+            if (!force && currentIndex == lastTeleportedIndex) return;
+
+            lastTeleportedIndex = currentIndex;
+
+            var node = CurrentMasterNode;
+            if (node == null || teleportTarget == null) return;
+
+            currentAnchorSlot = null;
+
+            // Prefer anchor set slot
+            Transform anchor = null;
+            var anchorSet = node.GetComponent<EntityAnchorSet>();
+            if (anchorSet != null) {
+                currentAnchorSlot = anchorSet.GetRandomStalkerAnchor();
+                anchor = currentAnchorSlot != null ? currentAnchorSlot.anchor : null;
+            }
+
+            if (anchor != null) {
+                teleportTarget.SetPositionAndRotation(anchor.position, anchor.rotation);
+                return;
+            }
+
+            if (fallbackToNodeTransform) {
+                currentAnchorSlot = null;
+                teleportTarget.SetPositionAndRotation(node.transform.position, node.transform.rotation);
+            }
+        }
+
+        private void PlayFootstep() {
+            if (audioSource == null || footstepClip == null) return;
+            audioSource.PlayOneShot(footstepClip, sfxVolume);
+        }
+
+        private void PlayGroan(AudioClip clip) {
+            if (audioSource == null || clip == null) return;
+            audioSource.PlayOneShot(clip, sfxVolume);
+        }
+
+        private void ScheduleNextRandomGroan() {
+            float min = Mathf.Max(0.1f, groanMinInterval);
+            float max = Mathf.Max(min, groanMaxInterval);
+            nextGroanTime = Time.time + Random.Range(min, max);
+        }
+
+        private void HandleGroans() {
+            if (AtDoor) {
+                AudioClip clip = (doorGroanClip != null) ? doorGroanClip : groanClip;
+
+                if (doorGroanRepeatSeconds <= 0f) {
+                    if (!doorGroanPlayedOnce) {
+                        PlayGroan(clip);
+                        doorGroanPlayedOnce = true;
+                    }
+                }
+                else {
+                    doorGroanTimer += Time.deltaTime;
+                    if (doorGroanTimer >= doorGroanRepeatSeconds) {
+                        doorGroanTimer = 0f;
+                        PlayGroan(clip);
+                    }
+                }
+
+                if (disableRandomGroansAtDoor) return;
+            }
+
+            if (groanClip == null || audioSource == null) return;
+
+            if (Time.time >= nextGroanTime) {
+                PlayGroan(groanClip);
+                ScheduleNextRandomGroan();
+            }
+        }
+
+        private void PulseIfEnteredActiveCamera() {
+            if (attentionState == null || !attentionState.isCameraActive) return;
+            if (attentionState.activeCameraNode == null) return;
+
+            var now = CurrentMasterNode;
+            if (now == null) return;
+
+            if (attentionState.activeCameraNode == now && lastCameraPulseNode != now) {
+                cameraFader?.Pulse();
+            }
+
+            lastCameraPulseNode = now;
+        }
+
+        private void UpdateBlocking() {
+            if (blockerRegistry == null) return;
+
+            var node = CurrentMasterNode;
+            if (node == null) return;
+
+            if (lastBlockedNode != null && lastBlockedNode != node) {
+                blockerRegistry.SetBlockedForward(lastBlockedNode, false);
+            }
+
+            blockerRegistry.SetBlockedForward(node, true);
+            lastBlockedNode = node;
+        }
+
+        private void HandleSameNodeGroan() {
+            if (!groanWhenSameNode) return;
+            if (audioSource == null || groanClip == null) return;
+            if (player == null || player.CurrentMasterNode == null || CurrentMasterNode == null) return;
+
+            if (sameNodeGroanCooldownTimer > 0f)
+                sameNodeGroanCooldownTimer -= Time.deltaTime;
+
+            bool same = (player.CurrentMasterNode == CurrentMasterNode);
+
+            if (same && !wasSameNodeLastFrame && sameNodeGroanCooldownTimer <= 0f) {
+                PlayGroan(groanClip);
+                sameNodeGroanCooldownTimer = Mathf.Max(0f, sameNodeGroanCooldownSeconds);
+            }
+
+            wasSameNodeLastFrame = same;
+        }
+
+        private void OnDisable() {
+            if (blockerRegistry != null && CurrentMasterNode != null) {
+                blockerRegistry.SetBlockedForward(CurrentMasterNode, false);
+            }
+        }
+
+        private void SetVisible(bool visible) {
+            if (cachedRenderers != null)
+                foreach (var r in cachedRenderers) r.enabled = visible;
+
+            if (cachedColliders != null)
+                foreach (var c in cachedColliders) c.enabled = visible;
+        }
+
+        private void VanishForSeconds(float seconds) {
+            if (isVanished) return;
+
+            isVanished = true;
+            vanishTimer = seconds;
+
+            // reset relevant timers so it doesn't instantly do stuff on return
+            stunTimer = 0f;
+            doorTimer = 0f;
+            opportunityTimer = 0f;
+            flashlightHoldTimer = 0f;
+
+            SetVisible(false);
+
+            // Clear current block so we don't leave an invisible "blocked forward" behind.
+            if (blockerRegistry != null && lastBlockedNode != null) {
+                blockerRegistry.SetBlockedForward(lastBlockedNode, false);
+                lastBlockedNode = null;
+            }
+
+            // OPTIONAL: if you have blocker logic, clear it while vanished
+            // (depends on your UpdateBlocking implementation)
+            // blockerRegistry?.ClearAllForStalker(); // only if you have such a method
+        }
+
+        private void ReappearAtStart() {
+            isVanished = false;
+
+            int max = Mathf.Clamp(reappearFirstNNodes, 1, Mathf.Max(1, resolvedPath.Count));
+            int newIndex = Random.Range(0, max); // 0 or 1 if max == 2
+
+            currentIndex = Mathf.Clamp(newIndex, 0, resolvedPath.Count - 1);
+
+            // Force teleport to correct node immediately
+            lastTeleportedIndex = int.MinValue;
+            TeleportToCurrentNodeIfNeeded(force: true);
+
+            SetVisible(true);
+
+            // ensure blockers are correct again
+            UpdateBlocking();
+
+            // small grace period so it doesn't immediately move again
+            stunTimer = 0.5f;
+
+            // Optional SFX
+            if (audioSource != null && footstepClip != null)
+                audioSource.PlayOneShot(footstepClip, sfxVolume);
+        }
+    }
+}
