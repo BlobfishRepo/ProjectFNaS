@@ -2,7 +2,7 @@ using UnityEngine;
 
 public enum EdgeDir { Left, Right, Up, Down }
 
-public class NodeView : MonoBehaviour {
+public class View : MonoBehaviour {
     [Header("Identity")]
     [Tooltip("Unique name within this node (Monitor, Paper, Window, Door, etc.)")]
     public string viewId = "View";
@@ -20,7 +20,7 @@ public class NodeView : MonoBehaviour {
     [System.Serializable]
     public struct EdgeLink {
         public LinkAction action;
-        public NodeView targetView; // used when action = GoToView
+        public View targetView; // used when action = GoToView
     }
 
     [Header("Framing (optional)")]
@@ -39,10 +39,10 @@ public class NodeView : MonoBehaviour {
         public bool enabled;
 
         [Tooltip("Where this key should move from this view.")]
-        public Node targetNode;
+        public Waypoint targetWaypoint;
 
         [Tooltip("Optional: force a specific view upon arriving. Leave null to use entry rules/defaultView.")]
-        public NodeView enterView;
+        public View enterView;
     }
 
     [Header("WASD overrides (optional)")]

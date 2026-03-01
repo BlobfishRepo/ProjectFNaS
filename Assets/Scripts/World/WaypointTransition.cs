@@ -23,12 +23,23 @@ public class TransitionWaypoint {
     [Header("Optional turn near this point")]
     public Transform lookTarget;        // if set, we face this direction when approaching
     public float turnDuration = 0.12f;  // 0 = snap instantly
+
+    [Header("Door actions (optional)")]
+    public DoorAction[] doorActions;
+}
+
+public enum DoorCommand { Open, Close, Toggle }
+
+[System.Serializable]
+public class DoorAction {
+    public Door door;
+    public DoorCommand command = DoorCommand.Open;
 }
 
 [System.Serializable]
-public class NodeTransition {
+public class WaypointTransition {
     public Direction input;
-    public Node target;
+    public Waypoint target;
 
     public TransitionTag tag = TransitionTag.Other;
 
@@ -38,9 +49,6 @@ public class NodeTransition {
     [Header("Facing during travel")]
     public MoveFacingMode facingMode = MoveFacingMode.KeepFacing;
 
-    [Tooltip("Used when Facing Mode = FaceLookTarget")]
     public Transform travelLookTarget;
-
-    [Tooltip("How quickly to turn while traveling. 0 = snap instantly.")]
     public float travelTurnDuration = 0.12f;
 }

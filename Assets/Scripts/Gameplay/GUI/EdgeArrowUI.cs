@@ -5,8 +5,8 @@ using UnityEngine.UI;
 namespace FNaS.Gameplay {
     public class EdgeArrowUI : MonoBehaviour {
         [Header("References")]
-        [SerializeField] private NodeViewController viewController;
-        [SerializeField] private PlayerNodeController mover;
+        [SerializeField] private ViewController viewController;
+        [SerializeField] private PlayerWaypointController mover;
 
         [Header("Arrow Images")]
         [SerializeField] private Graphic leftArrow;
@@ -24,19 +24,19 @@ namespace FNaS.Gameplay {
         private float currentAlpha = 0f;
 
         private void Awake() {
-            if (!viewController) viewController = FindFirstObjectByType<NodeViewController>();
-            if (!mover) mover = FindFirstObjectByType<PlayerNodeController>();
+            if (!viewController) viewController = FindFirstObjectByType<ViewController>();
+            if (!mover) mover = FindFirstObjectByType<PlayerWaypointController>();
 
             SetAllAlpha(0f);
             UpdateArrowsVisible(false, false, false, false);
         }
 
         private void OnEnable() {
-            if (!viewController) viewController = FindFirstObjectByType<NodeViewController>();
-            if (!mover) mover = FindFirstObjectByType<PlayerNodeController>();
+            if (!viewController) viewController = FindFirstObjectByType<ViewController>();
+            if (!mover) mover = FindFirstObjectByType<PlayerWaypointController>();
 
             if (viewController != null) {
-                viewController.OnEnteredNodeOrView += FadeInQuick;
+                viewController.OnEnteredWaypointOrView += FadeInQuick;
                 viewController.OnBeginMove += FadeOutQuick;
             }
 
@@ -45,7 +45,7 @@ namespace FNaS.Gameplay {
 
         private void OnDisable() {
             if (viewController != null) {
-                viewController.OnEnteredNodeOrView -= FadeInQuick;
+                viewController.OnEnteredWaypointOrView -= FadeInQuick;
                 viewController.OnBeginMove -= FadeOutQuick;
             }
         }
@@ -54,7 +54,7 @@ namespace FNaS.Gameplay {
             if (viewController == null || mover == null)
                 return;
 
-            // Hide during node-to-node movement
+            // Hide during waypoint-to-waypoint movement
             if (mover.IsMoving) {
                 // Hard hide; no fade while moving
                 StopFade();
@@ -63,7 +63,7 @@ namespace FNaS.Gameplay {
             }
 
             // Read edge availability from current view
-            NodeView v = viewController.CurrentView;
+            View v = viewController.CurrentView;
             if (v == null) {
                 StopFade();
                 SetAllAlpha(0f);
@@ -76,14 +76,14 @@ namespace FNaS.Gameplay {
             bool canD = HasEdge(v, EdgeDir.Down);
 
             UpdateArrowsVisible(canL, canR, canU, canD);
-            // Alpha is driven by NodeViewController events (below), but if you prefer always-on:
+            // Alpha is driven by ViewController events (below), but if you prefer always-on:
             // SetAllAlpha(visibleAlpha);
         }
 
-        private static bool HasEdge(NodeView v, EdgeDir dir) {
+        private static bool HasEdge(View v, EdgeDir dir) {
             var link = v.GetEdge(dir);
-            if (link.action == NodeView.LinkAction.None) return false;
-            if (link.action == NodeView.LinkAction.GoToView && link.targetView == null) return false;
+            if (link.action == View.LinkAction.None) return false;
+            if (link.action == View.LinkAction.GoToView && link.targetView == null) return false;
             // Back is valid if your history stack is non-empty, but UI can still hint.
             return true;
         }
@@ -117,7 +117,7 @@ namespace FNaS.Gameplay {
             }
         }
 
-        // --- Called by NodeViewController via events (recommended) ---
+        // --- Called by ViewController via events (recommended) ---
         public void FadeInQuick() {
             if (mover != null && mover.IsMoving) return;
             StartFadeTo(visibleAlpha, fadeInSeconds);

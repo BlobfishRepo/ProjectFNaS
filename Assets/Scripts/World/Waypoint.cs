@@ -4,54 +4,80 @@ using UnityEditor;
 using UnityEngine;
 using FNaS.MasterNodes;
 
-public class Node : MonoBehaviour {
-    [Header("Look")]
-    public Transform lookTarget;
+public class Waypoint : MonoBehaviour {
 
-    [Header("Directed transitions (per key)")]
-    public NodeTransition[] transitions;
+    // --------------------------------------------------
+    // Master Node Link (canonical location)
+    // --------------------------------------------------
 
-    public NodeTransition GetTransition(Direction dir) {
+    [Header("Master Node Link")]
+    public MasterNode masterNode;
+
+
+    // --------------------------------------------------
+    // Views
+    // --------------------------------------------------
+
+    [Header("Views")]
+    public View defaultView;
+
+    [Header("Door (optional)")]
+    public Door linkedDoor;
+
+    // --------------------------------------------------
+    // Directed Transitions
+    // --------------------------------------------------
+
+    [Header("Directed Transitions (per key)")]
+    public WaypointTransition[] transitions;
+
+    public WaypointTransition GetTransition(Direction dir) {
         if (transitions == null) return null;
         for (int i = 0; i < transitions.Length; i++) {
-            if (transitions[i] != null && transitions[i].input == dir) return transitions[i];
+            if (transitions[i] != null && transitions[i].input == dir)
+                return transitions[i];
         }
         return null;
     }
 
-    [Header("Master Node Link (canonical location)")]
-    public MasterNode masterNode;
+    public WaypointTransition GetTransitionTo(Waypoint target) {
+        if (transitions == null || target == null) return null;
+        for (int i = 0; i < transitions.Length; i++) {
+            var tr = transitions[i];
+            if (tr != null && tr.target == target)
+                return tr;
+        }
+        return null;
+    }
 
-    [Header("Views (optional)")]
-    public NodeView defaultView;
 
-    [Header("Entry view rules (optional)")]
+    // --------------------------------------------------
+    // Entry View Rules
+    // --------------------------------------------------
+
+    [Header("Entry View Rules")]
     public EntryRule[] entryRules;
 
     [System.Serializable]
     public class EntryRule {
-        public Node fromNode;
-        public NodeView startView;
+        public Waypoint fromWaypoint;
+        public View startView;
     }
 
-    public NodeView GetEntryView(Node fromNode) {
-        if (fromNode != null && entryRules != null) {
+    public View GetEntryView(Waypoint fromWaypoint) {
+        if (fromWaypoint != null && entryRules != null) {
             for (int i = 0; i < entryRules.Length; i++) {
                 var r = entryRules[i];
-                if (r != null && r.fromNode == fromNode) return r.startView;
+                if (r != null && r.fromWaypoint == fromWaypoint)
+                    return r.startView;
             }
         }
-        return defaultView != null ? defaultView : GetComponentInChildren<NodeView>();
+
+        return defaultView != null
+            ? defaultView
+            : GetComponentInChildren<View>();
     }
 
-    public NodeTransition GetTransitionTo(Node target) {
-        if (transitions == null || target == null) return null;
-        for (int i = 0; i < transitions.Length; i++) {
-            var tr = transitions[i];
-            if (tr != null && tr.target == target) return tr;
-        }
-        return null;
-    }
 
 #if UNITY_EDITOR
     private void OnDrawGizmos() {
@@ -59,15 +85,6 @@ public class Node : MonoBehaviour {
         Vector3 pos = transform.position;
         Gizmos.color = Color.green;
         Gizmos.DrawSphere(pos, 0.15f);
-
-        if (lookTarget != null) {
-            Vector3 forward = (lookTarget.position - pos);
-            forward.y = 0f;
-            if (forward.sqrMagnitude > 0.0001f) {
-                forward.Normalize();
-                Gizmos.DrawLine(pos, pos + forward * 0.8f);
-            }
-        }
     }
 
     private void OnDrawGizmosSelected() {
@@ -76,7 +93,6 @@ public class Node : MonoBehaviour {
         foreach (var tr in transitions) {
             if (tr == null || tr.target == null) continue;
 
-            // Color per key (optional)
             Gizmos.color = tr.input switch {
                 Direction.W => Color.blue,
                 Direction.A => Color.red,
@@ -85,7 +101,6 @@ public class Node : MonoBehaviour {
                 _ => Color.white
             };
 
-            // Draw polyline: this node -> waypoints -> target node
             Vector3 prev = transform.position;
 
             if (tr.waypoints != null) {

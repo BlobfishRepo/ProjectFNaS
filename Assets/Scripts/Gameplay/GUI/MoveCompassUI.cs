@@ -4,8 +4,8 @@ using UnityEngine.UI;
 namespace FNaS.Gameplay {
     public class MoveCompassUI : MonoBehaviour {
         [Header("References")]
-        [SerializeField] private NodeViewController viewController;
-        [SerializeField] private PlayerNodeController mover;
+        [SerializeField] private ViewController viewController;
+        [SerializeField] private PlayerWaypointController mover;
 
         [Header("UI")]
         [SerializeField] private CanvasGroup canvasGroup; // optional but recommended
@@ -31,8 +31,8 @@ namespace FNaS.Gameplay {
         private float wAlpha, aAlpha, sAlpha, dAlpha;
 
         private void Awake() {
-            if (!viewController) viewController = FindFirstObjectByType<NodeViewController>();
-            if (!mover) mover = FindFirstObjectByType<PlayerNodeController>();
+            if (!viewController) viewController = FindFirstObjectByType<ViewController>();
+            if (!mover) mover = FindFirstObjectByType<PlayerWaypointController>();
             if (!canvasGroup) canvasGroup = GetComponent<CanvasGroup>();
         }
 
@@ -40,11 +40,11 @@ namespace FNaS.Gameplay {
             if (!viewController || !mover)
                 return;
 
-            Node node = viewController.CurrentNode;
-            NodeView view = viewController.CurrentView;
+            Waypoint waypoint = viewController.CurrentWaypoint;
+            View view = viewController.CurrentView;
 
-            // If we somehow have no node yet, just dim everything
-            if (!node) {
+            // If we somehow have no waypoint yet, just dim everything
+            if (!waypoint) {
                 ApplyTick(ref wAlpha, tickW, unavailableAlpha);
                 ApplyTick(ref aAlpha, tickA, unavailableAlpha);
                 ApplyTick(ref sAlpha, tickS, unavailableAlpha);
@@ -54,10 +54,10 @@ namespace FNaS.Gameplay {
             }
 
             // Determine availability (view override first, then node)
-            bool canW = CanMove(Direction.W, node, view);
-            bool canA = CanMove(Direction.A, node, view);
-            bool canS = CanMove(Direction.S, node, view);
-            bool canD = CanMove(Direction.D, node, view);
+            bool canW = CanMove(Direction.W, waypoint, view);
+            bool canA = CanMove(Direction.A, waypoint, view);
+            bool canS = CanMove(Direction.S, waypoint, view);
+            bool canD = CanMove(Direction.D, waypoint, view);
 
             Direction? chosen = viewController.ActiveMoveDir;
             bool moving = mover.IsMoving;
@@ -86,25 +86,25 @@ namespace FNaS.Gameplay {
             return unavailableAlpha;        // gray out all others (even if they were available)
         }
 
-        private bool CanMove(Direction dir, Node node, NodeView view) {
-            if (node == null) return false;
+        private bool CanMove(Direction dir, Waypoint waypoint, View view) {
+            if (waypoint == null) return false;
 
             // 1) View override
             if (view != null) {
                 var ov = view.GetOverride(dir);
 
                 if (ov.enabled) {
-                    if (ov.targetNode == null) return false;
+                    if (ov.targetWaypoint == null) return false;
 
-                    // Resolve the actual NodeTransition on THIS node for this key
+                    // Resolve the actual WaypointTransition on THIS node for this key
                     // and ensure it points to the override node.
-                    NodeTransition tr = node.GetTransition(dir);
-                    return tr != null && tr.target == ov.targetNode;
+                    WaypointTransition tr = waypoint.GetTransition(dir);
+                    return tr != null && tr.target == ov.targetWaypoint;
                 }
             }
 
-            // 2) Default node mapping
-            NodeTransition fallback = node.GetTransition(dir);
+            // 2) Default waypoint mapping
+            WaypointTransition fallback = waypoint.GetTransition(dir);
             return fallback != null && fallback.target != null;
         }
 

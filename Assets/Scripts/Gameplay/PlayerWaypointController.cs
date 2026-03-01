@@ -4,12 +4,12 @@ using FNaS.MasterNodes;
 using FNaS.Systems;
 
 namespace FNaS.Gameplay {
-    public class PlayerNodeController : MonoBehaviour {
+    public class PlayerWaypointController : MonoBehaviour {
         [Header("References")]
         public Transform rigTransform;   // MOVE THIS (player root)
         public Transform yawPivot;       // ROTATE THIS (yaw)
         public Transform pitchPivot;     // ROTATE THIS (pitch) - kept neutral during movement
-        public Node startingNode;
+        public Waypoint startingWaypoint;
 
         [Header("Systems")]
         public BlockerRegistry blockerRegistry;
@@ -19,7 +19,7 @@ namespace FNaS.Gameplay {
         public float moveSpeed = 6.0f; // units/sec
 
         [Header("State (read-only)")]
-        public Node CurrentNode;
+        public Waypoint CurrentWaypoint;
 
         [Header("Audio")]
         public AudioSource sfxSource;
@@ -33,21 +33,21 @@ namespace FNaS.Gameplay {
         public bool IsMoving => isMoving;
 
         private void Start() {
-            if (startingNode == null) {
-                Debug.LogError("PlayerNodeController: startingNode is not set.");
+            if (startingWaypoint == null) {
+                Debug.LogError("PlayerWaypointController: startingWaypoint is not set.");
                 enabled = false;
                 return;
             }
-            SetCurrentNodeInstant(startingNode);
+            SetCurrentWaypointInstant(startingWaypoint);
         }
 
-        public void BeginTransition(NodeTransition tr) {
+        public void BeginTransition(WaypointTransition tr) {
             if (isMoving) return;
             if (tr == null || tr.target == null) return;
             if (loseState != null && loseState.hasLost) return;
 
             // Resolve master nodes
-            MasterNode fromMaster = ResolveMasterNode(CurrentNode);
+            MasterNode fromMaster = ResolveMasterNode(CurrentWaypoint);
             MasterNode toMaster = ResolveMasterNode(tr.target);
 
             // If this is a forward move, and the forward exit is blocked at the *current* master node, you lose.
@@ -62,7 +62,7 @@ namespace FNaS.Gameplay {
             StartCoroutine(MoveAlongTransition(tr, toMaster));
         }
 
-        private IEnumerator MoveAlongTransition(NodeTransition tr, MasterNode toMaster) {
+        private IEnumerator MoveAlongTransition(WaypointTransition tr, MasterNode toMaster) {
             isMoving = true;
 
             // --- Tunables ---
@@ -88,6 +88,24 @@ namespace FNaS.Gameplay {
                 dir = FlattenY(dir);
                 if (dir.sqrMagnitude < 0.0001f) return fallback;
                 return Quaternion.LookRotation(dir.normalized, Vector3.up);
+            }
+
+            void FireDoorActionsAt(int idx) {
+                if (tr.waypoints == null) return;
+                if (idx < 0 || idx >= tr.waypoints.Length) return;
+
+                var wp = tr.waypoints[idx];
+                if (wp == null || wp.doorActions == null) return;
+
+                foreach (var a in wp.doorActions) {
+                    if (a == null || a.door == null) continue;
+
+                    switch (a.command) {
+                        case DoorCommand.Open: a.door.SetOpen(true); break;
+                        case DoorCommand.Close: a.door.SetOpen(false); break;
+                        case DoorCommand.Toggle: a.door.Toggle(); break;
+                    }
+                }
             }
 
             void ApplyTravelFacing(Vector3 pos, Vector3 moveDir) {
@@ -126,6 +144,7 @@ namespace FNaS.Gameplay {
 
             int midCount = (tr.waypoints != null) ? tr.waypoints.Length : 0;
             int totalPts = midCount + 2;
+            bool[] firedDoorActions = (midCount > 0) ? new bool[midCount] : null;
 
             Vector3[] pts = new Vector3[totalPts];
             pts[0] = startPos;
@@ -152,7 +171,7 @@ namespace FNaS.Gameplay {
             if (totalLen < 0.0001f) {
                 rigTransform.position = endPos;
                 if (pitchPivot != null) pitchPivot.localRotation = Quaternion.identity;
-                CurrentNode = tr.target;
+                CurrentWaypoint = tr.target;
                 currentMasterNode = toMaster;
                 sfxSource.Stop();
                 isMoving = false;
@@ -221,6 +240,11 @@ namespace FNaS.Gameplay {
                         float dToWaypoint = distAtPoint[ptIdx] - traveled;
 
                         if (dToWaypoint <= AnticipationDist()) {
+                            if (firedDoorActions != null && !firedDoorActions[nextTurnIndex]) {
+                                firedDoorActions[nextTurnIndex] = true;
+                                FireDoorActionsAt(nextTurnIndex);
+                            }
+
                             Transform lt = tr.waypoints[nextTurnIndex].lookTarget;
                             float dur = tr.waypoints[nextTurnIndex].turnDuration;
 
@@ -250,34 +274,27 @@ namespace FNaS.Gameplay {
             rigTransform.position = endPos;
             if (pitchPivot != null) pitchPivot.localRotation = Quaternion.identity;
 
-            CurrentNode = tr.target;
+            CurrentWaypoint = tr.target;
             currentMasterNode = toMaster;
             sfxSource.Stop();
             isMoving = false;
         }
 
-        private void SetCurrentNodeInstant(Node node) {
-            CurrentNode = node;
-            currentMasterNode = ResolveMasterNode(node);
+        private void SetCurrentWaypointInstant(Waypoint waypoint) {
+            CurrentWaypoint = waypoint;
+            currentMasterNode = ResolveMasterNode(waypoint);
 
-            Vector3 pos = node.transform.position;
+            Vector3 pos = waypoint.transform.position;
             pos.y = rigTransform.position.y;
             rigTransform.position = pos;
-
-            if (yawPivot != null && node.lookTarget != null) {
-                Vector3 d = node.lookTarget.position - pos;
-                d.y = 0f;
-                if (d.sqrMagnitude > 0.0001f)
-                    yawPivot.rotation = Quaternion.LookRotation(d.normalized, Vector3.up);
-            }
 
             if (pitchPivot != null)
                 pitchPivot.localRotation = Quaternion.identity;
         }
 
-        private MasterNode ResolveMasterNode(Node node) {
-            if (node == null) return null;
-            return node.masterNode;
+        private MasterNode ResolveMasterNode(Waypoint waypoint) {
+            if (waypoint == null) return null;
+            return waypoint.masterNode;
         }
     }
 }

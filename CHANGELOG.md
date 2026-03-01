@@ -1,4 +1,18 @@
 # Changelog
+## March 1 - Final MVP Build
+### Added
+- Added a percentage that goes up when looking at the desk, serving as the win condition
+- Added win/loss conditions, with a reset button
+- Added a mesh to the Stalker entity
+- Added opening/closing doors
+
+### Changed
+- Camera UI modified (buttons slightly changed, added a minimap indicator)
+- Camera lighting made slightly brighter
+- Stalker AI modified to fit needs of MVP
+- Backend: movement nodes reworked to allow for interacting with doors, and general clean-up
+- Backend: classes renamed to better fit current purpose
+
 ## February 28
 ### Added
 - Lighting overhauled to try to match a dark atmosphere

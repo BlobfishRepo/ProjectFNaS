@@ -4,9 +4,9 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace FNaS.Gameplay {
-    public class NodeViewController : MonoBehaviour {
+    public class ViewController : MonoBehaviour {
         [Header("References")]
-        [SerializeField] private PlayerNodeController mover;
+        [SerializeField] private PlayerWaypointController mover;
 
         [Header("Edge detection")]
         [SerializeField] private float edgePixels = 60f;
@@ -19,16 +19,16 @@ namespace FNaS.Gameplay {
         [SerializeField] private bool snapOnEnter = true;
 
         [Header("Runtime (read-only)")]
-        [SerializeField] private Node currentNode;
-        [SerializeField] private NodeView currentView;
-        public Node CurrentNode => currentNode;
-        public NodeView CurrentView => currentView;
-        public System.Action OnEnteredNodeOrView;
+        [SerializeField] private Waypoint currentWaypoint;
+        [SerializeField] private View currentView;
+        public Waypoint CurrentWaypoint => currentWaypoint;
+        public View CurrentView => currentView;
+        public System.Action OnEnteredWaypointOrView;
         public System.Action OnBeginMove;
 
         public Direction? ActiveMoveDir { get; private set; }
 
-        private readonly Stack<NodeView> history = new();
+        private readonly Stack<View> history = new();
 
         private PlayerInputActions input;
         private float dwellTimer;
@@ -36,46 +36,56 @@ namespace FNaS.Gameplay {
         private EdgeDir? pendingEdge;
         private Quaternion targetYaw;
         private float targetPitch;
-        private Vector3 nodeBaseRigPos;
-        private bool hasNodeBaseRigPos = false;
+        private Vector3 waypointBaseRigPos;
+        private bool hasWaypointBaseRigPos = false;
         private Vector3 targetRigPos;
         [SerializeField] private float offsetLerpSpeed = 14f;
 
         private void Awake() {
-            if (!mover) mover = FindFirstObjectByType<PlayerNodeController>();
+            if (!mover) mover = FindFirstObjectByType<PlayerWaypointController>();
             input = new PlayerInputActions();
         }
 
         private void OnEnable() {
             if (input == null) input = new PlayerInputActions();
             input.Player.Enable();
+            input.Player.Interact.performed += OnInteract;
         }
 
         private void OnDisable() {
             input?.Player.Disable();
+            if (input != null) input.Player.Interact.performed -= OnInteract;
         }
 
         private IEnumerator Start() {
             if (mover == null) {
-                Debug.LogError("NodeViewController: mover not assigned.");
+                Debug.LogError("ViewController: mover not assigned.");
                 enabled = false;
                 yield break;
             }
 
-            // Wait until PlayerNodeController has initialized CurrentNode
-            while (mover.CurrentNode == null)
+            // Wait until PlayerWaypointController has initialized CurrentWaypoint
+            while (mover.CurrentWaypoint == null)
                 yield return null;
 
-            EnterNode(mover.CurrentNode, fromNode: null);
+            EnterWaypoint(mover.CurrentWaypoint, fromWaypoint: null);
+        }
+
+        private void OnInteract(InputAction.CallbackContext ctx) {
+            if (mover == null || mover.IsMoving) return;
+            if (currentWaypoint == null) return;
+
+            var door = currentWaypoint.linkedDoor;
+            if (door != null) door.Toggle();
         }
 
         private void Update() {
             if (mover == null || mover.yawPivot == null) return;
             if (mover.IsMoving) return; // don't switch views mid-move
 
-            // Ensure node stays synced
-            if (mover.CurrentNode != null && mover.CurrentNode != currentNode)
-                EnterNode(mover.CurrentNode, fromNode: null);
+            // Ensure waypoint stays synced
+            if (mover.CurrentWaypoint != null && mover.CurrentWaypoint != currentWaypoint)
+                EnterWaypoint(mover.CurrentWaypoint, fromWaypoint: null);
 
             cooldownTimer -= Time.deltaTime;
 
@@ -103,11 +113,7 @@ namespace FNaS.Gameplay {
 
             // 2) WASD movement (new input system)
             Vector2 move = input.Player.Move.ReadValue<Vector2>();
-            if (move != Vector2.zero)
-                Debug.Log($"Move read: {move} sqr={move.sqrMagnitude}");
 
-            if (move.sqrMagnitude > 0.25f && !_moveLatched)
-                Debug.Log("Move threshold crossed -> TryMove");
             if (move.sqrMagnitude > 0.25f) {
                 Direction dir = VectorToDir(move);
                 // Only trigger once per press (deadzone crossing)
@@ -130,7 +136,7 @@ namespace FNaS.Gameplay {
                 );
             }
 
-            // Keep pitch neutral (matches your node system)
+            // Keep pitch neutral (matches your waypoint system)
             if (mover.pitchPivot != null) {
                 Quaternion desired = Quaternion.Euler(targetPitch, 0f, 0f);
                 mover.pitchPivot.localRotation = Quaternion.Slerp(
@@ -141,7 +147,7 @@ namespace FNaS.Gameplay {
             }
 
             // 4) Smooth rig position toward target offset
-            if (hasNodeBaseRigPos && mover.rigTransform != null) {
+            if (hasWaypointBaseRigPos && mover.rigTransform != null) {
                 float k = 1f - Mathf.Exp(-offsetLerpSpeed * Time.deltaTime);
                 mover.rigTransform.position = Vector3.Lerp(mover.rigTransform.position, targetRigPos, k);
             }
@@ -149,31 +155,31 @@ namespace FNaS.Gameplay {
 
         private bool _moveLatched = false;
 
-        // ---------- Node / View control ----------
+        // ---------- Waypoint / View control ----------
 
-        public void EnterNode(Node node, Node fromNode) {
-            currentNode = node;
+        public void EnterWaypoint(Waypoint waypoint, Waypoint fromWaypoint) {
+            currentWaypoint = waypoint;
             history.Clear();
             pendingEdge = null;
             dwellTimer = 0f;
             cooldownTimer = 0f;
 
-            // Stable base for this node (do NOT use rigTransform.position — it may already include a view offset)
-            if (mover != null && mover.rigTransform != null && node != null) {
-                nodeBaseRigPos = node.transform.position;
-                nodeBaseRigPos.y = mover.rigTransform.position.y; // keep current player height
-                hasNodeBaseRigPos = true;
+            // Stable base for this waypoint (do NOT use rigTransform.position — it may already include a view offset)
+            if (mover != null && mover.rigTransform != null && waypoint != null) {
+                waypointBaseRigPos = waypoint.transform.position;
+                waypointBaseRigPos.y = mover.rigTransform.position.y; // keep current player height
+                hasWaypointBaseRigPos = true;
 
-                // Optional but recommended: snap rig back to base when entering node
-                mover.rigTransform.position = nodeBaseRigPos;
-                targetRigPos = nodeBaseRigPos;
+                // Optional but recommended: snap rig back to base when entering Waypoint
+                mover.rigTransform.position = waypointBaseRigPos;
+                targetRigPos = waypointBaseRigPos;
             }
 
-            NodeView start = node != null ? node.GetEntryView(fromNode) : null;
+            View start = waypoint != null ? waypoint.GetEntryView(fromWaypoint) : null;
             SetView(start, pushHistory: false, snap: snapOnEnter);
         }
 
-        private void SetView(NodeView view, bool pushHistory, bool snap) {
+        private void SetView(View view, bool pushHistory, bool snap) {
             if (view == null || mover == null || mover.yawPivot == null) return;
 
             if (pushHistory && currentView != null)
@@ -187,11 +193,11 @@ namespace FNaS.Gameplay {
             if (snap)
                 mover.yawPivot.rotation = targetYaw;
 
-            OnEnteredNodeOrView?.Invoke();
+            OnEnteredWaypointOrView?.Invoke();
         }
 
-        private Quaternion ComputeYawForView(NodeView view) {
-            Vector3 pos = hasNodeBaseRigPos ? nodeBaseRigPos
+        private Quaternion ComputeYawForView(View view) {
+            Vector3 pos = hasWaypointBaseRigPos ? waypointBaseRigPos
                 : (mover.rigTransform != null ? mover.rigTransform.position : mover.transform.position);
 
             if (view.lookTarget != null) {
@@ -215,9 +221,9 @@ namespace FNaS.Gameplay {
             if (cooldownTimer > 0f || currentView == null) return;
 
             var link = currentView.GetEdge(dir);
-            if (link.action == NodeView.LinkAction.None) return;
+            if (link.action == View.LinkAction.None) return;
 
-            if (link.action == NodeView.LinkAction.Back) {
+            if (link.action == View.LinkAction.Back) {
                 if (history.Count > 0) {
                     SetView(history.Pop(), pushHistory: false, snap: false);
                     cooldownTimer = switchCooldown;
@@ -225,7 +231,7 @@ namespace FNaS.Gameplay {
                 return;
             }
 
-            if (link.action == NodeView.LinkAction.GoToView && link.targetView != null) {
+            if (link.action == View.LinkAction.GoToView && link.targetView != null) {
                 SetView(link.targetView, pushHistory: true, snap: false);
                 cooldownTimer = switchCooldown;
             }
@@ -261,24 +267,24 @@ namespace FNaS.Gameplay {
 
         private void TryMove(Direction dir) {
             if (mover == null || mover.IsMoving) return;
-            if (mover.CurrentNode == null) return;
+            if (mover.CurrentWaypoint == null) return;
 
-            currentNode = mover.CurrentNode;
+            currentWaypoint = mover.CurrentWaypoint;
 
-            NodeTransition tr = null;
+            WaypointTransition tr = null;
 
-            // View override: map key -> target node -> node transition
+            // View override: map key -> target waypoint -> waypoint transition
             if (currentView != null) {
                 var ov = currentView.GetOverride(dir);
-                if (ov.enabled && ov.targetNode != null) {
-                    tr = currentNode.GetTransitionTo(ov.targetNode);
+                if (ov.enabled && ov.targetWaypoint != null) {
+                    tr = currentWaypoint.GetTransitionTo(ov.targetWaypoint);
                     // If you want to allow "override exists but no transition", you can Debug.Log here.
                 }
             }
 
-            // Fallback to node mapping
+            // Fallback to waypoint mapping
             if (tr == null)
-                tr = currentNode.GetTransition(dir);
+                tr = currentWaypoint.GetTransition(dir);
 
             if (tr == null || tr.target == null) return;
 
@@ -286,8 +292,8 @@ namespace FNaS.Gameplay {
             StartCoroutine(MoveAndApplyEntry(tr));
         }
 
-        private IEnumerator MoveAndApplyEntry(NodeTransition tr) {
-            Node from = mover.CurrentNode;
+        private IEnumerator MoveAndApplyEntry(WaypointTransition tr) {
+            Waypoint from = mover.CurrentWaypoint;
 
             OnBeginMove?.Invoke();
             mover.BeginTransition(tr);
@@ -295,13 +301,13 @@ namespace FNaS.Gameplay {
             while (mover.IsMoving)
                 yield return null;
 
-            // mover.CurrentNode is now updated
-            EnterNode(mover.CurrentNode, from);
+            // mover.CurrentWaypoint is now updated
+            EnterWaypoint(mover.CurrentWaypoint, from);
             ActiveMoveDir = null;
         }
 
-        private void ApplyViewOffset(NodeView view) {
-            if (!hasNodeBaseRigPos) return;
+        private void ApplyViewOffset(View view) {
+            if (!hasWaypointBaseRigPos) return;
             if (mover == null || mover.rigTransform == null) return;
             if (view == null) return;
 
@@ -318,7 +324,7 @@ namespace FNaS.Gameplay {
             Vector3 local = view.rigLocalOffset;
             Vector3 worldOffset = r * local.x + Vector3.up * local.y + f * local.z;
 
-            targetRigPos = nodeBaseRigPos + worldOffset;
+            targetRigPos = waypointBaseRigPos + worldOffset;
         }
 
         private static Direction VectorToDir(Vector2 v) {
