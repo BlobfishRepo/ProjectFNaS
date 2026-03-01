@@ -45,8 +45,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NodeView
   viewId: View
-  lookTarget: {fileID: 0}
+  lookTarget: {fileID: 1394780325717313713}
   pitchDegrees: 0
+  rigLocalOffset: {x: 0, y: 0, z: 0}
   left:
     action: 0
     targetView: {fileID: 0}
@@ -61,17 +62,17 @@ MonoBehaviour:
     targetView: {fileID: 0}
   W:
     enabled: 0
-    targetNode: {fileID: 0}
+    targetWaypoint: {fileID: 0}
     enterView: {fileID: 0}
   A:
     enabled: 0
-    targetNode: {fileID: 0}
+    targetWaypoint: {fileID: 0}
     enterView: {fileID: 0}
   S:
     enabled: 0
-    targetNode: {fileID: 0}
+    targetWaypoint: {fileID: 0}
     enterView: {fileID: 0}
   D:
     enabled: 0
-    targetNode: {fileID: 0}
+    targetWaypoint: {fileID: 0}
     enterView: {fileID: 0}

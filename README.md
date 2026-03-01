@@ -4,7 +4,10 @@
 
 A first-person, node-based survival horror experience inspired by classic FNAF-style gameplay.
 
+<<<<<<< HEAD
 BUILD: A link to a google drive containing the playable build is linked on the report. If you wish, you can also open this project in Unity and rebuilt the project.
+=======
+>>>>>>> c2cdc557aef77423c94ff2c1f50a35a8bb5da77f
 
 
 ---
