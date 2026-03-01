@@ -36,6 +36,10 @@ namespace FNaS.Gameplay {
         private EdgeDir? pendingEdge;
         private Quaternion targetYaw;
         private float targetPitch;
+        private Vector3 nodeBaseRigPos;
+        private bool hasNodeBaseRigPos = false;
+        private Vector3 targetRigPos;
+        [SerializeField] private float offsetLerpSpeed = 14f;
 
         private void Awake() {
             if (!mover) mover = FindFirstObjectByType<PlayerNodeController>();
@@ -135,6 +139,12 @@ namespace FNaS.Gameplay {
                     1f - Mathf.Exp(-rotateSpeed * Time.deltaTime)
                 );
             }
+
+            // 4) Smooth rig position toward target offset
+            if (hasNodeBaseRigPos && mover.rigTransform != null) {
+                float k = 1f - Mathf.Exp(-offsetLerpSpeed * Time.deltaTime);
+                mover.rigTransform.position = Vector3.Lerp(mover.rigTransform.position, targetRigPos, k);
+            }
         }
 
         private bool _moveLatched = false;
@@ -148,6 +158,17 @@ namespace FNaS.Gameplay {
             dwellTimer = 0f;
             cooldownTimer = 0f;
 
+            // Stable base for this node (do NOT use rigTransform.position — it may already include a view offset)
+            if (mover != null && mover.rigTransform != null && node != null) {
+                nodeBaseRigPos = node.transform.position;
+                nodeBaseRigPos.y = mover.rigTransform.position.y; // keep current player height
+                hasNodeBaseRigPos = true;
+
+                // Optional but recommended: snap rig back to base when entering node
+                mover.rigTransform.position = nodeBaseRigPos;
+                targetRigPos = nodeBaseRigPos;
+            }
+
             NodeView start = node != null ? node.GetEntryView(fromNode) : null;
             SetView(start, pushHistory: false, snap: snapOnEnter);
         }
@@ -159,6 +180,7 @@ namespace FNaS.Gameplay {
                 history.Push(currentView);
 
             currentView = view;
+            ApplyViewOffset(view);
             targetYaw = ComputeYawForView(view);
             targetPitch = view.pitchDegrees;
 
@@ -169,7 +191,8 @@ namespace FNaS.Gameplay {
         }
 
         private Quaternion ComputeYawForView(NodeView view) {
-            Vector3 pos = mover.rigTransform != null ? mover.rigTransform.position : mover.transform.position;
+            Vector3 pos = hasNodeBaseRigPos ? nodeBaseRigPos
+                : (mover.rigTransform != null ? mover.rigTransform.position : mover.transform.position);
 
             if (view.lookTarget != null) {
                 Vector3 d = view.lookTarget.position - pos;
@@ -275,6 +298,27 @@ namespace FNaS.Gameplay {
             // mover.CurrentNode is now updated
             EnterNode(mover.CurrentNode, from);
             ActiveMoveDir = null;
+        }
+
+        private void ApplyViewOffset(NodeView view) {
+            if (!hasNodeBaseRigPos) return;
+            if (mover == null || mover.rigTransform == null) return;
+            if (view == null) return;
+
+            // Use the view's basis (stable) and ignore pitch/roll
+            Vector3 f = view.transform.forward; f.y = 0f;
+            Vector3 r = view.transform.right; r.y = 0f;
+
+            if (f.sqrMagnitude < 1e-6f) f = Vector3.forward;
+            if (r.sqrMagnitude < 1e-6f) r = Vector3.right;
+
+            f.Normalize();
+            r.Normalize();
+
+            Vector3 local = view.rigLocalOffset;
+            Vector3 worldOffset = r * local.x + Vector3.up * local.y + f * local.z;
+
+            targetRigPos = nodeBaseRigPos + worldOffset;
         }
 
         private static Direction VectorToDir(Vector2 v) {

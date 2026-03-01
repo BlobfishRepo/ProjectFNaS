@@ -36,7 +36,6 @@ namespace FNaS.Systems {
                 isOn = false;
                 ApplyIndicator();
             }
-            Debug.Log($"Flashlight: {(isOn ? "ON" : "OFF")}, battery={batteryRemaining:F1}s");
         }
 
         public void Toggle() {

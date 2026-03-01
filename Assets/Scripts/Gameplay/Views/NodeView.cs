@@ -23,6 +23,10 @@ public class NodeView : MonoBehaviour {
         public NodeView targetView; // used when action = GoToView
     }
 
+    [Header("Framing (optional)")]
+    [Tooltip("Local-space offset applied to the player's rig while in this view (e.g., lean in toward monitor/paper).")]
+    public Vector3 rigLocalOffset = Vector3.zero;
+
     [Header("Edge transitions")]
     public EdgeLink left;
     public EdgeLink right;

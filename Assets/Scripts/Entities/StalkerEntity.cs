@@ -18,6 +18,10 @@ namespace FNaS.Entities.Stalker {
         public bool freezeIfSeenOnCamera = true;
         public bool freezeIfSeenInPerson = true;
 
+        [Header("Player Collision Rule")]
+        [Tooltip("If true, the stalker is allowed to enter the player's current MasterNode (share the same node).")]
+        public bool allowShareNodeWithPlayer = false;
+
         [Header("Door Loss")]
         public float doorKillSeconds = 10f;
 
@@ -243,13 +247,15 @@ namespace FNaS.Entities.Stalker {
             int next = Mathf.Min(currentIndex + 1, resolvedPath.Count - 1);
             if (next == currentIndex) return;
 
-            // NEW: don't move onto the player's node
-            MasterNode nextNode = resolvedPath[next];
-            if (player != null && player.CurrentMasterNode != null && nextNode != null) {
+            // --- NEW: block entering player node unless allowed ---
+            if (!allowShareNodeWithPlayer && player != null && player.CurrentMasterNode != null) {
+                MasterNode nextNode = resolvedPath[next];
                 if (nextNode == player.CurrentMasterNode) {
+                    // Optional: Debug.Log("Stalker blocked from entering player's node.", this);
                     return;
                 }
             }
+            // ------------------------------------------------------
 
             currentIndex = next;
             OnChangedNode();

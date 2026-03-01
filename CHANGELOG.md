@@ -3,6 +3,10 @@
 ### Added
 - Lighting overhauled to try to match a dark atmosphere
 - Flashlight has light
+- MVP Apartment (2 bedrooms, part of hallway, bathroom layout)
+
+### Changed
+- Nodes and Views matched to the apartment
 
 ### Fixed
 - Stalker now properly gets stalled by camera/player, and pushed back by flashlight

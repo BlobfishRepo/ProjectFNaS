@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Stalker_PathDefinition
   m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.LinearPathDefinition
   nodeGuids:
-  - 46081abb5d6d440ca59fd3d09c1d20a1
   - 4d3652ca3b7e4b9f8591cdced7019f19
+  - 46081abb5d6d440ca59fd3d09c1d20a1
   - d486d1fa5cb94f48845740b1d4b42e15
   - 3b1e8822da8d4587bd81728140dd63fe
