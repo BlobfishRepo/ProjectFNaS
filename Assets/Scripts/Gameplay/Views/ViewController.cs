@@ -49,12 +49,10 @@ namespace FNaS.Gameplay {
         private void OnEnable() {
             if (input == null) input = new PlayerInputActions();
             input.Player.Enable();
-            input.Player.Interact.performed += OnInteract;
         }
 
         private void OnDisable() {
             input?.Player.Disable();
-            if (input != null) input.Player.Interact.performed -= OnInteract;
         }
 
         private IEnumerator Start() {
@@ -69,14 +67,6 @@ namespace FNaS.Gameplay {
                 yield return null;
 
             EnterWaypoint(mover.CurrentWaypoint, fromWaypoint: null);
-        }
-
-        private void OnInteract(InputAction.CallbackContext ctx) {
-            if (mover == null || mover.IsMoving) return;
-            if (currentWaypoint == null) return;
-
-            var door = currentWaypoint.linkedDoor;
-            if (door != null) door.Toggle();
         }
 
         private void Update() {

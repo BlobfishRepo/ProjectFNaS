@@ -51,7 +51,6 @@ namespace FNaS.Gameplay {
             MasterNode toMaster = ResolveMasterNode(tr.target);
 
             // If this is a forward move, and the forward exit is blocked at the *current* master node, you lose.
-            // This matches: "you can share a node, but if you move beyond the entity you get jumpscared."
             if (tr.tag == TransitionTag.Forward && blockerRegistry != null && fromMaster != null) {
                 if (blockerRegistry.IsForwardExitBlockedAt(fromMaster)) {
                     loseState?.TriggerLose("Tried to move past a blocking entity.");
@@ -69,9 +68,11 @@ namespace FNaS.Gameplay {
             float minTurnDuration = 0.01f;         // safety for waypoint turns
             float turnAnticipationSeconds = 0.15f; // start turn slightly before waypoint
 
-            sfxSource.clip = footstepClip;
-            sfxSource.loop = true;
-            sfxSource.Play();
+            if (sfxSource != null && footstepClip != null) {
+                sfxSource.clip = footstepClip;
+                sfxSource.loop = true;
+                sfxSource.Play();
+            }
 
             // --- Helpers ---
             static Vector3 FlattenY(Vector3 v) { v.y = 0f; return v; }
@@ -88,24 +89,6 @@ namespace FNaS.Gameplay {
                 dir = FlattenY(dir);
                 if (dir.sqrMagnitude < 0.0001f) return fallback;
                 return Quaternion.LookRotation(dir.normalized, Vector3.up);
-            }
-
-            void FireDoorActionsAt(int idx) {
-                if (tr.waypoints == null) return;
-                if (idx < 0 || idx >= tr.waypoints.Length) return;
-
-                var wp = tr.waypoints[idx];
-                if (wp == null || wp.doorActions == null) return;
-
-                foreach (var a in wp.doorActions) {
-                    if (a == null || a.door == null) continue;
-
-                    switch (a.command) {
-                        case DoorCommand.Open: a.door.SetOpen(true); break;
-                        case DoorCommand.Close: a.door.SetOpen(false); break;
-                        case DoorCommand.Toggle: a.door.Toggle(); break;
-                    }
-                }
             }
 
             void ApplyTravelFacing(Vector3 pos, Vector3 moveDir) {
@@ -144,7 +127,6 @@ namespace FNaS.Gameplay {
 
             int midCount = (tr.waypoints != null) ? tr.waypoints.Length : 0;
             int totalPts = midCount + 2;
-            bool[] firedDoorActions = (midCount > 0) ? new bool[midCount] : null;
 
             Vector3[] pts = new Vector3[totalPts];
             pts[0] = startPos;
@@ -173,7 +155,7 @@ namespace FNaS.Gameplay {
                 if (pitchPivot != null) pitchPivot.localRotation = Quaternion.identity;
                 CurrentWaypoint = tr.target;
                 currentMasterNode = toMaster;
-                sfxSource.Stop();
+                if (sfxSource != null) sfxSource.Stop();
                 isMoving = false;
                 yield break;
             }
@@ -240,11 +222,6 @@ namespace FNaS.Gameplay {
                         float dToWaypoint = distAtPoint[ptIdx] - traveled;
 
                         if (dToWaypoint <= AnticipationDist()) {
-                            if (firedDoorActions != null && !firedDoorActions[nextTurnIndex]) {
-                                firedDoorActions[nextTurnIndex] = true;
-                                FireDoorActionsAt(nextTurnIndex);
-                            }
-
                             Transform lt = tr.waypoints[nextTurnIndex].lookTarget;
                             float dur = tr.waypoints[nextTurnIndex].turnDuration;
 
@@ -276,7 +253,8 @@ namespace FNaS.Gameplay {
 
             CurrentWaypoint = tr.target;
             currentMasterNode = toMaster;
-            sfxSource.Stop();
+
+            if (sfxSource != null) sfxSource.Stop();
             isMoving = false;
         }
 

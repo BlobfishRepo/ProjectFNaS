@@ -23,17 +23,6 @@ public class TransitionWaypoint {
     [Header("Optional turn near this point")]
     public Transform lookTarget;        // if set, we face this direction when approaching
     public float turnDuration = 0.12f;  // 0 = snap instantly
-
-    [Header("Door actions (optional)")]
-    public DoorAction[] doorActions;
-}
-
-public enum DoorCommand { Open, Close, Toggle }
-
-[System.Serializable]
-public class DoorAction {
-    public Door door;
-    public DoorCommand command = DoorCommand.Open;
 }
 
 [System.Serializable]

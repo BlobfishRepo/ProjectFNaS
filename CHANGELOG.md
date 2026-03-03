@@ -1,4 +1,15 @@
 # Changelog
+## March 2
+### Changes
+- Flashlight now tied to cursor, and using the flashlight on the Stalker requires correct cursor placement
+- Door decoupled from movement system and temporarily set to hold-to-open (although extremely buggy)
+
+### Removed
+- Flashlight and door logic tied to the movement system removed
+
+### Fixed
+- Fixed bug where Stalker can move forward while Player was moving, resulting in unintended behavior
+
 ## March 1 - Final MVP Build
 ### Added
 - Added a percentage that goes up when looking at the desk, serving as the win condition

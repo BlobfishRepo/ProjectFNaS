@@ -6,8 +6,6 @@ namespace FNaS.MasterNodes {
         [System.Serializable]
         public class StalkerAnchorSlot {
             public Transform anchor;
-            public View requiredView;   // null = any view
-            public Door doorBlocker;    // null = no door blocker
         }
 
         [Header("Anchors (local children)")]

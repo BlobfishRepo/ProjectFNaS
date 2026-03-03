@@ -13,6 +13,8 @@ public class Door : MonoBehaviour {
     public AudioClip closeClip;
     [Range(0f, 1f)] public float volume = 0.9f;
 
+    public Transform interactPoint; // assign InteractPoint (not under hinge)
+
     private Quaternion closedWorld;
     private Quaternion openWorld;
 

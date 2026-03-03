@@ -70,6 +70,12 @@ namespace FNaS.Entities.Stalker {
         [Tooltip("Groan used when at the final node (door). If null, falls back to groanClip.")]
         public AudioClip doorGroanClip;
 
+        [Header("Flashlight Burning SFX")]
+        public AudioClip burningLoopClip;
+        [Range(0f, 1f)] public float burningVolume = 0.8f;
+
+        private AudioSource burningSource;
+
         [Range(0f, 1f)] public float sfxVolume = 0.9f;
 
         [Header("Random Groan Tuning")]
@@ -128,8 +134,9 @@ namespace FNaS.Entities.Stalker {
 
         // Teleport guard
         private int lastTeleportedIndex = int.MinValue;
+        private bool freezeWhilePlayerMoving;
 
-        // Current anchor slot (ties placement to required view / door blocker)
+        // Current anchor slot (spatial placement only)
         private EntityAnchorSet.StalkerAnchorSlot currentAnchorSlot;
 
         public MasterNode CurrentMasterNode =>
@@ -148,6 +155,11 @@ namespace FNaS.Entities.Stalker {
         private void Start() {
             if (viewController == null) viewController = FindFirstObjectByType<ViewController>();
 
+            if (viewController != null) {
+                viewController.OnBeginMove += OnPlayerBeginMove;
+                viewController.OnEnteredWaypointOrView += OnPlayerEndMoveOrEnter;
+            }
+
             ResolvePath();
             if (resolvedPath.Count == 0) {
                 Debug.LogError("StalkerEntity: Resolved path is empty. Check pathDef + registry.", this);
@@ -157,9 +169,7 @@ namespace FNaS.Entities.Stalker {
             UpdateBlocking();
             lastCameraPulseNode = CurrentMasterNode;
 
-            // Initial placement
             TeleportToCurrentNodeIfNeeded(force: true);
-
             ScheduleNextRandomGroan();
         }
 
@@ -168,10 +178,8 @@ namespace FNaS.Entities.Stalker {
 
             if (isVanished) {
                 vanishTimer -= Time.deltaTime;
-                if (vanishTimer <= 0f) {
-                    ReappearAtStart();
-                }
-                return; // don't move/kill/update blockers while vanished
+                if (vanishTimer <= 0f) ReappearAtStart();
+                return;
             }
 
             UpdateBlocking();
@@ -195,9 +203,11 @@ namespace FNaS.Entities.Stalker {
             HandleGroans();
             HandleSameNodeGroan();
 
-            // If anything moved the index this frame, snap now.
             TeleportToCurrentNodeIfNeeded();
         }
+
+        private void OnPlayerBeginMove() => freezeWhilePlayerMoving = true;
+        private void OnPlayerEndMoveOrEnter() => freezeWhilePlayerMoving = false;
 
         private void ResolvePath() {
             resolvedPath.Clear();
@@ -222,9 +232,7 @@ namespace FNaS.Entities.Stalker {
                 resolvedPath.Add(node);
             }
 
-            currentIndex = resolvedPath.Count == 0
-                ? 0
-                : Mathf.Clamp(currentIndex, 0, resolvedPath.Count - 1);
+            currentIndex = resolvedPath.Count == 0 ? 0 : Mathf.Clamp(currentIndex, 0, resolvedPath.Count - 1);
         }
 
         private void EnsureAudioSource() {
@@ -237,13 +245,14 @@ namespace FNaS.Entities.Stalker {
         }
 
         private void HandleMovementOpportunities() {
-            if (stunTimer > 0f) return;
+            if (freezeWhilePlayerMoving) { opportunityTimer = 0f; return; }
+            if (stunTimer > 0f) { opportunityTimer = 0f; return; }
+            if (IsFrozen()) { opportunityTimer = 0f; return; }
 
             opportunityTimer += Time.deltaTime;
             if (opportunityTimer < opportunityIntervalSeconds) return;
             opportunityTimer = 0f;
 
-            if (IsFrozen()) return;
             if (resolvedPath.Count == 0) return;
 
             float p = Mathf.Clamp01(ai / 20f);
@@ -251,40 +260,22 @@ namespace FNaS.Entities.Stalker {
         }
 
         private void HandleFlashlightPushback() {
-            if (!flashlightIsOnlyPushback) return;
+            if (!flashlightIsOnlyPushback) { flashlightHoldTimer = 0f; SetBurning(false); return; }
+            if (isVanished) { flashlightHoldTimer = 0f; SetBurning(false); return; }
+            if (flashlight == null || !flashlight.isOn) { flashlightHoldTimer = 0f; SetBurning(false); return; }
 
-            if (flashlight == null || !flashlight.isOn) { flashlightHoldTimer = 0f; return; }
-            if (player == null) { flashlightHoldTimer = 0f; return; }
+            // Cone-only LOS (no wall blocking)
+            bool affecting = flashlight.IsIlluminating(transform);
 
-            // Need a current anchor slot to know the rules
-            if (currentAnchorSlot == null) { flashlightHoldTimer = 0f; return; }
+            SetBurning(affecting);
 
-            // --- Rule:
-            // If requiredView is set -> use view-gated (cross-room allowed).
-            // If requiredView is null -> fallback to same-room (master node) gating.
-            if (currentAnchorSlot.requiredView != null) {
-                if (viewController == null || viewController.CurrentView != currentAnchorSlot.requiredView) {
-                    flashlightHoldTimer = 0f;
-                    return;
-                }
-            }
-            else {
-                // fallback: same-room
-                if (player.CurrentMasterNode == null || CurrentMasterNode == null || player.CurrentMasterNode != CurrentMasterNode) {
-                    flashlightHoldTimer = 0f;
-                    return;
-                }
-            }
-
-            // Door blocks flashlight (per-slot), if specified
-            if (currentAnchorSlot.doorBlocker != null) {
-                if (!currentAnchorSlot.doorBlocker.isOpen) { // or .IsOpen in your Door script
-                    flashlightHoldTimer = 0f;
-                    return;
-                }
+            if (!affecting) {
+                flashlightHoldTimer = 0f;
+                return;
             }
 
             flashlightHoldTimer += Time.deltaTime;
+
             if (flashlightHoldTimer >= flashlightHoldSecondsToPush) {
                 flashlightHoldTimer = 0f;
 
@@ -317,6 +308,7 @@ namespace FNaS.Entities.Stalker {
         }
 
         private void MoveForwardOne() {
+            if (freezeWhilePlayerMoving) return;
             if (resolvedPath.Count == 0) return;
 
             int next = Mathf.Min(currentIndex + 1, resolvedPath.Count - 1);
@@ -338,15 +330,12 @@ namespace FNaS.Entities.Stalker {
             if (next == currentIndex) return;
 
             currentIndex = next;
-            Debug.Log($"Stalker pushed back to index {currentIndex} ({CurrentMasterNode?.Id})", this);
-
             OnChangedNode();
         }
 
         private void OnChangedNode() {
             PlayFootstep();
 
-            // If we backed away from door, allow door groan again next time we re-enter
             if (!AtDoor) {
                 doorGroanPlayedOnce = false;
                 doorGroanTimer = 0f;
@@ -355,7 +344,6 @@ namespace FNaS.Entities.Stalker {
             PulseIfEnteredActiveCamera();
             ScheduleNextRandomGroan();
 
-            // Snap immediately on node change
             TeleportToCurrentNodeIfNeeded(force: true);
         }
 
@@ -370,7 +358,6 @@ namespace FNaS.Entities.Stalker {
 
             currentAnchorSlot = null;
 
-            // Prefer anchor set slot
             Transform anchor = null;
             var anchorSet = node.GetComponent<EntityAnchorSet>();
             if (anchorSet != null) {
@@ -434,6 +421,34 @@ namespace FNaS.Entities.Stalker {
             }
         }
 
+        private void EnsureBurningSource() {
+            if (burningSource != null) return;
+
+            burningSource = gameObject.AddComponent<AudioSource>();
+            burningSource.playOnAwake = false;
+            burningSource.loop = true;
+            burningSource.spatialBlend = 0f; // 2D; set to 1f if you want 3D
+            burningSource.volume = burningVolume;
+        }
+
+        private void SetBurning(bool on) {
+            EnsureBurningSource();
+
+            if (burningLoopClip == null) {
+                if (burningSource.isPlaying) burningSource.Stop();
+                return;
+            }
+
+            if (on) {
+                if (burningSource.clip != burningLoopClip) burningSource.clip = burningLoopClip;
+                burningSource.volume = burningVolume;
+                if (!burningSource.isPlaying) burningSource.Play();
+            }
+            else {
+                if (burningSource.isPlaying) burningSource.Stop();
+            }
+        }
+
         private void PulseIfEnteredActiveCamera() {
             if (attentionState == null || !attentionState.isCameraActive) return;
             if (attentionState.activeCameraNode == null) return;
@@ -481,9 +496,15 @@ namespace FNaS.Entities.Stalker {
         }
 
         private void OnDisable() {
+            if (viewController != null) {
+                viewController.OnBeginMove -= OnPlayerBeginMove;
+                viewController.OnEnteredWaypointOrView -= OnPlayerEndMoveOrEnter;
+            }
+
             if (blockerRegistry != null && CurrentMasterNode != null) {
                 blockerRegistry.SetBlockedForward(CurrentMasterNode, false);
             }
+            SetBurning(false);
         }
 
         private void SetVisible(bool visible) {
@@ -500,46 +521,36 @@ namespace FNaS.Entities.Stalker {
             isVanished = true;
             vanishTimer = seconds;
 
-            // reset relevant timers so it doesn't instantly do stuff on return
             stunTimer = 0f;
             doorTimer = 0f;
             opportunityTimer = 0f;
             flashlightHoldTimer = 0f;
 
             SetVisible(false);
+            SetBurning(false);
 
-            // Clear current block so we don't leave an invisible "blocked forward" behind.
             if (blockerRegistry != null && lastBlockedNode != null) {
                 blockerRegistry.SetBlockedForward(lastBlockedNode, false);
                 lastBlockedNode = null;
             }
-
-            // OPTIONAL: if you have blocker logic, clear it while vanished
-            // (depends on your UpdateBlocking implementation)
-            // blockerRegistry?.ClearAllForStalker(); // only if you have such a method
         }
 
         private void ReappearAtStart() {
             isVanished = false;
 
             int max = Mathf.Clamp(reappearFirstNNodes, 1, Mathf.Max(1, resolvedPath.Count));
-            int newIndex = Random.Range(0, max); // 0 or 1 if max == 2
+            int newIndex = Random.Range(0, max);
 
             currentIndex = Mathf.Clamp(newIndex, 0, resolvedPath.Count - 1);
 
-            // Force teleport to correct node immediately
             lastTeleportedIndex = int.MinValue;
             TeleportToCurrentNodeIfNeeded(force: true);
 
             SetVisible(true);
 
-            // ensure blockers are correct again
             UpdateBlocking();
-
-            // small grace period so it doesn't immediately move again
             stunTimer = 0.5f;
 
-            // Optional SFX
             if (audioSource != null && footstepClip != null)
                 audioSource.PlayOneShot(footstepClip, sfxVolume);
         }
