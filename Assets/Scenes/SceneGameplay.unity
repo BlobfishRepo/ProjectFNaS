@@ -4859,6 +4859,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1243722194}
   m_CullTransparentMesh: 1
+--- !u!1 &1264652841 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 192069916727069550, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
+  m_PrefabInstance: {fileID: 7569643596882731218}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &1270169500 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7080507458105243376, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
@@ -5126,12 +5131,33 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8021983674594352668, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
   m_PrefabInstance: {fileID: 7569643596882731218}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 1264652841}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6489d98b8b71ad14bafb34d39ab28a2b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Door
+--- !u!65 &1326174451
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1264652841}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1326406891
 GameObject:
   m_ObjectHideFlags: 0
@@ -6517,6 +6543,14 @@ PrefabInstance:
     - target: {fileID: 192069916727069550, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
       propertyPath: m_Name
       value: DoorBathroom
+      objectReference: {fileID: 0}
+    - target: {fileID: 2211636720516984540, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.02
+      objectReference: {fileID: 0}
+    - target: {fileID: 2211636720516984540, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.97
       objectReference: {fileID: 0}
     - target: {fileID: 6465003266287612450, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
       propertyPath: m_LocalPosition.x
@@ -8826,6 +8860,10 @@ PrefabInstance:
     - target: {fileID: 192069916727069550, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
       propertyPath: m_Name
       value: DoorOtherBedroom
+      objectReference: {fileID: 0}
+    - target: {fileID: 2211636720516984540, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2.69
       objectReference: {fileID: 0}
     - target: {fileID: 6465003266287612450, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
       propertyPath: m_LocalPosition.x
@@ -16155,6 +16193,9 @@ PrefabInstance:
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 192069916727069550, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1326174451}
     - targetCorrespondingSourceObject: {fileID: 9071212204405423216, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
       insertIndex: -1
       addedObject: {fileID: 598025938}
@@ -16985,8 +17026,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 2.0000005, y: 26.21847, z: 41.322487}
-  m_Center: {x: -0.00000017881393, y: 13.109235, z: -2.392042}
+  m_Size: {x: 2.0000005, y: 26.21847, z: 30}
+  m_Center: {x: -0.00000017881393, y: 13.109235, z: -8}
 --- !u!23 &8564491636917000555
 MeshRenderer:
   m_ObjectHideFlags: 0

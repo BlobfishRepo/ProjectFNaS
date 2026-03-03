@@ -1,4 +1,12 @@
 # Changelog
+## March 3
+### Changes
+- Doors hold-to-open logic refined slightly
+
+### Fixed
+- Flashlight works through doors again
+
+
 ## March 2
 ### Changes
 - Flashlight now tied to cursor, and using the flashlight on the Stalker requires correct cursor placement

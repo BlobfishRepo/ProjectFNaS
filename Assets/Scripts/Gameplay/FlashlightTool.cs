@@ -270,6 +270,12 @@ namespace FNaS.Systems {
             // Occlusion: first hit must be the target (or its child)
             if (useOcclusion) {
                 if (Physics.Raycast(origin, dirToTarget, out RaycastHit hit2, dist, occlusionMask, occlusionTriggerInteraction)) {
+                    Debug.DrawLine(origin, hit2.point, Color.red, 0f);
+
+                    // TEMP DEBUG
+                    Debug.Log($"Flashlight blocked by: {hit2.collider.name} (layer {LayerMask.LayerToName(hit2.collider.gameObject.layer)})",
+                              hit2.collider);
+
                     return hit2.transform == targetRoot || hit2.transform.IsChildOf(targetRoot);
                 }
             }
