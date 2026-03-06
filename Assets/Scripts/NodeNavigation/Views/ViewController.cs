@@ -101,20 +101,12 @@ namespace FNaS.Gameplay {
                 }
             }
 
-            // 2) WASD movement (new input system)
+            // 2) WASD movement (hold-to-move)
             Vector2 move = input.Player.Move.ReadValue<Vector2>();
 
-            if (move.sqrMagnitude > 0.25f) {
+            if (move.sqrMagnitude > 0.25f && !mover.IsMoving) {
                 Direction dir = VectorToDir(move);
-                // Only trigger once per press (deadzone crossing)
-                // We'll do a simple latch:
-                if (!_moveLatched) {
-                    _moveLatched = true;
-                    TryMove(dir);
-                }
-            }
-            else {
-                _moveLatched = false;
+                TryMove(dir);
             }
 
             // 3) Smooth yaw toward target
@@ -142,8 +134,6 @@ namespace FNaS.Gameplay {
                 mover.rigTransform.position = Vector3.Lerp(mover.rigTransform.position, targetRigPos, k);
             }
         }
-
-        private bool _moveLatched = false;
 
         // ---------- Waypoint / View control ----------
 

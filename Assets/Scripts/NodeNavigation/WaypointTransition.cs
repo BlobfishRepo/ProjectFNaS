@@ -21,8 +21,8 @@ public class TransitionWaypoint {
     public Transform point;
 
     [Header("Optional turn near this point")]
-    public Transform lookTarget;        // if set, we face this direction when approaching
-    public float turnDuration = 0.12f;  // 0 = snap instantly
+    public Transform lookTarget;
+    public float turnDuration = 0.12f;
 }
 
 [System.Serializable]
@@ -40,4 +40,8 @@ public class WaypointTransition {
 
     public Transform travelLookTarget;
     public float travelTurnDuration = 0.12f;
+
+    [Header("Door (optional)")]
+    public Door doorToUse;
+    public float doorCloseDelay = 0.3f;
 }

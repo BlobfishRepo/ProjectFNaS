@@ -17,9 +17,12 @@ public class Door : MonoBehaviour {
     public Transform interactPoint;     // optional
 
     Quaternion closedWorld, openWorld;
-    bool wantOpen;                      // input intent (held?)
-    bool moving;                        // are we currently traveling?
-    bool movingToOpen;                  // travel direction while moving (latched)
+
+    bool manualHeld;                    // DoorInteractor
+    bool traversalOpen;                 // waypoint traversal override
+
+    bool moving;
+    bool movingToOpen;
 
     void Awake() {
         if (hinge == null) hinge = transform;
@@ -34,21 +37,30 @@ public class Door : MonoBehaviour {
         closedWorld = hinge.rotation;
         openWorld = Quaternion.AngleAxis(openYaw, Vector3.up) * closedWorld;
 
-        // start at endpoint
         hinge.rotation = isOpen ? openWorld : closedWorld;
         moving = false;
         movingToOpen = isOpen;
-        wantOpen = isOpen;
+        manualHeld = false;
+        traversalOpen = isOpen;
     }
 
-    // Hold-to-open API (DoorInteractor can keep calling SetOpen(true/false))
-    public void SetOpen(bool open) {
-        wantOpen = open;
+    public void SetManualHeld(bool held) {
+        manualHeld = held;
+        RefreshWantedState();
+    }
 
-        // If we're mid-swing, ignore reversals until endpoint.
+    public void SetTraversalOpen(bool open) {
+        traversalOpen = open;
+        RefreshWantedState();
+    }
+
+    void RefreshWantedState() {
+        bool wantOpen = manualHeld || traversalOpen;
+
+        // If mid-swing, ignore reversals until endpoint.
         if (moving) return;
 
-        // If at endpoint and intent differs, start moving (and play sound now).
+        // If at endpoint and desired differs, begin movement.
         if (wantOpen != isOpen) StartMove(wantOpen);
     }
 
@@ -57,14 +69,12 @@ public class Door : MonoBehaviour {
         movingToOpen = toOpen;
 
         var clip = toOpen ? openClip : closeClip;
-        if (clip != null && sfxSource != null) sfxSource.PlayOneShot(clip, volume);
+        if (clip != null && sfxSource != null)
+            sfxSource.PlayOneShot(clip, volume);
     }
 
     void Update() {
-        if (hinge == null) return;
-
-        // If not moving, nothing to do (and we only start moving via SetOpen calls)
-        if (!moving) return;
+        if (hinge == null || !moving) return;
 
         var target = movingToOpen ? openWorld : closedWorld;
         float k = 1f - Mathf.Exp(-speed * Time.deltaTime);
@@ -72,12 +82,11 @@ public class Door : MonoBehaviour {
 
         if (Quaternion.Angle(hinge.rotation, target) <= snapAngle) {
             hinge.rotation = target;
-            isOpen = movingToOpen;   // only changes at ends
+            isOpen = movingToOpen;
             moving = false;
 
-            // Now that we're at an endpoint, honor latest intent:
-            // (This makes "release mid-open" finish opening, then close.)
-            if (wantOpen != isOpen) StartMove(wantOpen);
+            // Re-evaluate after reaching endpoint.
+            RefreshWantedState();
         }
     }
 }

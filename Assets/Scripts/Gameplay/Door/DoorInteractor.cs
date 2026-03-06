@@ -3,7 +3,7 @@ using UnityEngine.InputSystem;
 
 public class DoorInteractor : MonoBehaviour {
     [Header("Raycast")]
-    public Camera cam; // defaults to Camera.main
+    public Camera cam;
     public float maxDistance = 6f;
     public LayerMask mask = ~0;
     public QueryTriggerInteraction triggerInteraction = QueryTriggerInteraction.Ignore;
@@ -20,8 +20,6 @@ public class DoorInteractor : MonoBehaviour {
     }
 
     private void OnEnable() {
-        // If you already have an input action for Interact, use that instead.
-        // This assumes you have an "Interact" action; otherwise, see note below.
         input.Player.Enable();
         input.Player.Interact.started += OnHoldStarted;
         input.Player.Interact.canceled += OnHoldCanceled;
@@ -39,7 +37,6 @@ public class DoorInteractor : MonoBehaviour {
     }
 
     private void OnHoldStarted(InputAction.CallbackContext ctx) {
-        // Start holding whatever door is under cursor right now
         TryAcquireDoorUnderCursor();
     }
 
@@ -63,23 +60,21 @@ public class DoorInteractor : MonoBehaviour {
             }
         }
 
-        // If click wasn't on a door, ensure nothing remains held
         ReleaseDoor();
     }
 
     private void HoldDoor(Door d) {
         if (heldDoor == d) return;
 
-        // Close previous, open new
         ReleaseDoor();
 
         heldDoor = d;
-        heldDoor.SetOpen(true);
+        heldDoor.SetManualHeld(true);
     }
 
     private void ReleaseDoor() {
         if (heldDoor == null) return;
-        heldDoor.SetOpen(false);
+        heldDoor.SetManualHeld(false);
         heldDoor = null;
     }
 }

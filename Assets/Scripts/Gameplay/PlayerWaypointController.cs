@@ -64,9 +64,17 @@ namespace FNaS.Gameplay {
         private IEnumerator MoveAlongTransition(WaypointTransition tr, MasterNode toMaster) {
             isMoving = true;
 
+            Door transitionDoor = tr.doorToUse;
+            Coroutine delayedCloseRoutine = null;
+
+            // Open door at movement start
+            if (transitionDoor != null) {
+                transitionDoor.SetTraversalOpen(true);
+            }
+
             // --- Tunables ---
-            float minTurnDuration = 0.01f;         // safety for waypoint turns
-            float turnAnticipationSeconds = 0.15f; // start turn slightly before waypoint
+            float minTurnDuration = 0.01f;
+            float turnAnticipationSeconds = 0.15f;
 
             if (sfxSource != null && footstepClip != null) {
                 sfxSource.clip = footstepClip;
@@ -74,7 +82,6 @@ namespace FNaS.Gameplay {
                 sfxSource.Play();
             }
 
-            // --- Helpers ---
             static Vector3 FlattenY(Vector3 v) { v.y = 0f; return v; }
 
             Quaternion LookYawAt(Vector3 fromPos, Transform lookTarget, Quaternion fallback) {
@@ -104,7 +111,7 @@ namespace FNaS.Gameplay {
                     desired = LookYawAt(pos, tr.travelLookTarget, current);
                 }
                 else {
-                    return; // KeepFacing
+                    return;
                 }
 
                 float dur = Mathf.Max(0f, tr.travelTurnDuration);
@@ -117,11 +124,9 @@ namespace FNaS.Gameplay {
                 yawPivot.rotation = Quaternion.Slerp(current, desired, k);
             }
 
-            // --- Capture start state ---
             Vector3 startPos = rigTransform.position;
             Quaternion startYaw = yawPivot != null ? yawPivot.rotation : rigTransform.rotation;
 
-            // --- Build path points (start -> waypoints -> end) ---
             Vector3 endPos = tr.target.transform.position;
             endPos.y = startPos.y;
 
@@ -140,7 +145,6 @@ namespace FNaS.Gameplay {
 
             pts[totalPts - 1] = endPos;
 
-            // --- Compute segment lengths for constant-speed travel ---
             float[] segLen = new float[totalPts - 1];
             float totalLen = 0f;
 
@@ -157,12 +161,17 @@ namespace FNaS.Gameplay {
                 currentMasterNode = toMaster;
                 if (sfxSource != null) sfxSource.Stop();
                 isMoving = false;
+
+                if (transitionDoor != null) {
+                    yield return new WaitForSeconds(tr.doorCloseDelay);
+                    transitionDoor.SetTraversalOpen(false);
+                }
+
                 yield break;
             }
 
             float speed = Mathf.Max(0.01f, moveSpeed);
 
-            // --- Waypoint turn scheduling (optional) ---
             int nextTurnIndex = 0;
             Quaternion turnFrom = startYaw;
             Quaternion turnTo = startYaw;
@@ -186,7 +195,6 @@ namespace FNaS.Gameplay {
 
             float AnticipationDist() => speed * Mathf.Max(0f, turnAnticipationSeconds);
 
-            // --- Travel loop by traveled distance ---
             float traveled = 0f;
 
             while (traveled < totalLen) {
@@ -247,7 +255,6 @@ namespace FNaS.Gameplay {
                 yield return null;
             }
 
-            // snap to final position
             rigTransform.position = endPos;
             if (pitchPivot != null) pitchPivot.localRotation = Quaternion.identity;
 
@@ -256,6 +263,11 @@ namespace FNaS.Gameplay {
 
             if (sfxSource != null) sfxSource.Stop();
             isMoving = false;
+
+            if (transitionDoor != null) {
+                yield return new WaitForSeconds(tr.doorCloseDelay);
+                transitionDoor.SetTraversalOpen(false);
+            }
         }
 
         private void SetCurrentWaypointInstant(Waypoint waypoint) {

@@ -1,4 +1,16 @@
 # Changelog
+## March 6
+### Added
+- New views added to Bathroom and the Other Bedroom
+
+### Changes
+- Global lighting intensity slightly increased
+- Flashlight shape made much more narrow
+- WASD movement now hold-to-move through waypoints
+
+### Fixed
+- Transition into bathroom now properly lerps instead of snapping
+
 ## March 3
 ### Changes
 - Doors hold-to-open logic refined slightly
