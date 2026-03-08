@@ -92,6 +92,7 @@ namespace FNaS.Systems {
             if (aimCamera == null) aimCamera = Camera.main;
 
             ApplyIndicator(forceOff: false);
+            Debug.Log("Flashlight battery seconds: " + maxBatterySeconds);
         }
 
         private void Update() {
@@ -272,10 +273,6 @@ namespace FNaS.Systems {
                 if (Physics.Raycast(origin, dirToTarget, out RaycastHit hit2, dist, occlusionMask, occlusionTriggerInteraction)) {
                     Debug.DrawLine(origin, hit2.point, Color.red, 0f);
 
-                    // TEMP DEBUG
-                    Debug.Log($"Flashlight blocked by: {hit2.collider.name} (layer {LayerMask.LayerToName(hit2.collider.gameObject.layer)})",
-                              hit2.collider);
-
                     return hit2.transform == targetRoot || hit2.transform.IsChildOf(targetRoot);
                 }
             }
@@ -291,6 +288,11 @@ namespace FNaS.Systems {
                 range = Mathf.Max(0.01f, flashlightLight.range);
                 halfAngle = Mathf.Clamp(flashlightLight.spotAngle * 0.5f, 0.5f, 89.9f);
             }
+        }
+
+        public void ApplyMaxBatterySeconds(float value) {
+            maxBatterySeconds = value;
+            batteryRemaining = value;
         }
     }
 }

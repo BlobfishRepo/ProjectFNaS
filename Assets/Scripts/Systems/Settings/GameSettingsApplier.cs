@@ -1,6 +1,7 @@
 using UnityEngine;
 using FNaS.Gameplay;
 using FNaS.Entities.Stalker;
+using FNaS.Systems;
 
 namespace FNaS.Settings {
     public class GameSettingsApplier : MonoBehaviour {
@@ -8,6 +9,7 @@ namespace FNaS.Settings {
         [SerializeField] private PlayerWaypointController playerWaypointController;
         [SerializeField] private DoorInteractor doorInteractor;
         [SerializeField] private StalkerEntity stalkerEntity;
+        [SerializeField] private FlashlightTool flashlightTool;
 
         private void Start() {
             var settings = RuntimeGameSettings.Instance;
@@ -25,7 +27,14 @@ namespace FNaS.Settings {
             if (stalkerEntity != null) {
                 stalkerEntity.ai = settings.stalkerAI;
                 stalkerEntity.opportunityIntervalSeconds = settings.opportunityInterval;
+
+                stalkerEntity.freezeIfSeenOnCamera = settings.freezeIfSeenOnCamera;
+                stalkerEntity.freezeIfSeenInPerson = settings.freezeIfSeenInPerson;
+                stalkerEntity.allowShareNodeWithPlayer = settings.allowShareNodeWithPlayer;
             }
+
+            if (flashlightTool != null)
+                flashlightTool.ApplyMaxBatterySeconds(settings.maxBatterySeconds);
         }
     }
 }

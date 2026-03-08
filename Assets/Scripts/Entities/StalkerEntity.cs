@@ -172,10 +172,10 @@ namespace FNaS.Entities.Stalker {
         }
 
         private StalkerMovementBase ResolveMovementFromSettings() {
-            var settings = GameSettingsManager.Instance;
+            var settings = RuntimeGameSettings.Instance;
 
             StalkerMovementMode mode = settings != null
-                ? settings.StalkerMovementMode
+                ? settings.stalkerMovementMode
                 : StalkerMovementMode.NodeBased;
 
             return mode switch {

@@ -7,7 +7,7 @@ using FNaS.Settings;
 
 public class IntroMenuController : MonoBehaviour {
     [Header("Scene")]
-    [SerializeField] private string nextSceneName = "Night1";
+    [SerializeField] private string nextSceneName = "SceneGameplay";
 
     [Header("References")]
     [SerializeField] private RuntimeGameSettings runtimeSettings;
@@ -25,6 +25,15 @@ public class IntroMenuController : MonoBehaviour {
 
     [SerializeField] private Slider opportunityIntervalSlider;
     [SerializeField] private TMP_Text opportunityIntervalValueText;
+
+    [SerializeField] private Slider maxBatterySecondsSlider;
+    [SerializeField] private TMP_Text maxBatterySecondsValueText;
+
+    [Header("Stalker - Freeze Rules")]
+
+    [SerializeField] private Toggle freezeOnCameraToggle;
+    [SerializeField] private Toggle freezeInPersonToggle;
+    [SerializeField] private Toggle allowShareNodeToggle;
 
     [Header("Debug Settings")]
     [SerializeField] private TMP_Dropdown playerMovementDropdown;
@@ -51,8 +60,7 @@ public class IntroMenuController : MonoBehaviour {
     }
 
     private void Start() {
-        if (runtimeSettings == null)
-            runtimeSettings = RuntimeGameSettings.Instance;
+        runtimeSettings = RuntimeGameSettings.Instance;
 
         if (runtimeSettings == null) {
             Debug.LogError("IntroMenuController: RuntimeGameSettings not found.");
@@ -60,7 +68,7 @@ public class IntroMenuController : MonoBehaviour {
             return;
         }
 
-        debugVisible = false;
+        debugVisible = runtimeSettings.debugMenuUnlocked;
         if (debugPanel != null)
             debugPanel.SetActive(debugVisible);
 
@@ -74,6 +82,7 @@ public class IntroMenuController : MonoBehaviour {
 
     private void OnToggleDebug(InputAction.CallbackContext ctx) {
         debugVisible = !debugVisible;
+        runtimeSettings.debugMenuUnlocked = debugVisible;
 
         if (debugPanel != null)
             debugPanel.SetActive(debugVisible);
@@ -81,26 +90,39 @@ public class IntroMenuController : MonoBehaviour {
 
     private void RefreshUIFromSettings() {
         if (playerMoveSpeedSlider != null)
-            playerMoveSpeedSlider.value = runtimeSettings.playerMoveSpeed;
+            playerMoveSpeedSlider.SetValueWithoutNotify(runtimeSettings.playerMoveSpeed);
         SetFloatText(playerMoveSpeedValueText, runtimeSettings.playerMoveSpeed);
 
         if (doorMaxDistanceSlider != null)
-            doorMaxDistanceSlider.value = runtimeSettings.doorMaxDistance;
+            doorMaxDistanceSlider.SetValueWithoutNotify(runtimeSettings.doorMaxDistance);
         SetFloatText(doorMaxDistanceValueText, runtimeSettings.doorMaxDistance);
 
         if (stalkerAISlider != null)
-            stalkerAISlider.value = runtimeSettings.stalkerAI;
+            stalkerAISlider.SetValueWithoutNotify(runtimeSettings.stalkerAI);
         SetIntText(stalkerAIValueText, runtimeSettings.stalkerAI);
 
         if (opportunityIntervalSlider != null)
-            opportunityIntervalSlider.value = runtimeSettings.opportunityInterval;
+            opportunityIntervalSlider.SetValueWithoutNotify(runtimeSettings.opportunityInterval);
         SetFloatText(opportunityIntervalValueText, runtimeSettings.opportunityInterval);
 
+        if (maxBatterySecondsSlider != null)
+            maxBatterySecondsSlider.SetValueWithoutNotify(runtimeSettings.maxBatterySeconds);
+        SetFloatText(maxBatterySecondsValueText, runtimeSettings.maxBatterySeconds);
+
         if (playerMovementDropdown != null)
-            playerMovementDropdown.value = (int)runtimeSettings.playerMovementMode;
+            playerMovementDropdown.SetValueWithoutNotify((int)runtimeSettings.playerMovementMode);
 
         if (stalkerMovementDropdown != null)
-            stalkerMovementDropdown.value = (int)runtimeSettings.stalkerMovementMode;
+            stalkerMovementDropdown.SetValueWithoutNotify((int)runtimeSettings.stalkerMovementMode);
+
+        if (freezeOnCameraToggle != null)
+            freezeOnCameraToggle.isOn = runtimeSettings.freezeIfSeenOnCamera;
+
+        if (freezeInPersonToggle != null)
+            freezeInPersonToggle.isOn = runtimeSettings.freezeIfSeenInPerson;
+
+        if (allowShareNodeToggle != null)
+            allowShareNodeToggle.isOn = runtimeSettings.allowShareNodeWithPlayer;
     }
 
     private void BindUI() {
@@ -132,6 +154,13 @@ public class IntroMenuController : MonoBehaviour {
             });
         }
 
+        if (maxBatterySecondsSlider != null) {
+            maxBatterySecondsSlider.onValueChanged.AddListener(v => {
+                runtimeSettings.maxBatterySeconds = v;
+                SetFloatText(maxBatterySecondsValueText, v);
+            });
+        }
+
         if (playerMovementDropdown != null) {
             playerMovementDropdown.onValueChanged.AddListener(v => {
                 runtimeSettings.playerMovementMode = (PlayerMovementMode)v;
@@ -141,6 +170,27 @@ public class IntroMenuController : MonoBehaviour {
         if (stalkerMovementDropdown != null) {
             stalkerMovementDropdown.onValueChanged.AddListener(v => {
                 runtimeSettings.stalkerMovementMode = (StalkerMovementMode)v;
+            });
+        }
+
+        if (freezeOnCameraToggle != null) {
+            freezeOnCameraToggle.onValueChanged.AddListener(v =>
+            {
+                runtimeSettings.freezeIfSeenOnCamera = v;
+            });
+        }
+
+        if (freezeInPersonToggle != null) {
+            freezeInPersonToggle.onValueChanged.AddListener(v =>
+            {
+                runtimeSettings.freezeIfSeenInPerson = v;
+            });
+        }
+
+        if (allowShareNodeToggle != null) {
+            allowShareNodeToggle.onValueChanged.AddListener(v =>
+            {
+                runtimeSettings.allowShareNodeWithPlayer = v;
             });
         }
     }
