@@ -4,11 +4,10 @@ using FNaS.MasterNodes;
 using FNaS.Systems;
 
 namespace FNaS.Gameplay {
-    public class PlayerWaypointController : MonoBehaviour {
+    public class PlayerWaypointController : PlayerMovementBase {
         [Header("References")]
-        public Transform rigTransform;   // MOVE THIS (player root)
-        public Transform yawPivot;       // ROTATE THIS (yaw)
-        public Transform pitchPivot;     // ROTATE THIS (pitch) - kept neutral during movement
+        public Transform rigTransform;
+        public Transform viewPivot;
         public Waypoint startingWaypoint;
 
         [Header("Systems")]
@@ -16,7 +15,7 @@ namespace FNaS.Gameplay {
         public LoseState loseState;
 
         [Header("Movement")]
-        public float moveSpeed = 6.0f; // units/sec
+        public float moveSpeed = 6.0f;
 
         [Header("State (read-only)")]
         public Waypoint CurrentWaypoint;
@@ -25,20 +24,29 @@ namespace FNaS.Gameplay {
         public AudioSource sfxSource;
         public AudioClip footstepClip;
 
-        // Canonical location for gameplay systems
         [SerializeField] private MasterNode currentMasterNode;
-        public MasterNode CurrentMasterNode => currentMasterNode;
+        public override MasterNode CurrentMasterNode => currentMasterNode;
 
         private bool isMoving;
-        public bool IsMoving => isMoving;
+        public override bool IsMoving => isMoving;
 
-        private void Start() {
+        public override Transform RigTransform => rigTransform;
+        public override Transform ViewTransform => viewPivot != null ? viewPivot : transform;
+
+        public override void Initialize(PlayerEntity player, PlayerInputController input) {
             if (startingWaypoint == null) {
                 Debug.LogError("PlayerWaypointController: startingWaypoint is not set.");
                 enabled = false;
                 return;
             }
+
             SetCurrentWaypointInstant(startingWaypoint);
+        }
+
+        private void Start() {
+            if (CurrentWaypoint == null) {
+                Initialize(null, null);
+            }
         }
 
         public void BeginTransition(WaypointTransition tr) {
@@ -46,11 +54,9 @@ namespace FNaS.Gameplay {
             if (tr == null || tr.target == null) return;
             if (loseState != null && loseState.hasLost) return;
 
-            // Resolve master nodes
             MasterNode fromMaster = ResolveMasterNode(CurrentWaypoint);
             MasterNode toMaster = ResolveMasterNode(tr.target);
 
-            // If this is a forward move, and the forward exit is blocked at the *current* master node, you lose.
             if (tr.tag == TransitionTag.Forward && blockerRegistry != null && fromMaster != null) {
                 if (blockerRegistry.IsForwardExitBlockedAt(fromMaster)) {
                     loseState?.TriggerLose("Tried to move past a blocking entity.");
@@ -65,14 +71,10 @@ namespace FNaS.Gameplay {
             isMoving = true;
 
             Door transitionDoor = tr.doorToUse;
-            Coroutine delayedCloseRoutine = null;
-
-            // Open door at movement start
             if (transitionDoor != null) {
                 transitionDoor.SetTraversalOpen(true);
             }
 
-            // --- Tunables ---
             float minTurnDuration = 0.01f;
             float turnAnticipationSeconds = 0.15f;
 
@@ -99,9 +101,9 @@ namespace FNaS.Gameplay {
             }
 
             void ApplyTravelFacing(Vector3 pos, Vector3 moveDir) {
-                if (yawPivot == null) return;
+                if (viewPivot == null) return;
 
-                Quaternion current = yawPivot.rotation;
+                Quaternion current = viewPivot.rotation;
                 Quaternion desired = current;
 
                 if (tr.facingMode == MoveFacingMode.FaceMoveDirection) {
@@ -116,21 +118,21 @@ namespace FNaS.Gameplay {
 
                 float dur = Mathf.Max(0f, tr.travelTurnDuration);
                 if (dur <= 0f) {
-                    yawPivot.rotation = desired;
+                    viewPivot.rotation = desired;
                     return;
                 }
 
                 float k = 1f - Mathf.Exp(-Time.deltaTime / dur);
-                yawPivot.rotation = Quaternion.Slerp(current, desired, k);
+                viewPivot.rotation = Quaternion.Slerp(current, desired, k);
             }
 
             Vector3 startPos = rigTransform.position;
-            Quaternion startYaw = yawPivot != null ? yawPivot.rotation : rigTransform.rotation;
+            Quaternion startYaw = viewPivot != null ? viewPivot.rotation : rigTransform.rotation;
 
             Vector3 endPos = tr.target.transform.position;
             endPos.y = startPos.y;
 
-            int midCount = (tr.waypoints != null) ? tr.waypoints.Length : 0;
+            int midCount = tr.waypoints != null ? tr.waypoints.Length : 0;
             int totalPts = midCount + 2;
 
             Vector3[] pts = new Vector3[totalPts];
@@ -138,7 +140,7 @@ namespace FNaS.Gameplay {
 
             for (int i = 0; i < midCount; i++) {
                 Transform pT = tr.waypoints[i].point;
-                Vector3 p = (pT != null) ? pT.position : pts[i];
+                Vector3 p = pT != null ? pT.position : pts[i];
                 p.y = startPos.y;
                 pts[i + 1] = p;
             }
@@ -156,9 +158,9 @@ namespace FNaS.Gameplay {
 
             if (totalLen < 0.0001f) {
                 rigTransform.position = endPos;
-                if (pitchPivot != null) pitchPivot.localRotation = Quaternion.identity;
                 CurrentWaypoint = tr.target;
                 currentMasterNode = toMaster;
+
                 if (sfxSource != null) sfxSource.Stop();
                 isMoving = false;
 
@@ -180,7 +182,7 @@ namespace FNaS.Gameplay {
             bool turningActive = false;
 
             void BeginWaypointTurn(Transform lookT, Vector3 pos, float dur) {
-                Quaternion current = (yawPivot != null) ? yawPivot.rotation : rigTransform.rotation;
+                Quaternion current = viewPivot != null ? viewPivot.rotation : rigTransform.rotation;
                 turnFrom = current;
                 turnTo = LookYawAt(pos, lookT, current);
                 turnDuration = Mathf.Max(minTurnDuration, dur);
@@ -190,8 +192,9 @@ namespace FNaS.Gameplay {
 
             float[] distAtPoint = new float[totalPts];
             distAtPoint[0] = 0f;
-            for (int i = 1; i < totalPts; i++)
+            for (int i = 1; i < totalPts; i++) {
                 distAtPoint[i] = distAtPoint[i - 1] + segLen[i - 1];
+            }
 
             float AnticipationDist() => speed * Mathf.Max(0f, turnAnticipationSeconds);
 
@@ -220,11 +223,11 @@ namespace FNaS.Gameplay {
                 Vector3 pos = Vector3.Lerp(p0, p1, u);
                 rigTransform.position = pos;
 
-                Vector3 moveDir = (p1 - p0);
+                Vector3 moveDir = p1 - p0;
                 moveDir.y = 0f;
                 ApplyTravelFacing(pos, moveDir);
 
-                if (yawPivot != null) {
+                if (viewPivot != null) {
                     while (nextTurnIndex < midCount) {
                         int ptIdx = nextTurnIndex + 1;
                         float dToWaypoint = distAtPoint[ptIdx] - traveled;
@@ -233,8 +236,9 @@ namespace FNaS.Gameplay {
                             Transform lt = tr.waypoints[nextTurnIndex].lookTarget;
                             float dur = tr.waypoints[nextTurnIndex].turnDuration;
 
-                            if (lt != null)
+                            if (lt != null) {
                                 BeginWaypointTurn(lt, pos, dur);
+                            }
 
                             nextTurnIndex++;
                         }
@@ -244,20 +248,15 @@ namespace FNaS.Gameplay {
                     if (turningActive) {
                         turnT += Time.deltaTime / Mathf.Max(minTurnDuration, turnDuration);
                         float a = Mathf.Clamp01(turnT);
-                        yawPivot.rotation = Quaternion.Slerp(turnFrom, turnTo, a);
+                        viewPivot.rotation = Quaternion.Slerp(turnFrom, turnTo, a);
                         if (a >= 1f) turningActive = false;
                     }
                 }
-
-                if (pitchPivot != null)
-                    pitchPivot.localRotation = Quaternion.identity;
 
                 yield return null;
             }
 
             rigTransform.position = endPos;
-            if (pitchPivot != null) pitchPivot.localRotation = Quaternion.identity;
-
             CurrentWaypoint = tr.target;
             currentMasterNode = toMaster;
 
@@ -277,14 +276,10 @@ namespace FNaS.Gameplay {
             Vector3 pos = waypoint.transform.position;
             pos.y = rigTransform.position.y;
             rigTransform.position = pos;
-
-            if (pitchPivot != null)
-                pitchPivot.localRotation = Quaternion.identity;
         }
 
         private MasterNode ResolveMasterNode(Waypoint waypoint) {
-            if (waypoint == null) return null;
-            return waypoint.masterNode;
+            return waypoint != null ? waypoint.masterNode : null;
         }
     }
 }

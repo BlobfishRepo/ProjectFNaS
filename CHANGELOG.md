@@ -1,4 +1,11 @@
 # Changelog
+## March 7
+### Added
+- Booting up the game now brings up an intro Settings page; note functionality will be added in the next update
+
+### Changes
+- Backend: Stalker and Player entities completely refactored, so movement should now be separate from other script
+
 ## March 6
 ### Added
 - New views added to Bathroom and the Other Bedroom

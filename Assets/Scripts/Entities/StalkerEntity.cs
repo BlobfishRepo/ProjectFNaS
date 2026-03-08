@@ -1,24 +1,18 @@
-using System.Collections.Generic;
 using UnityEngine;
-using FNaS.MasterNodes;
 using FNaS.Gameplay;
+using FNaS.MasterNodes;
 using FNaS.Systems;
+using FNaS.Settings;
 
 namespace FNaS.Entities.Stalker {
     public class StalkerEntity : MonoBehaviour {
-        [Header("Path (GUID-based)")]
-        public LinearPathDefinition pathDef;
-
+        [Header("Core AI")]
         [Range(0, 20)] public int ai = 10;
-
-        [Header("Movement Opportunities")]
         public float opportunityIntervalSeconds = 5f;
 
         [Header("Freeze Rules")]
         public bool freezeIfSeenOnCamera = true;
         public bool freezeIfSeenInPerson = true;
-
-        [Header("Player Collision Rule")]
         [Tooltip("If true, the stalker is allowed to enter the player's current MasterNode (share the same node).")]
         public bool allowShareNodeWithPlayer = false;
 
@@ -39,34 +33,14 @@ namespace FNaS.Entities.Stalker {
         [Tooltip("Reappear only in the first N nodes of the path (typically 2).")]
         public int reappearFirstNNodes = 2;
 
-        [Header("Spatial Placement")]
-        [Tooltip("Teleport to a per-node anchor (EntityAnchorSet) on node changes.")]
-        public bool teleportToAnchors = true;
-
-        [Tooltip("If null, uses this GameObject's transform.")]
-        public Transform teleportTarget;
-
-        [Tooltip("If no stalker anchors exist on the node, snap to the node transform.")]
-        public bool fallbackToNodeTransform = true;
-
-        [Header("Camera FX")]
-        [Tooltip("Pulse a black fade when the stalker ENTERS the currently active camera node.")]
-        public ScreenFader cameraFader;
-
-        [Header("Player POV FX")]
-        [Tooltip("Pulse a black fade on the player's main view (HUD canvas).")]
-        public ScreenFader playerFader;
-
         [Header("Audio")]
+        [Range(0f, 1f)] public float sfxVolume = 0.9f;
         [Tooltip("One AudioSource is enough. Use 2D or 3D depending on what you want.")]
         public AudioSource audioSource;
-
         [Tooltip("Played once each time the stalker changes nodes (forward or pushback).")]
         public AudioClip footstepClip;
-
         [Tooltip("Random ambient groan (rare).")]
         public AudioClip groanClip;
-
         [Tooltip("Groan used when at the final node (door). If null, falls back to groanClip.")]
         public AudioClip doorGroanClip;
 
@@ -76,42 +50,40 @@ namespace FNaS.Entities.Stalker {
 
         private AudioSource burningSource;
 
-        [Range(0f, 1f)] public float sfxVolume = 0.9f;
+        
 
-        [Header("Random Groan Tuning")]
+        [Header("Random Groaning")]
         [Tooltip("Min seconds between random groans while roaming.")]
         public float groanMinInterval = 18f;
-
         [Tooltip("Max seconds between random groans while roaming.")]
         public float groanMaxInterval = 35f;
-
         [Tooltip("If true, random groans stop once AtDoor.")]
         public bool disableRandomGroansAtDoor = true;
-
-        [Header("Door Groan Tuning")]
         [Tooltip("If >0, repeat door groan while at door every N seconds. If 0, play once when entering door.")]
         public float doorGroanRepeatSeconds = 0f;
-
-        [Header("References")]
-        public PlayerWaypointController player;
-        public FlashlightTool flashlight;
-        public ViewController viewController;
-        public GameAttentionState attentionState;
-        public BlockerRegistry blockerRegistry;
-        public LoseState loseState;
 
         [Header("Groan when sharing node")]
         public bool groanWhenSameNode = true;
         public float sameNodeGroanCooldownSeconds = 6f;
 
-        [Header("Runtime")]
-        [SerializeField] private int currentIndex = 0;
 
-        private readonly List<MasterNode> resolvedPath = new();
+        [Header("Screen FX")]
+        public ScreenFader cameraFader;
+        public ScreenFader playerFader;
 
-        private MasterNode lastBlockedNode;
-        private MasterNode lastCameraPulseNode;
+        [Header("References")]
+        public PlayerWaypointController player;
+        public FlashlightTool flashlight;
+        public GameAttentionState attentionState;
+        public LoseState loseState;
 
+        [Header("Movement Drivers")]
+        [SerializeField] private StalkerNodeMovement nodeMovement;
+        [SerializeField] private StalkerRoamMovement roamMovement;
+
+        private StalkerMovementBase movement;
+
+        // Runtime timers/state
         private float opportunityTimer;
         private float doorTimer;
         private float stunTimer;
@@ -132,44 +104,34 @@ namespace FNaS.Entities.Stalker {
         private Renderer[] cachedRenderers;
         private Collider[] cachedColliders;
 
-        // Teleport guard
-        private int lastTeleportedIndex = int.MinValue;
-        private bool freezeWhilePlayerMoving;
-
-        // Current anchor slot (spatial placement only)
-        private EntityAnchorSet.StalkerAnchorSlot currentAnchorSlot;
-
-        public MasterNode CurrentMasterNode =>
-            (currentIndex >= 0 && currentIndex < resolvedPath.Count) ? resolvedPath[currentIndex] : null;
-
-        public bool AtDoor =>
-            resolvedPath.Count > 0 && currentIndex >= resolvedPath.Count - 1;
+        private MasterNode lastCameraPulseNode;
+        
+        public MasterNode CurrentMasterNode => movement != null ? movement.CurrentMasterNode : null;
+        public bool AtDoor => movement != null && movement.AtDoor;
+        private bool IsPlayerMoving() => player != null && player.IsMoving;
 
         private void Awake() {
-            if (teleportTarget == null) teleportTarget = transform;
+            if (nodeMovement == null) nodeMovement = GetComponent<StalkerNodeMovement>();
+            if (roamMovement == null) roamMovement = GetComponent<StalkerRoamMovement>();
+
+            movement = ResolveMovementFromSettings();
+
+            if (movement == null) {
+                Debug.LogError("StalkerEntity: No valid movement driver found.", this);
+                enabled = false;
+                return;
+            }
+
             cachedRenderers = GetComponentsInChildren<Renderer>(includeInactive: true);
             cachedColliders = GetComponentsInChildren<Collider>(includeInactive: true);
             SetVisible(true);
         }
 
         private void Start() {
-            if (viewController == null) viewController = FindFirstObjectByType<ViewController>();
-
-            if (viewController != null) {
-                viewController.OnBeginMove += OnPlayerBeginMove;
-                viewController.OnEnteredWaypointOrView += OnPlayerEndMoveOrEnter;
-            }
-
-            ResolvePath();
-            if (resolvedPath.Count == 0) {
-                Debug.LogError("StalkerEntity: Resolved path is empty. Check pathDef + registry.", this);
-            }
+            movement.Initialize();
+            lastCameraPulseNode = movement.CurrentMasterNode;
 
             EnsureAudioSource();
-            UpdateBlocking();
-            lastCameraPulseNode = CurrentMasterNode;
-
-            TeleportToCurrentNodeIfNeeded(force: true);
             ScheduleNextRandomGroan();
         }
 
@@ -182,11 +144,10 @@ namespace FNaS.Entities.Stalker {
                 return;
             }
 
-            UpdateBlocking();
+            movement.RefreshOccupancy();
 
             if (stunTimer > 0f) stunTimer -= Time.deltaTime;
 
-            // Door loss timer
             if (AtDoor) {
                 doorTimer += Time.deltaTime;
                 if (doorTimer >= doorKillSeconds) {
@@ -203,36 +164,24 @@ namespace FNaS.Entities.Stalker {
             HandleGroans();
             HandleSameNodeGroan();
 
-            TeleportToCurrentNodeIfNeeded();
+            movement.TickMovementVisuals();
         }
 
-        private void OnPlayerBeginMove() => freezeWhilePlayerMoving = true;
-        private void OnPlayerEndMoveOrEnter() => freezeWhilePlayerMoving = false;
+        private void OnDisable() {
+            SetBurning(false);
+        }
 
-        private void ResolvePath() {
-            resolvedPath.Clear();
+        private StalkerMovementBase ResolveMovementFromSettings() {
+            var settings = GameSettingsManager.Instance;
 
-            if (pathDef == null) {
-                Debug.LogError("StalkerEntity: pathDef not assigned.", this);
-                return;
-            }
+            StalkerMovementMode mode = settings != null
+                ? settings.StalkerMovementMode
+                : StalkerMovementMode.NodeBased;
 
-            if (MasterNodeRegistry.Instance == null) {
-                Debug.LogError("StalkerEntity: No MasterNodeRegistry in scene.", this);
-                return;
-            }
-
-            foreach (var guid in pathDef.nodeGuids) {
-                var node = MasterNodeRegistry.Instance.GetOrNull(guid);
-                if (node == null) {
-                    Debug.LogError($"StalkerEntity: Could not resolve MasterNode GUID '{guid}'.", this);
-                    resolvedPath.Clear();
-                    return;
-                }
-                resolvedPath.Add(node);
-            }
-
-            currentIndex = resolvedPath.Count == 0 ? 0 : Mathf.Clamp(currentIndex, 0, resolvedPath.Count - 1);
+            return mode switch {
+                StalkerMovementMode.RoamTest => roamMovement != null ? roamMovement : nodeMovement,
+                _ => nodeMovement != null ? nodeMovement : roamMovement
+            };
         }
 
         private void EnsureAudioSource() {
@@ -240,12 +189,14 @@ namespace FNaS.Entities.Stalker {
                 audioSource = GetComponent<AudioSource>();
                 if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
             }
+
             audioSource.playOnAwake = false;
             audioSource.loop = false;
         }
 
         private void HandleMovementOpportunities() {
-            if (freezeWhilePlayerMoving) { opportunityTimer = 0f; return; }
+            if (movement == null) return;
+            if (IsPlayerMoving()) { opportunityTimer = 0f; return; }
             if (stunTimer > 0f) { opportunityTimer = 0f; return; }
             if (IsFrozen()) { opportunityTimer = 0f; return; }
 
@@ -253,10 +204,12 @@ namespace FNaS.Entities.Stalker {
             if (opportunityTimer < opportunityIntervalSeconds) return;
             opportunityTimer = 0f;
 
-            if (resolvedPath.Count == 0) return;
-
             float p = Mathf.Clamp01(ai / 20f);
-            if (Random.value <= p) MoveForwardOne();
+            if (Random.value <= p) {
+                MasterNode playerNode = player != null ? player.CurrentMasterNode : null;
+                bool moved = movement.TryAdvance(playerNode, allowShareNodeWithPlayer);
+                if (moved) OnChangedNode();
+            }
         }
 
         private void HandleFlashlightPushback() {
@@ -264,7 +217,6 @@ namespace FNaS.Entities.Stalker {
             if (isVanished) { flashlightHoldTimer = 0f; SetBurning(false); return; }
             if (flashlight == null || !flashlight.isOn) { flashlightHoldTimer = 0f; SetBurning(false); return; }
 
-            // Cone-only LOS (no wall blocking)
             bool affecting = flashlight.IsIlluminating(transform);
 
             SetBurning(affecting);
@@ -283,8 +235,11 @@ namespace FNaS.Entities.Stalker {
                     VanishForSeconds(vanishSeconds);
                 }
                 else {
-                    PushBack(pushBackTwoNodes ? 2 : 1);
-                    stunTimer = Mathf.Max(stunTimer, stunSecondsAfterPushback);
+                    bool moved = movement != null && movement.PushBack(pushBackTwoNodes ? 2 : 1);
+                    if (moved) {
+                        stunTimer = Mathf.Max(stunTimer, stunSecondsAfterPushback);
+                        OnChangedNode();
+                    }
                 }
 
                 playerFader?.Pulse();
@@ -292,45 +247,20 @@ namespace FNaS.Entities.Stalker {
         }
 
         private bool IsFrozen() {
-            if (CurrentMasterNode == null) return false;
+            var currentNode = CurrentMasterNode;
+            if (currentNode == null) return false;
 
             if (freezeIfSeenOnCamera && attentionState != null && attentionState.isCameraActive) {
-                if (attentionState.activeCameraNode != null && attentionState.activeCameraNode == CurrentMasterNode)
+                if (attentionState.activeCameraNode != null && attentionState.activeCameraNode == currentNode)
                     return true;
             }
 
             if (freezeIfSeenInPerson && player != null && player.CurrentMasterNode != null) {
-                if (player.CurrentMasterNode == CurrentMasterNode)
+                if (player.CurrentMasterNode == currentNode)
                     return true;
             }
 
             return false;
-        }
-
-        private void MoveForwardOne() {
-            if (freezeWhilePlayerMoving) return;
-            if (resolvedPath.Count == 0) return;
-
-            int next = Mathf.Min(currentIndex + 1, resolvedPath.Count - 1);
-            if (next == currentIndex) return;
-
-            if (!allowShareNodeWithPlayer && player != null && player.CurrentMasterNode != null) {
-                var nextNode = resolvedPath[next];
-                if (nextNode == player.CurrentMasterNode) return;
-            }
-
-            currentIndex = next;
-            OnChangedNode();
-        }
-
-        private void PushBack(int steps) {
-            if (resolvedPath.Count == 0) return;
-
-            int next = Mathf.Max(0, currentIndex - Mathf.Max(1, steps));
-            if (next == currentIndex) return;
-
-            currentIndex = next;
-            OnChangedNode();
         }
 
         private void OnChangedNode() {
@@ -343,37 +273,6 @@ namespace FNaS.Entities.Stalker {
 
             PulseIfEnteredActiveCamera();
             ScheduleNextRandomGroan();
-
-            TeleportToCurrentNodeIfNeeded(force: true);
-        }
-
-        private void TeleportToCurrentNodeIfNeeded(bool force = false) {
-            if (!teleportToAnchors) return;
-            if (!force && currentIndex == lastTeleportedIndex) return;
-
-            lastTeleportedIndex = currentIndex;
-
-            var node = CurrentMasterNode;
-            if (node == null || teleportTarget == null) return;
-
-            currentAnchorSlot = null;
-
-            Transform anchor = null;
-            var anchorSet = node.GetComponent<EntityAnchorSet>();
-            if (anchorSet != null) {
-                currentAnchorSlot = anchorSet.GetRandomStalkerAnchor();
-                anchor = currentAnchorSlot != null ? currentAnchorSlot.anchor : null;
-            }
-
-            if (anchor != null) {
-                teleportTarget.SetPositionAndRotation(anchor.position, anchor.rotation);
-                return;
-            }
-
-            if (fallbackToNodeTransform) {
-                currentAnchorSlot = null;
-                teleportTarget.SetPositionAndRotation(node.transform.position, node.transform.rotation);
-            }
         }
 
         private void PlayFootstep() {
@@ -427,7 +326,7 @@ namespace FNaS.Entities.Stalker {
             burningSource = gameObject.AddComponent<AudioSource>();
             burningSource.playOnAwake = false;
             burningSource.loop = true;
-            burningSource.spatialBlend = 0f; // 2D; set to 1f if you want 3D
+            burningSource.spatialBlend = 0f;
             burningSource.volume = burningVolume;
         }
 
@@ -463,20 +362,6 @@ namespace FNaS.Entities.Stalker {
             lastCameraPulseNode = now;
         }
 
-        private void UpdateBlocking() {
-            if (blockerRegistry == null) return;
-
-            var node = CurrentMasterNode;
-            if (node == null) return;
-
-            if (lastBlockedNode != null && lastBlockedNode != node) {
-                blockerRegistry.SetBlockedForward(lastBlockedNode, false);
-            }
-
-            blockerRegistry.SetBlockedForward(node, true);
-            lastBlockedNode = node;
-        }
-
         private void HandleSameNodeGroan() {
             if (!groanWhenSameNode) return;
             if (audioSource == null || groanClip == null) return;
@@ -493,18 +378,6 @@ namespace FNaS.Entities.Stalker {
             }
 
             wasSameNodeLastFrame = same;
-        }
-
-        private void OnDisable() {
-            if (viewController != null) {
-                viewController.OnBeginMove -= OnPlayerBeginMove;
-                viewController.OnEnteredWaypointOrView -= OnPlayerEndMoveOrEnter;
-            }
-
-            if (blockerRegistry != null && CurrentMasterNode != null) {
-                blockerRegistry.SetBlockedForward(CurrentMasterNode, false);
-            }
-            SetBurning(false);
         }
 
         private void SetVisible(bool visible) {
@@ -529,26 +402,16 @@ namespace FNaS.Entities.Stalker {
             SetVisible(false);
             SetBurning(false);
 
-            if (blockerRegistry != null && lastBlockedNode != null) {
-                blockerRegistry.SetBlockedForward(lastBlockedNode, false);
-                lastBlockedNode = null;
-            }
+            movement?.ClearOccupancy();
         }
 
         private void ReappearAtStart() {
             isVanished = false;
 
-            int max = Mathf.Clamp(reappearFirstNNodes, 1, Mathf.Max(1, resolvedPath.Count));
-            int newIndex = Random.Range(0, max);
-
-            currentIndex = Mathf.Clamp(newIndex, 0, resolvedPath.Count - 1);
-
-            lastTeleportedIndex = int.MinValue;
-            TeleportToCurrentNodeIfNeeded(force: true);
+            movement?.ReappearInFirstNNodes(reappearFirstNNodes);
 
             SetVisible(true);
 
-            UpdateBlocking();
             stunTimer = 0.5f;
 
             if (audioSource != null && footstepClip != null)
