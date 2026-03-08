@@ -19,6 +19,9 @@ namespace FNaS.Systems {
         public GameObject losePanel;
         public TMP_Text loseText;
 
+        [Header("Scene Flow")]
+        [SerializeField] private string resetSceneName = "SceneSettings";
+
         private PlayerInputActions input;
 
         private void Awake() {
@@ -64,8 +67,7 @@ namespace FNaS.Systems {
             if (!hasLost) return;
 
             Time.timeScale = 1f;
-            Scene current = SceneManager.GetActiveScene();
-            SceneManager.LoadScene(current.buildIndex);
+            SceneManager.LoadScene(resetSceneName);
         }
 
         public void ResetLose() {

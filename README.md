@@ -1,119 +1,105 @@
 # 🕯 FNaS
 
+A first-person, node-based survival horror experience inspired by classic Five Nights at Freddy’s–style gameplay.
 
+**Build:**  
+A link to the playable build is provided in the report. You may also open this project in Unity and build it yourself.
 
-A first-person, node-based survival horror experience inspired by classic FNAF-style gameplay.
-
-BUILD: A link to a google drive containing the playable build is linked on the report. If you wish, you can also open this project in Unity and rebuilt the project.
 ---
 
-
-
-# ⚠ IMPORTANT — How to Play
-
-
+# ⚠ Important — How to Play
 
 ## 🎮 Movement
 
-- **W / A / S / D** — Move between rooms.
+Use **W / A / S / D** to move between rooms.
 
-- A **move compass** appears in the bottom-left corner showing which directions are currently available.
+A **movement compass** appears in the bottom-left corner showing which directions are currently available.
 
-
+---
 
 ## 🖱 View Controls
 
-- Move your mouse toward the edges of the screen.
+Move your mouse toward the edges of the screen to shift your view.
 
-- A subtle **white line at the edge** indicates that your view can shift in that direction.
+A subtle **white line at the edge of the screen** indicates that your view can move in that direction.
 
-- Some areas allow you to look up, down, left, or right.
+Some locations allow looking **left, right, up, or down**.
 
-
+---
 
 ## 🔦 Flashlight
 
-- Press **F** to toggle the flashlight.
+Press **F** to toggle the flashlight.
 
 - The flashlight has a **limited battery**.
+- When the battery becomes low, the light will begin to **flicker**.
+- The flashlight is your **primary defense against the Stalker**, so use it carefully.
 
-- When the battery gets low, it will begin to **flicker**.
-
-- Use it carefully — it is your primary defense against the Stalker.
-
-
+---
 
 ## 🚪 Doors
 
-- Press **R** to interact with doors in the current room.
-
-
+Press **R** to interact with doors in your current room.
 
 ---
-
-
 
 # 🎯 Objective
 
+Your main objective is the **paper below the desk monitor**.
 
+Looking down at the paper increases your **completion percentage** (shown in the top-right corner).
 
-The most important view is **below the desk monitor**.
+Reach **100% completion** to win.
 
-
-
-- Looking down at the paper increases your **completion percentage** (shown in the top-right).
-
-- Reach **100%** to win.
-
-
-
-However, you must balance progress with survival.
-
-
+However, focusing only on progress is dangerous — you must also monitor the environment and avoid the Stalker.
 
 ---
-
-
 
 # 👁 Surviving the Stalker
 
+- Use the **security cameras** to track the Stalker’s location.
+- If the Stalker enters your room and becomes visible, use the **flashlight** to scare it away.
+- If you attempt to move past the Stalker, you will **lose immediately**.
+- If the Stalker reaches your door and remains there too long, you will also **lose**.
 
-
-- Check the **security cameras** to track the Stalker’s location.
-
-- If the Stalker appears in your room and is visible, use the **flashlight** to scare it away.
-
-- If you move past the Stalker, you will immediately lose.
-
-- If the Stalker reaches your door and remains there too long, you will also lose.
-
-
-
-Stay alert. Manage your battery. Don’t tunnel vision the paper.
-
-
+Stay alert. Manage your flashlight battery. Don’t tunnel vision the paper.
 
 ---
 
+# ⚙ Settings
 
+Before starting the game, several settings can be adjusted.
 
-# ❓ If You’re Confused
+### Player Movement Speed
+Controls how quickly the player moves between rooms.
 
+### Door Interaction Distance
+Adjusts how close the player must be to interact with doors.
 
+### Stalker AI Level
+Controls how aggressive the Stalker’s behavior is.
 
-- The **bottom-left compass** shows which WASD directions are available.
+### Stalker Move Opportunity Interval
+Determines how frequently the Stalker attempts to move.
 
-- The **white edge indicator** means your point of view can shift in that direction.
+### Flashlight Battery Duration
+Sets how long the flashlight battery lasts before being depleted.
 
-- Progress only increases while actively looking at the paper view.
+### Stalker Behavior Options
 
+- **Freeze on Camera** — The Stalker stops moving while visible on a camera.
+- **Freeze in Person** — The Stalker stops moving while directly seen by the player.
+- **Allow Sharing Player Room** — Allows the Stalker to enter the player’s current room.
+
+---
+
+# ❓ Tips
+
+- The **movement compass** shows which directions are currently available.
+- The **white edge indicator** shows when your view can shift.
+- Progress only increases while **looking at the paper view**.
 - Ignoring the cameras makes the game significantly harder.
 
-
-
 ---
 
-
-
 Good luck.
-

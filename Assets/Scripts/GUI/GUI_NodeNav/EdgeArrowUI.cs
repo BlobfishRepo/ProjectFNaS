@@ -16,8 +16,8 @@ namespace FNaS.Gameplay {
 
         [Header("Style")]
         [Range(0f, 1f)]
-        [SerializeField] private float visibleAlpha = 0.18f; // faint
-        [SerializeField] private float fadeInSeconds = 0.06f; // extremely quick
+        [SerializeField] private float visibleAlpha = 0.18f;
+        [SerializeField] private float fadeInSeconds = 0.06f;
         [SerializeField] private float fadeOutSeconds = 0.06f;
 
         private Coroutine fadeRoutine;
@@ -37,7 +37,6 @@ namespace FNaS.Gameplay {
 
             if (viewController != null) {
                 viewController.OnEnteredWaypointOrView += FadeInQuick;
-                viewController.OnBeginMove += FadeOutQuick;
             }
 
             SetAllAlpha(0f);
@@ -46,7 +45,6 @@ namespace FNaS.Gameplay {
         private void OnDisable() {
             if (viewController != null) {
                 viewController.OnEnteredWaypointOrView -= FadeInQuick;
-                viewController.OnBeginMove -= FadeOutQuick;
             }
         }
 
@@ -54,15 +52,12 @@ namespace FNaS.Gameplay {
             if (viewController == null || mover == null)
                 return;
 
-            // Hide during waypoint-to-waypoint movement
             if (mover.IsMoving) {
-                // Hard hide; no fade while moving
                 StopFade();
                 SetAllAlpha(0f);
                 return;
             }
 
-            // Read edge availability from current view
             View v = viewController.CurrentView;
             if (v == null) {
                 StopFade();
@@ -76,15 +71,12 @@ namespace FNaS.Gameplay {
             bool canD = HasEdge(v, EdgeDir.Down);
 
             UpdateArrowsVisible(canL, canR, canU, canD);
-            // Alpha is driven by ViewController events (below), but if you prefer always-on:
-            // SetAllAlpha(visibleAlpha);
         }
 
         private static bool HasEdge(View v, EdgeDir dir) {
             var link = v.GetEdge(dir);
             if (link.action == View.LinkAction.None) return false;
             if (link.action == View.LinkAction.GoToView && link.targetView == null) return false;
-            // Back is valid if your history stack is non-empty, but UI can still hint.
             return true;
         }
 
@@ -117,7 +109,6 @@ namespace FNaS.Gameplay {
             }
         }
 
-        // --- Called by ViewController via events (recommended) ---
         public void FadeInQuick() {
             if (mover != null && mover.IsMoving) return;
             StartFadeTo(visibleAlpha, fadeInSeconds);

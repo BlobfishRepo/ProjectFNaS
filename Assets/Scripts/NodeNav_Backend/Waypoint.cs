@@ -13,16 +13,12 @@ public class Waypoint : MonoBehaviour {
     [Header("Master Node Link")]
     public MasterNode masterNode;
 
-
     // --------------------------------------------------
     // Views
     // --------------------------------------------------
 
     [Header("Views")]
     public View defaultView;
-
-    [Header("Door (optional)")]
-    public Door linkedDoor;
 
     // --------------------------------------------------
     // Directed Transitions
@@ -49,7 +45,6 @@ public class Waypoint : MonoBehaviour {
         }
         return null;
     }
-
 
     // --------------------------------------------------
     // Entry View Rules
@@ -78,10 +73,8 @@ public class Waypoint : MonoBehaviour {
             : GetComponentInChildren<View>();
     }
 
-
 #if UNITY_EDITOR
     private void OnDrawGizmos() {
-        // Always-visible marker
         Vector3 pos = transform.position;
         Gizmos.color = Color.green;
         Gizmos.DrawSphere(pos, 0.15f);

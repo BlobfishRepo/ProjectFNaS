@@ -9,7 +9,6 @@ namespace FNaS.Systems {
         private readonly Dictionary<string, MasterNode> byGuid = new();
 
         private void Awake() {
-            Debug.Log("MasterNodeRegistry Awake() - instance set", this);
             if (Instance != null && Instance != this) {
                 Destroy(gameObject);
                 return;

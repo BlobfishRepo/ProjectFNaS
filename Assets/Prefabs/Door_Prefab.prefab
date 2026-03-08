@@ -53,6 +53,7 @@ MonoBehaviour:
   openClip: {fileID: 8300000, guid: 794ae628144879b419f2b6b8fbe515d3, type: 3}
   closeClip: {fileID: 8300000, guid: ea511aeecf427c148a90af5b79dc6641, type: 3}
   volume: 0.9
+  interactPoint: {fileID: 6465003266287612450}
 --- !u!1 &7376531857265874490
 GameObject:
   m_ObjectHideFlags: 0

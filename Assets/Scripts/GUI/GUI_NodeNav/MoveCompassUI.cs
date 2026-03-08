@@ -8,7 +8,7 @@ namespace FNaS.Gameplay {
         [SerializeField] private PlayerWaypointController mover;
 
         [Header("UI")]
-        [SerializeField] private CanvasGroup canvasGroup; // optional but recommended
+        [SerializeField] private CanvasGroup canvasGroup;
         [SerializeField] private Image tickW;
         [SerializeField] private Image tickA;
         [SerializeField] private Image tickS;
@@ -27,7 +27,6 @@ namespace FNaS.Gameplay {
         [Tooltip("How quickly the UI responds (higher = snappier).")]
         public float fadeSpeed = 18f;
 
-        // internal smoothed alphas
         private float wAlpha, aAlpha, sAlpha, dAlpha;
 
         private void Awake() {
@@ -43,7 +42,6 @@ namespace FNaS.Gameplay {
             Waypoint waypoint = viewController.CurrentWaypoint;
             View view = viewController.CurrentView;
 
-            // If we somehow have no waypoint yet, just dim everything
             if (!waypoint) {
                 ApplyTick(ref wAlpha, tickW, unavailableAlpha);
                 ApplyTick(ref aAlpha, tickA, unavailableAlpha);
@@ -53,7 +51,6 @@ namespace FNaS.Gameplay {
                 return;
             }
 
-            // Determine availability (view override first, then node)
             bool canW = CanMove(Direction.W, waypoint, view);
             bool canA = CanMove(Direction.A, waypoint, view);
             bool canS = CanMove(Direction.S, waypoint, view);
@@ -72,7 +69,6 @@ namespace FNaS.Gameplay {
             SmoothTick(ref sAlpha, tickS, targetS);
             SmoothTick(ref dAlpha, tickD, targetD);
 
-            // Keep the whole widget present, but grayed during movement
             SetOverall(1f);
         }
 
@@ -80,30 +76,26 @@ namespace FNaS.Gameplay {
             if (!moving)
                 return can ? availableAlpha : unavailableAlpha;
 
-            // moving: everything dims, except the chosen direction (which stays “lit”)
             if (chosen.HasValue && chosen.Value == dir)
-                return availableAlpha;      // keep bright
-            return unavailableAlpha;        // gray out all others (even if they were available)
+                return availableAlpha;
+
+            return unavailableAlpha;
         }
 
         private bool CanMove(Direction dir, Waypoint waypoint, View view) {
             if (waypoint == null) return false;
 
-            // 1) View override
             if (view != null) {
                 var ov = view.GetOverride(dir);
 
                 if (ov.enabled) {
                     if (ov.targetWaypoint == null) return false;
 
-                    // Resolve the actual WaypointTransition on THIS node for this key
-                    // and ensure it points to the override node.
                     WaypointTransition tr = waypoint.GetTransition(dir);
                     return tr != null && tr.target == ov.targetWaypoint;
                 }
             }
 
-            // 2) Default waypoint mapping
             WaypointTransition fallback = waypoint.GetTransition(dir);
             return fallback != null && fallback.target != null;
         }
@@ -117,7 +109,6 @@ namespace FNaS.Gameplay {
             c.a = current;
             img.color = c;
 
-            // optional: disable raycast/overdraw when basically invisible
             img.enabled = current > 0.01f;
         }
 

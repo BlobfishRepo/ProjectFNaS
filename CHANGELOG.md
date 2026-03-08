@@ -1,4 +1,50 @@
 # Changelog
+## March 8
+### Added
+- Functionality added to settings menu, and additional settings relating to Stalker behavior and flashlight duration added
+- Added a temporary model for the paper
+
+### Changed
+- Pressing "Y" to reset now leads to the Settings page
+
+## March 7
+### Added
+- Booting up the game now brings up an intro Settings page; note functionality will be added in the next update
+
+### Changed
+- Backend: Stalker and Player entities completely refactored, so movement should now be separate from other script
+
+## March 6
+### Added
+- New views added to Bathroom and the Other Bedroom
+
+### Changed
+- Global lighting intensity slightly increased
+- Flashlight shape made much more narrow
+- WASD movement now hold-to-move through waypoints
+
+### Fixed
+- Transition into bathroom now properly lerps instead of snapping
+
+## March 3
+### Changed
+- Doors hold-to-open logic refined slightly
+
+### Fixed
+- Flashlight works through doors again
+
+
+## March 2
+### Changed
+- Flashlight now tied to cursor, and using the flashlight on the Stalker requires correct cursor placement
+- Door decoupled from movement system and temporarily set to hold-to-open (although extremely buggy)
+
+### Removed
+- Flashlight and door logic tied to the movement system removed
+
+### Fixed
+- Fixed bug where Stalker can move forward while Player was moving, resulting in unintended behavior
+
 ## March 1 - Final MVP Build
 ### Added
 - Added a percentage that goes up when looking at the desk, serving as the win condition

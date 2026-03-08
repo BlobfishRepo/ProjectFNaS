@@ -21,6 +21,9 @@ namespace FNaS.Systems {
         [Header("Optional: block win if already lost")]
         public LoseState loseState;
 
+        [Header("Scene Flow")]
+        [SerializeField] private string resetSceneName = "SceneSettings";
+
         private PlayerInputActions input;
 
         private void Awake() {
@@ -60,12 +63,10 @@ namespace FNaS.Systems {
         }
 
         private void OnResetPressed(InputAction.CallbackContext ctx) {
-            // allow reset from either win or lose
             if (!hasWon && (loseState == null || !loseState.hasLost)) return;
 
             Time.timeScale = 1f;
-            var scene = SceneManager.GetActiveScene();
-            SceneManager.LoadScene(scene.buildIndex);
+            SceneManager.LoadScene(resetSceneName);
         }
     }
 }
