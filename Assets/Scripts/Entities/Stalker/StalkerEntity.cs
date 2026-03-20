@@ -8,7 +8,7 @@ namespace FNaS.Entities.Stalker {
     public class StalkerEntity : MonoBehaviour {
         [Header("Core AI")]
         [Range(0, 20)] public int ai = 10;
-        public float opportunityIntervalSeconds = 5f;
+        [Min(1)] public int opportunityIntervalTicks = 1;
 
         [Header("Freeze Rules")]
         public bool freezeIfSeenOnCamera = true;
@@ -17,10 +17,10 @@ namespace FNaS.Entities.Stalker {
         public bool allowShareNodeWithPlayer = false;
 
         [Header("Door Loss")]
-        public float doorKillSeconds = 10f;
+        [Min(1)] public int doorKillTicks = 2;
 
         [Header("Stun")]
-        public float stunSecondsAfterPushback = 5f;
+        [Min(1)] public int stunTicksAfterPushback = 1;
 
         [Header("Flashlight Pushback")]
         public bool flashlightIsOnlyPushback = true;
@@ -29,7 +29,7 @@ namespace FNaS.Entities.Stalker {
 
         [Header("Flashlight Vanish")]
         public bool flashlightCausesVanish = true;
-        public float vanishSeconds = 10f;
+        [Min(1)] public int vanishTicks = 2;
         [Tooltip("Reappear only in the first N nodes of the path (typically 2).")]
         public int reappearFirstNNodes = 2;
 
@@ -50,8 +50,6 @@ namespace FNaS.Entities.Stalker {
 
         private AudioSource burningSource;
 
-        
-
         [Header("Random Groaning")]
         [Tooltip("Min seconds between random groans while roaming.")]
         public float groanMinInterval = 18f;
@@ -65,7 +63,6 @@ namespace FNaS.Entities.Stalker {
         [Header("Groan when sharing node")]
         public bool groanWhenSameNode = true;
         public float sameNodeGroanCooldownSeconds = 6f;
-
 
         [Header("Screen FX")]
         public ScreenFader cameraFader;
@@ -83,11 +80,16 @@ namespace FNaS.Entities.Stalker {
 
         private StalkerMovementBase movement;
 
-        // Runtime timers/state
-        private float opportunityTimer;
-        private float doorTimer;
-        private float stunTimer;
+        // Local runtime
         private float flashlightHoldTimer;
+
+        // Tick-based runtime state
+        private int stunnedUntilTick = -1;
+        private int doorEnterTick = -1;
+        private int reappearOnOrAfterTick = -1;
+
+        // Shared flashlight stall mechanic
+        private bool flashlightTouchedSinceLastEligibleTick;
 
         // Random groans
         private float nextGroanTime;
@@ -99,15 +101,18 @@ namespace FNaS.Entities.Stalker {
         private float sameNodeGroanCooldownTimer;
 
         private bool isVanished;
-        private float vanishTimer;
+        private bool aiDisabled;
+        private bool subscribedToScheduler;
 
         private Renderer[] cachedRenderers;
         private Collider[] cachedColliders;
 
         private MasterNode lastCameraPulseNode;
-        
-        public MasterNode CurrentMasterNode => movement != null ? movement.CurrentMasterNode : null;
-        public bool AtDoor => movement != null && movement.AtDoor;
+
+        public bool IsThreatActive => isActiveAndEnabled && !aiDisabled && !isVanished && ai > 0;
+
+        public MasterNode CurrentMasterNode => IsThreatActive && movement != null ? movement.CurrentMasterNode : null;
+        public bool AtDoor => IsThreatActive && movement != null && movement.AtDoor;
         private bool IsPlayerMoving() => player != null && player.IsMoving;
 
         private void Awake() {
@@ -127,40 +132,39 @@ namespace FNaS.Entities.Stalker {
             SetVisible(true);
         }
 
+        private void OnEnable() {
+            TrySubscribeScheduler();
+        }
+
         private void Start() {
             movement.Initialize();
             lastCameraPulseNode = movement.CurrentMasterNode;
 
             EnsureAudioSource();
             ScheduleNextRandomGroan();
+            TrySubscribeScheduler();
+
+            if (ai <= 0) {
+                EnterAIDisabledState();
+            }
         }
 
         private void Update() {
+            if (HandleAIDisabledState()) return;
             if (loseState != null && loseState.hasLost) return;
 
-            if (isVanished) {
-                vanishTimer -= Time.deltaTime;
-                if (vanishTimer <= 0f) ReappearAtStart();
+            if (!IsThreatActive) {
+                movement?.ClearOccupancy();
+                SetBurning(false);
                 return;
             }
 
             movement.RefreshOccupancy();
 
-            if (stunTimer > 0f) stunTimer -= Time.deltaTime;
-
-            if (AtDoor) {
-                doorTimer += Time.deltaTime;
-                if (doorTimer >= doorKillSeconds) {
-                    loseState?.TriggerLose("Stalker waited at the door too long.");
-                    return;
-                }
-            }
-            else {
-                doorTimer = 0f;
-            }
+            HandleDoorLoss();
+            if (loseState != null && loseState.hasLost) return;
 
             HandleFlashlightPushback();
-            HandleMovementOpportunities();
             HandleGroans();
             HandleSameNodeGroan();
 
@@ -168,7 +172,70 @@ namespace FNaS.Entities.Stalker {
         }
 
         private void OnDisable() {
+            TryUnsubscribeScheduler();
             SetBurning(false);
+        }
+
+        private void OnDestroy() {
+            TryUnsubscribeScheduler();
+        }
+
+        private bool HandleAIDisabledState() {
+            if (ai <= 0) {
+                if (!aiDisabled) EnterAIDisabledState();
+                return true;
+            }
+
+            if (aiDisabled) {
+                ExitAIDisabledState();
+            }
+
+            return false;
+        }
+
+        private void EnterAIDisabledState() {
+            aiDisabled = true;
+            isVanished = false;
+
+            flashlightHoldTimer = 0f;
+            flashlightTouchedSinceLastEligibleTick = false;
+            stunnedUntilTick = -1;
+            doorEnterTick = -1;
+            reappearOnOrAfterTick = -1;
+
+            SetVisible(false);
+            SetBurning(false);
+            movement?.ClearOccupancy();
+        }
+
+        private void ExitAIDisabledState() {
+            aiDisabled = false;
+
+            SetVisible(true);
+            doorEnterTick = -1;
+            stunnedUntilTick = -1;
+            flashlightTouchedSinceLastEligibleTick = false;
+
+            movement?.RefreshOccupancy();
+            lastCameraPulseNode = movement != null ? movement.CurrentMasterNode : null;
+        }
+
+        private void TrySubscribeScheduler() {
+            if (subscribedToScheduler) return;
+            if (GlobalAIScheduler.Instance == null) return;
+
+            GlobalAIScheduler.Instance.OnOpportunityTick += HandleOpportunityTick;
+            subscribedToScheduler = true;
+        }
+
+        private void TryUnsubscribeScheduler() {
+            if (!subscribedToScheduler) return;
+
+            if (GlobalAIScheduler.Instance != null) {
+                GlobalAIScheduler.Instance.OnOpportunityTick -= HandleOpportunityTick;
+            }
+
+            subscribedToScheduler = false;
         }
 
         private StalkerMovementBase ResolveMovementFromSettings() {
@@ -194,30 +261,97 @@ namespace FNaS.Entities.Stalker {
             audioSource.loop = false;
         }
 
-        private void HandleMovementOpportunities() {
+        private void HandleOpportunityTick(int tick) {
+            if (aiDisabled || ai <= 0) return;
+            if (loseState != null && loseState.hasLost) return;
             if (movement == null) return;
-            if (IsPlayerMoving()) { opportunityTimer = 0f; return; }
-            if (stunTimer > 0f) { opportunityTimer = 0f; return; }
-            if (IsFrozen()) { opportunityTimer = 0f; return; }
 
-            opportunityTimer += Time.deltaTime;
-            if (opportunityTimer < opportunityIntervalSeconds) return;
-            opportunityTimer = 0f;
+            if (isVanished) {
+                if (reappearOnOrAfterTick >= 0 && tick >= reappearOnOrAfterTick) {
+                    ReappearAtStart(tick);
+                }
+                return;
+            }
 
-            float p = Mathf.Clamp01(ai / 20f);
-            if (Random.value <= p) {
-                MasterNode playerNode = player != null ? player.CurrentMasterNode : null;
-                bool moved = movement.TryAdvance(playerNode, allowShareNodeWithPlayer);
-                if (moved) OnChangedNode();
+            if (opportunityIntervalTicks < 1) opportunityIntervalTicks = 1;
+            if (tick % opportunityIntervalTicks != 0) return;
+
+            if (IsPlayerMoving()) return;
+            if (IsStunnedAtTick(tick)) return;
+            if (IsFrozen()) return;
+
+            if (flashlightTouchedSinceLastEligibleTick) {
+                flashlightTouchedSinceLastEligibleTick = false;
+                return;
+            }
+
+            int roll = Random.Range(0, 21);
+            if (roll > ai) return;
+
+            MasterNode playerNode = player != null ? player.CurrentMasterNode : null;
+            bool moved = movement.TryAdvance(playerNode, allowShareNodeWithPlayer);
+            if (moved) OnChangedNode(tick);
+        }
+
+        private void HandleDoorLoss() {
+            if (!IsThreatActive) {
+                doorEnterTick = -1;
+                return;
+            }
+
+            var scheduler = GlobalAIScheduler.Instance;
+            if (scheduler == null) return;
+
+            if (AtDoor) {
+                if (doorEnterTick < 0) {
+                    doorEnterTick = scheduler.CurrentTick;
+                }
+
+                if (doorKillTicks < 1) doorKillTicks = 1;
+
+                if (scheduler.CurrentTick - doorEnterTick >= doorKillTicks) {
+                    loseState?.TriggerLose("Stalker waited at the door too long.");
+                }
+            }
+            else {
+                doorEnterTick = -1;
             }
         }
 
+        private bool IsStunnedAtTick(int tick) {
+            return stunnedUntilTick >= 0 && tick < stunnedUntilTick;
+        }
+
         private void HandleFlashlightPushback() {
-            if (!flashlightIsOnlyPushback) { flashlightHoldTimer = 0f; SetBurning(false); return; }
-            if (isVanished) { flashlightHoldTimer = 0f; SetBurning(false); return; }
-            if (flashlight == null || !flashlight.isOn) { flashlightHoldTimer = 0f; SetBurning(false); return; }
+            if (aiDisabled) {
+                flashlightHoldTimer = 0f;
+                SetBurning(false);
+                return;
+            }
+
+            if (!flashlightIsOnlyPushback) {
+                flashlightHoldTimer = 0f;
+                SetBurning(false);
+                return;
+            }
+
+            if (isVanished) {
+                flashlightHoldTimer = 0f;
+                SetBurning(false);
+                return;
+            }
+
+            if (flashlight == null || !flashlight.isOn) {
+                flashlightHoldTimer = 0f;
+                SetBurning(false);
+                return;
+            }
 
             bool affecting = flashlight.IsIlluminating(transform);
+
+            if (affecting) {
+                flashlightTouchedSinceLastEligibleTick = true;
+            }
 
             SetBurning(affecting);
 
@@ -232,18 +366,27 @@ namespace FNaS.Entities.Stalker {
                 flashlightHoldTimer = 0f;
 
                 if (flashlightCausesVanish) {
-                    VanishForSeconds(vanishSeconds);
+                    VanishForTicks(vanishTicks);
                 }
                 else {
                     bool moved = movement != null && movement.PushBack(pushBackTwoNodes ? 2 : 1);
                     if (moved) {
-                        stunTimer = Mathf.Max(stunTimer, stunSecondsAfterPushback);
-                        OnChangedNode();
+                        ApplyStunTicks(stunTicksAfterPushback);
+                        OnChangedNode(GlobalAIScheduler.Instance != null ? GlobalAIScheduler.Instance.CurrentTick : 0);
                     }
                 }
 
                 playerFader?.Pulse();
             }
+        }
+
+        private void ApplyStunTicks(int ticks) {
+            var scheduler = GlobalAIScheduler.Instance;
+            if (scheduler == null) return;
+
+            ticks = Mathf.Max(1, ticks);
+            int currentTick = scheduler.CurrentTick;
+            stunnedUntilTick = Mathf.Max(stunnedUntilTick, currentTick + ticks + 1);
         }
 
         private bool IsFrozen() {
@@ -263,12 +406,16 @@ namespace FNaS.Entities.Stalker {
             return false;
         }
 
-        private void OnChangedNode() {
+        private void OnChangedNode(int tick) {
             PlayFootstep();
 
             if (!AtDoor) {
                 doorGroanPlayedOnce = false;
                 doorGroanTimer = 0f;
+                doorEnterTick = -1;
+            }
+            else if (doorEnterTick < 0) {
+                doorEnterTick = tick;
             }
 
             PulseIfEnteredActiveCamera();
@@ -388,31 +535,38 @@ namespace FNaS.Entities.Stalker {
                 foreach (var c in cachedColliders) c.enabled = visible;
         }
 
-        private void VanishForSeconds(float seconds) {
-            if (isVanished) return;
+        private void VanishForTicks(int ticks) {
+            if (isVanished || aiDisabled) return;
+
+            var scheduler = GlobalAIScheduler.Instance;
+            if (scheduler == null) return;
+
+            ticks = Mathf.Max(1, ticks);
 
             isVanished = true;
-            vanishTimer = seconds;
-
-            stunTimer = 0f;
-            doorTimer = 0f;
-            opportunityTimer = 0f;
             flashlightHoldTimer = 0f;
+            flashlightTouchedSinceLastEligibleTick = false;
+            stunnedUntilTick = -1;
+            doorEnterTick = -1;
+
+            reappearOnOrAfterTick = scheduler.CurrentTick + ticks;
 
             SetVisible(false);
             SetBurning(false);
-
             movement?.ClearOccupancy();
         }
 
-        private void ReappearAtStart() {
+        private void ReappearAtStart(int tick) {
+            if (aiDisabled || ai <= 0) return;
+
             isVanished = false;
+            reappearOnOrAfterTick = -1;
 
             movement?.ReappearInFirstNNodes(reappearFirstNNodes);
-
             SetVisible(true);
 
-            stunTimer = 0.5f;
+            stunnedUntilTick = tick + 1;
+            doorEnterTick = -1;
 
             if (audioSource != null && footstepClip != null)
                 audioSource.PlayOneShot(footstepClip, sfxVolume);

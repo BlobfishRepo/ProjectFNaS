@@ -1,4 +1,15 @@
 # Changelog
+## March 20
+### Added
+- Lost Girl added. She can spawn in glass-based objects (TV, windows), and after progressing a certain number of stages lunges at the player.
+- Added flashlight stun mechanic to both Stalker and Lost Girl.
+
+### Changed
+- Backend: Stalker and Lost Girl movement systems unified.
+
+### Fixed
+- Stalker could jumpscare after being reset using the flashlight if the player tries to walk past too soon.
+
 ## March 8
 ### Added
 - Functionality added to settings menu, and additional settings relating to Stalker behavior and flashlight duration added

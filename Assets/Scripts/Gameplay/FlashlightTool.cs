@@ -92,7 +92,6 @@ namespace FNaS.Systems {
             if (aimCamera == null) aimCamera = Camera.main;
 
             ApplyIndicator(forceOff: false);
-            Debug.Log("Flashlight battery seconds: " + maxBatterySeconds);
         }
 
         private void Update() {

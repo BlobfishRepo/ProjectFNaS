@@ -26,7 +26,7 @@ namespace FNaS.Settings {
 
             if (stalkerEntity != null) {
                 stalkerEntity.ai = settings.stalkerAI;
-                stalkerEntity.opportunityIntervalSeconds = settings.opportunityInterval;
+                //stalkerEntity.opportunityIntervalTicks = Mathf.Max(1, Mathf.RoundToInt(settings.opportunityInterval / 5f));
 
                 stalkerEntity.freezeIfSeenOnCamera = settings.freezeIfSeenOnCamera;
                 stalkerEntity.freezeIfSeenInPerson = settings.freezeIfSeenInPerson;
