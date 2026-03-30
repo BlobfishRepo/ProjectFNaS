@@ -78,6 +78,9 @@ namespace FNaS.Entities.Stalker {
         [SerializeField] private StalkerNodeMovement nodeMovement;
         [SerializeField] private StalkerRoamMovement roamMovement;
 
+        [Header("Jumpscare")]
+        [SerializeField] private StalkerJumpscareController jumpscareController;
+
         private StalkerMovementBase movement;
 
         // Local runtime
@@ -310,7 +313,10 @@ namespace FNaS.Entities.Stalker {
                 if (doorKillTicks < 1) doorKillTicks = 1;
 
                 if (scheduler.CurrentTick - doorEnterTick >= doorKillTicks) {
-                    loseState?.TriggerLose("Stalker waited at the door too long.");
+                    if (jumpscareController != null)
+                        jumpscareController.PlayJumpscare("Stalker waited at the door too long.");
+                    else
+                        loseState?.TriggerLose("Stalker waited at the door too long.");
                 }
             }
             else {

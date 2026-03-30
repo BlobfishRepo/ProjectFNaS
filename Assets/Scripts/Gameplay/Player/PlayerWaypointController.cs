@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using FNaS.MasterNodes;
+using FNaS.Entities.Stalker;
 using FNaS.Systems;
 
 namespace FNaS.Gameplay {
@@ -24,6 +25,9 @@ namespace FNaS.Gameplay {
         public AudioSource sfxSource;
         public AudioClip footstepClip;
 
+        [Header("Stalker")]
+        [SerializeField] private StalkerJumpscareController stalkerJumpscare;
+
         [SerializeField] private MasterNode currentMasterNode;
         public override MasterNode CurrentMasterNode => currentMasterNode;
 
@@ -32,6 +36,7 @@ namespace FNaS.Gameplay {
 
         public override Transform RigTransform => rigTransform;
         public override Transform ViewTransform => viewPivot != null ? viewPivot : transform;
+        private Coroutine activeMoveRoutine;
 
         public override void Initialize(PlayerEntity player, PlayerInputController input) {
             if (startingWaypoint == null) {
@@ -49,22 +54,28 @@ namespace FNaS.Gameplay {
             }
         }
 
-        public void BeginTransition(WaypointTransition tr) {
-            if (isMoving) return;
-            if (tr == null || tr.target == null) return;
-            if (loseState != null && loseState.hasLost) return;
+        public bool BeginTransition(WaypointTransition tr) {
+            if (isMoving) return false;
+            if (tr == null || tr.target == null) return false;
+            if (loseState != null && loseState.hasLost) return false;
 
             MasterNode fromMaster = ResolveMasterNode(CurrentWaypoint);
             MasterNode toMaster = ResolveMasterNode(tr.target);
 
             if (tr.tag == TransitionTag.Forward && blockerRegistry != null && fromMaster != null) {
                 if (blockerRegistry.IsForwardExitBlockedAt(fromMaster)) {
-                    loseState?.TriggerLose("Tried to move past a blocking entity.");
-                    return;
+                    if (stalkerJumpscare != null) {
+                        stalkerJumpscare.PlayJumpscare("Tried to move past a blocking entity.");
+                    }
+                    else {
+                        loseState?.TriggerLose("Tried to move past a blocking entity.");
+                    }
+                    return false;
                 }
             }
 
-            StartCoroutine(MoveAlongTransition(tr, toMaster));
+            activeMoveRoutine = StartCoroutine(MoveAlongTransition(tr, toMaster));
+            return true;
         }
 
         private IEnumerator MoveAlongTransition(WaypointTransition tr, MasterNode toMaster) {
@@ -267,6 +278,8 @@ namespace FNaS.Gameplay {
                 yield return new WaitForSeconds(tr.doorCloseDelay);
                 transitionDoor.SetTraversalOpen(false);
             }
+
+            activeMoveRoutine = null;
         }
 
         private void SetCurrentWaypointInstant(Waypoint waypoint) {
@@ -280,6 +293,19 @@ namespace FNaS.Gameplay {
 
         private MasterNode ResolveMasterNode(Waypoint waypoint) {
             return waypoint != null ? waypoint.masterNode : null;
+        }
+
+        public void CancelActiveMovementImmediate() {
+            if (activeMoveRoutine != null) {
+                StopCoroutine(activeMoveRoutine);
+                activeMoveRoutine = null;
+            }
+
+            if (sfxSource != null) {
+                sfxSource.Stop();
+            }
+
+            isMoving = false;
         }
     }
 }

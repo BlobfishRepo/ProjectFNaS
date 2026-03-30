@@ -8,7 +8,8 @@ namespace FNaS.Entities.LostGirl {
             PreSpawn,
             InGlass,
             Emerging,
-            Chasing
+            Chasing,
+            Jumpscare
         }
 
         [Header("Core AI")]
@@ -49,6 +50,7 @@ namespace FNaS.Entities.LostGirl {
         public LoseState loseState;
         public LostGirlMovement movement;
         public GameObject activeVisualRoot;
+        public LostGirlJumpscareController jumpscareController;
 
         [Header("Glass Anchors")]
         public List<LostGirlGlassAnchor> anchors = new();
@@ -99,6 +101,7 @@ namespace FNaS.Entities.LostGirl {
         }
 
         private void Update() {
+            if (phase == LostGirlPhase.Jumpscare) return;
             if (HandleAIDisabledState()) return;
             if (loseState != null && loseState.hasLost) return;
 
@@ -366,7 +369,17 @@ namespace FNaS.Entities.LostGirl {
             float dist = Vector3.Distance(a, b);
             if (dist > killDistance) return false;
 
-            loseState?.TriggerLose("The Lost Girl caught the player.");
+            phase = LostGirlPhase.Jumpscare;
+            movement?.StopMovement();
+            StopRunningLoop();
+
+            if (jumpscareController != null) {
+                jumpscareController.PlayJumpscare("The Lost Girl caught the player.");
+            }
+            else {
+                loseState?.TriggerLose("The Lost Girl caught the player.");
+            }
+
             return true;
         }
 

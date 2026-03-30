@@ -1,4 +1,12 @@
 # Changelog
+## March 29
+### Added
+- Added jumpscare logic and jumpscare animation to Stalker
+- Updated Stalker model (still WIP)
+
+### Note
+- Settings are undergoing an overhaul, so they are unlikely to work properly.
+
 ## March 20
 ### Added
 - Lost Girl added. She can spawn in glass-based objects (TV, windows), and after progressing a certain number of stages lunges at the player.

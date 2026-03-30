@@ -1,6 +1,7 @@
 using UnityEngine;
 using FNaS.Gameplay;
 using FNaS.Entities.Stalker;
+using FNaS.Entities.LostGirl;
 using FNaS.Systems;
 
 namespace FNaS.Settings {
@@ -10,6 +11,8 @@ namespace FNaS.Settings {
         [SerializeField] private DoorInteractor doorInteractor;
         [SerializeField] private StalkerEntity stalkerEntity;
         [SerializeField] private FlashlightTool flashlightTool;
+        [SerializeField] private LostGirlEntity lostGirlEntity;
+        [SerializeField] private LostGirlMovement lostGirlMovement;
 
         private void Start() {
             var settings = RuntimeGameSettings.Instance;
@@ -26,8 +29,7 @@ namespace FNaS.Settings {
 
             if (stalkerEntity != null) {
                 stalkerEntity.ai = settings.stalkerAI;
-                //stalkerEntity.opportunityIntervalTicks = Mathf.Max(1, Mathf.RoundToInt(settings.opportunityInterval / 5f));
-
+                //stalkerEntity.opportunityIntervalSeconds = settings.opportunityInterval;
                 stalkerEntity.freezeIfSeenOnCamera = settings.freezeIfSeenOnCamera;
                 stalkerEntity.freezeIfSeenInPerson = settings.freezeIfSeenInPerson;
                 stalkerEntity.allowShareNodeWithPlayer = settings.allowShareNodeWithPlayer;
@@ -35,6 +37,12 @@ namespace FNaS.Settings {
 
             if (flashlightTool != null)
                 flashlightTool.ApplyMaxBatterySeconds(settings.maxBatterySeconds);
+
+            if (lostGirlEntity != null)
+                lostGirlEntity.ai = settings.lostGirlAI;
+
+            if (lostGirlMovement != null)
+                lostGirlMovement.moveSpeed = settings.lostGirlMoveSpeed;
         }
     }
 }
