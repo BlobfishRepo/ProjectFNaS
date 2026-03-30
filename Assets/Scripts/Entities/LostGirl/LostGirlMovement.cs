@@ -1,7 +1,9 @@
 using UnityEngine;
+using FNaS.Settings;
+using FNaS.Systems;
 
 namespace FNaS.Entities.LostGirl {
-    public class LostGirlMovement : MonoBehaviour {
+    public class LostGirlMovement : MonoBehaviour, IRuntimeSettingsConsumer {
         public enum ActiveMoveMode {
             ChaseCurrentPlayer,
             ChargeSnapshot
@@ -20,6 +22,11 @@ namespace FNaS.Entities.LostGirl {
 
         public bool IsActive => isActive;
         public Vector3 SnapshotTarget => snapshotTarget;
+
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) return;
+            moveSpeed = settings.GetFloat("lostGirl.moveSpeed");
+        }
 
         public void BeginMovement(Transform player, ActiveMoveMode mode) {
             playerTarget = player;

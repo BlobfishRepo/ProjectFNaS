@@ -1,7 +1,9 @@
+using FNaS.Settings;
+using FNaS.Systems;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class DoorInteractor : MonoBehaviour {
+public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
     [Header("Raycast")]
     public Camera cam;
     public float maxDistance = 6f;
@@ -17,6 +19,11 @@ public class DoorInteractor : MonoBehaviour {
     private void Awake() {
         input = new PlayerInputActions();
         if (cam == null) cam = Camera.main;
+    }
+
+    public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+        if (settings == null) return;
+        maxDistance = settings.GetFloat("door.maxDistance");
     }
 
     private void OnEnable() {

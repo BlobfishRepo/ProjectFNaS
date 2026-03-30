@@ -1,70 +1,37 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
 namespace FNaS.Settings {
-    public enum PlayerMovementMode {
-        NodeBased,
-        FreeRoam
-    }
-
-    public enum StalkerMovementMode {
-        NodeBased,
-        RoamTest
+    [Serializable]
+    public class SettingValueEntry {
+        public string key;
+        public string value;
     }
 
     [Serializable]
-    public class RuntimeGameSettingsData {
-        public float playerMoveSpeed = 5f;
-        public float doorMaxDistance = 6f;
-
-        [Range(0, 20)] public int stalkerAI = 20;
-        public float opportunityInterval = 5f;
-
-        public float maxBatterySeconds = 30f;
-
-        public bool freezeIfSeenOnCamera = false;
-        public bool freezeIfSeenInPerson = true;
-        public bool allowShareNodeWithPlayer = true;
-
-        [Range(0, 20)] public int lostGirlAI = 10;
-        public float lostGirlMoveSpeed = 8f;
-
-        public PlayerMovementMode playerMovementMode = PlayerMovementMode.NodeBased;
-        public StalkerMovementMode stalkerMovementMode = StalkerMovementMode.NodeBased;
+    public class RuntimeGameSettingsSaveData {
         public bool debugMenuUnlocked = false;
+        public List<SettingValueEntry> entries = new();
     }
 
     public class RuntimeGameSettings : MonoBehaviour {
         public static RuntimeGameSettings Instance { get; private set; }
 
-        [Header("Standard Settings")]
-        public float playerMoveSpeed = 5f;
-        public float doorMaxDistance = 6f;
-
-        [Header("Stalker - Core AI")]
-        [Range(0, 20)] public int stalkerAI = 20;
-        public float opportunityInterval = 5f;
-
-        [Header("Flashlight")]
-        public float maxBatterySeconds = 30f;
-
-        [Header("Stalker - Freeze Rules")]
-        public bool freezeIfSeenOnCamera = false;
-        public bool freezeIfSeenInPerson = true;
-        public bool allowShareNodeWithPlayer = true;
-
-        [Header("Lost Girl")]
-        [Range(0, 20)] public int lostGirlAI = 10;
-        public float lostGirlMoveSpeed = 8f;
-
-        [Header("Debug Settings")]
-        public PlayerMovementMode playerMovementMode = PlayerMovementMode.NodeBased;
-        public StalkerMovementMode stalkerMovementMode = StalkerMovementMode.NodeBased;
-        public bool debugMenuUnlocked = false;
-
         public static string SettingsPath =>
             Path.Combine(Application.persistentDataPath, "runtime_game_settings.json");
+
+        private readonly Dictionary<string, float> floatValues = new();
+        private readonly Dictionary<string, int> intValues = new();
+        private readonly Dictionary<string, bool> boolValues = new();
+
+        [SerializeField] private bool debugMenuUnlocked;
+
+        public bool DebugMenuUnlocked {
+            get => debugMenuUnlocked;
+            set => debugMenuUnlocked = value;
+        }
 
         private void Awake() {
             if (Instance != null && Instance != this) {
@@ -79,82 +46,186 @@ namespace FNaS.Settings {
             Debug.Log($"RuntimeGameSettings path: {SettingsPath}");
         }
 
-        public void LoadDefaults() {
-            ApplyData(new RuntimeGameSettingsData());
+        public void ResetToDefaults() {
+            floatValues.Clear();
+            intValues.Clear();
+            boolValues.Clear();
+
+            foreach (var def in SettingsSchema.Definitions) {
+                switch (def.controlType) {
+                    case SettingControlType.FloatSlider:
+                        floatValues[def.key] = def.defaultFloat;
+                        break;
+
+                    case SettingControlType.IntSlider:
+                    case SettingControlType.Dropdown:
+                        intValues[def.key] = def.defaultInt;
+                        break;
+
+                    case SettingControlType.Toggle:
+                        boolValues[def.key] = def.defaultBool;
+                        break;
+                }
+            }
+
+            debugMenuUnlocked = false;
+        }
+
+        public void LoadFromJson() {
+            ResetToDefaults();
+
+            try {
+                if (!File.Exists(SettingsPath)) {
+                    SaveToJson();
+                    return;
+                }
+
+                string json = File.ReadAllText(SettingsPath);
+                RuntimeGameSettingsSaveData saveData = JsonUtility.FromJson<RuntimeGameSettingsSaveData>(json);
+
+                if (saveData == null) {
+                    SaveToJson();
+                    return;
+                }
+
+                debugMenuUnlocked = saveData.debugMenuUnlocked;
+
+                if (saveData.entries == null)
+                    return;
+
+                foreach (var entry in saveData.entries) {
+                    if (entry == null || string.IsNullOrWhiteSpace(entry.key))
+                        continue;
+
+                    if (!SettingsSchema.TryGetDefinition(entry.key, out var def))
+                        continue;
+
+                    switch (def.controlType) {
+                        case SettingControlType.FloatSlider:
+                            if (float.TryParse(entry.value, out float floatValue)) {
+                                floatValues[entry.key] = floatValue;
+                            }
+                            break;
+
+                        case SettingControlType.IntSlider:
+                        case SettingControlType.Dropdown:
+                            if (int.TryParse(entry.value, out int intValue)) {
+                                intValues[entry.key] = intValue;
+                            }
+                            break;
+
+                        case SettingControlType.Toggle:
+                            if (bool.TryParse(entry.value, out bool boolValue)) {
+                                boolValues[entry.key] = boolValue;
+                            }
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex) {
+                Debug.LogError($"Failed to load RuntimeGameSettings JSON: {ex}");
+                ResetToDefaults();
+            }
         }
 
         public void SaveToJson() {
             try {
-                RuntimeGameSettingsData data = ToData();
-                string json = JsonUtility.ToJson(data, true);
+                RuntimeGameSettingsSaveData saveData = new() {
+                    debugMenuUnlocked = debugMenuUnlocked,
+                    entries = BuildEntries()
+                };
+
+                string json = JsonUtility.ToJson(saveData, true);
                 File.WriteAllText(SettingsPath, json);
-                Debug.Log($"RuntimeGameSettings saved to: {SettingsPath}");
             }
             catch (Exception ex) {
                 Debug.LogError($"Failed to save RuntimeGameSettings JSON: {ex}");
             }
         }
 
-        public void LoadFromJson() {
-            try {
-                if (!File.Exists(SettingsPath)) {
-                    Debug.Log($"Settings file not found. Creating default JSON at: {SettingsPath}");
-                    LoadDefaults();
-                    SaveToJson();
-                    return;
+        private List<SettingValueEntry> BuildEntries() {
+            List<SettingValueEntry> entries = new();
+
+            foreach (var def in SettingsSchema.Definitions) {
+                switch (def.controlType) {
+                    case SettingControlType.FloatSlider:
+                        entries.Add(new SettingValueEntry {
+                            key = def.key,
+                            value = GetFloat(def.key).ToString()
+                        });
+                        break;
+
+                    case SettingControlType.IntSlider:
+                    case SettingControlType.Dropdown:
+                        entries.Add(new SettingValueEntry {
+                            key = def.key,
+                            value = GetInt(def.key).ToString()
+                        });
+                        break;
+
+                    case SettingControlType.Toggle:
+                        entries.Add(new SettingValueEntry {
+                            key = def.key,
+                            value = GetBool(def.key).ToString()
+                        });
+                        break;
                 }
-
-                string json = File.ReadAllText(SettingsPath);
-                RuntimeGameSettingsData data = JsonUtility.FromJson<RuntimeGameSettingsData>(json);
-
-                if (data == null) {
-                    Debug.LogWarning("Settings JSON was empty or invalid. Reverting to defaults.");
-                    LoadDefaults();
-                    SaveToJson();
-                    return;
-                }
-
-                ApplyData(data);
-                Debug.Log($"RuntimeGameSettings loaded from: {SettingsPath}");
             }
-            catch (Exception ex) {
-                Debug.LogError($"Failed to load RuntimeGameSettings JSON: {ex}");
-                LoadDefaults();
-            }
+
+            return entries;
         }
 
-        public RuntimeGameSettingsData ToData() {
-            return new RuntimeGameSettingsData {
-                playerMoveSpeed = playerMoveSpeed,
-                doorMaxDistance = doorMaxDistance,
-                stalkerAI = stalkerAI,
-                opportunityInterval = opportunityInterval,
-                maxBatterySeconds = maxBatterySeconds,
-                freezeIfSeenOnCamera = freezeIfSeenOnCamera,
-                freezeIfSeenInPerson = freezeIfSeenInPerson,
-                allowShareNodeWithPlayer = allowShareNodeWithPlayer,
-                lostGirlAI = lostGirlAI,
-                lostGirlMoveSpeed = lostGirlMoveSpeed,
-                playerMovementMode = playerMovementMode,
-                stalkerMovementMode = stalkerMovementMode,
-                debugMenuUnlocked = debugMenuUnlocked
-            };
+        public float GetFloat(string key) {
+            if (floatValues.TryGetValue(key, out float value))
+                return value;
+
+            if (SettingsSchema.TryGetDefinition(key, out var def))
+                return def.defaultFloat;
+
+            Debug.LogWarning($"No float setting found for key '{key}'.");
+            return 0f;
         }
 
-        public void ApplyData(RuntimeGameSettingsData data) {
-            playerMoveSpeed = data.playerMoveSpeed;
-            doorMaxDistance = data.doorMaxDistance;
-            stalkerAI = data.stalkerAI;
-            opportunityInterval = data.opportunityInterval;
-            maxBatterySeconds = data.maxBatterySeconds;
-            freezeIfSeenOnCamera = data.freezeIfSeenOnCamera;
-            freezeIfSeenInPerson = data.freezeIfSeenInPerson;
-            allowShareNodeWithPlayer = data.allowShareNodeWithPlayer;
-            lostGirlAI = data.lostGirlAI;
-            lostGirlMoveSpeed = data.lostGirlMoveSpeed;
-            playerMovementMode = data.playerMovementMode;
-            stalkerMovementMode = data.stalkerMovementMode;
-            debugMenuUnlocked = data.debugMenuUnlocked;
+        public int GetInt(string key) {
+            if (intValues.TryGetValue(key, out int value))
+                return value;
+
+            if (SettingsSchema.TryGetDefinition(key, out var def))
+                return def.defaultInt;
+
+            Debug.LogWarning($"No int setting found for key '{key}'.");
+            return 0;
+        }
+
+        public bool GetBool(string key) {
+            if (boolValues.TryGetValue(key, out bool value))
+                return value;
+
+            if (SettingsSchema.TryGetDefinition(key, out var def))
+                return def.defaultBool;
+
+            Debug.LogWarning($"No bool setting found for key '{key}'.");
+            return false;
+        }
+
+        public void SetFloat(string key, float value) {
+            floatValues[key] = value;
+        }
+
+        public void SetInt(string key, int value) {
+            intValues[key] = value;
+        }
+
+        public void SetBool(string key, bool value) {
+            boolValues[key] = value;
+        }
+
+        public PlayerMovementMode GetPlayerMovementMode() {
+            return (PlayerMovementMode)GetInt("debug.playerMovementMode");
+        }
+
+        public StalkerMovementMode GetStalkerMovementMode() {
+            return (StalkerMovementMode)GetInt("debug.stalkerMovementMode");
         }
     }
 }

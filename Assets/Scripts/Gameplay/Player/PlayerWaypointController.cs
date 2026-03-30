@@ -3,9 +3,10 @@ using UnityEngine;
 using FNaS.MasterNodes;
 using FNaS.Entities.Stalker;
 using FNaS.Systems;
+using FNaS.Settings;
 
 namespace FNaS.Gameplay {
-    public class PlayerWaypointController : PlayerMovementBase {
+    public class PlayerWaypointController : PlayerMovementBase, IRuntimeSettingsConsumer {
         [Header("References")]
         public Transform rigTransform;
         public Transform viewPivot;
@@ -52,6 +53,15 @@ namespace FNaS.Gameplay {
             if (CurrentWaypoint == null) {
                 Initialize(null, null);
             }
+        }
+
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) {
+                Debug.LogWarning("PlayerWaypointController: RuntimeGameSettings not found. Using inspector moveSpeed.");
+                return;
+            }
+
+            moveSpeed = settings.GetFloat("player.moveSpeed");
         }
 
         public bool BeginTransition(WaypointTransition tr) {

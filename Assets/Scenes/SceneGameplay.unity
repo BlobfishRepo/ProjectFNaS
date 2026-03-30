@@ -636,54 +636,6 @@ Transform:
   - {fileID: 456353710}
   m_Father: {fileID: 1155280500}
   m_LocalEulerAnglesHint: {x: 0, y: -47.211, z: 0}
---- !u!1 &163937913
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 163937914}
-  - component: {fileID: 163937915}
-  m_Layer: 0
-  m_Name: SettingsController
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &163937914
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 163937913}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1359168516}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &163937915
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 163937913}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a7d43d77f6458db4aac07382798de41c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Settings.GameSettingsApplier
-  playerWaypointController: {fileID: 2058945196}
-  doorInteractor: {fileID: 2058945197}
-  stalkerEntity: {fileID: 1782984177}
-  flashlightTool: {fileID: 1022328916}
 --- !u!4 &168089310 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7271064214206147687, guid: 4d9a2ed26b917b74fb5436fddead8075, type: 3}
@@ -5235,6 +5187,51 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1243722194}
   m_CullTransparentMesh: 1
+--- !u!1 &1249399226
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1249399227}
+  - component: {fileID: 1249399228}
+  m_Layer: 0
+  m_Name: _RuntimeSettings
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1249399227
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1249399226}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1359168516}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1249399228
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1249399226}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3ea679b5b17ced46b50c572c120a475, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Settings.RuntimeGameSettings
+  debugMenuUnlocked: 0
 --- !u!1 &1264652841 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 192069916727069550, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
@@ -5702,12 +5699,13 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 163937914}
   - {fileID: 428565953}
   - {fileID: 1692989233}
   - {fileID: 1462857684}
   - {fileID: 644269416}
   - {fileID: 1382129888}
+  - {fileID: 1249399227}
+  - {fileID: 2073274565}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1359479833
@@ -8682,7 +8680,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b6a3e6dffa30dd547acd0352a6afca05, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.Stalker.StalkerEntity
-  ai: 0
+  ai: 20
   opportunityIntervalTicks: 1
   freezeIfSeenOnCamera: 0
   freezeIfSeenInPerson: 1
@@ -9975,6 +9973,52 @@ MonoBehaviour:
   currentView: {fileID: 0}
   loseState: {fileID: 0}
   stalkerJumpscare: {fileID: 0}
+--- !u!1 &2073274564
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2073274565}
+  - component: {fileID: 2073274566}
+  m_Layer: 0
+  m_Name: GameSettingsController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2073274565
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2073274564}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1359168516}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2073274566
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2073274564}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b07be56c56eb164ebaacdbeb590d15a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Systems.RuntimeSettingsApplier
+  applyOnStart: 1
+  includeInactiveObjects: 1
 --- !u!1 &2074921176
 GameObject:
   m_ObjectHideFlags: 0

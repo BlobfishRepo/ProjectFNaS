@@ -1,9 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 using FNaS.Systems;
+using FNaS.Settings;
 
 namespace FNaS.Entities.LostGirl {
-    public class LostGirlEntity : MonoBehaviour {
+    public class LostGirlEntity : MonoBehaviour, IRuntimeSettingsConsumer {
         public enum LostGirlPhase {
             PreSpawn,
             InGlass,
@@ -73,6 +74,12 @@ namespace FNaS.Entities.LostGirl {
         public LostGirlPhase Phase => phase;
         public int GlassStage => glassStage;
         public LostGirlGlassAnchor CurrentAnchor => currentAnchor;
+
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) return;
+
+            ai = settings.GetInt("lostGirl.ai");
+        }
 
         private void Awake() {
             if (movement == null) movement = GetComponent<LostGirlMovement>();

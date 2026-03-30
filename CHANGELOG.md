@@ -1,4 +1,14 @@
 # Changelog
+## March 30
+### Added
+- Added a "Reset to Default" button to restore default settings
+- Slider rows have a value input field.
+
+### Changed
+- Settings now works on a JSON save/load system.
+- Settings can be loaded from either the Settings or Gameplay scenes.
+- Settings UI made data-driven to simplify adding new settings.
+
 ## March 29
 ### Added
 - Added jumpscare logic and jumpscare animation to Stalker

@@ -5,7 +5,7 @@ using FNaS.Systems;
 using FNaS.Settings;
 
 namespace FNaS.Entities.Stalker {
-    public class StalkerEntity : MonoBehaviour {
+    public class StalkerEntity : MonoBehaviour, IRuntimeSettingsConsumer {
         [Header("Core AI")]
         [Range(0, 20)] public int ai = 10;
         [Min(1)] public int opportunityIntervalTicks = 1;
@@ -117,6 +117,15 @@ namespace FNaS.Entities.Stalker {
         public MasterNode CurrentMasterNode => IsThreatActive && movement != null ? movement.CurrentMasterNode : null;
         public bool AtDoor => IsThreatActive && movement != null && movement.AtDoor;
         private bool IsPlayerMoving() => player != null && player.IsMoving;
+
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) return;
+
+            ai = settings.GetInt("stalker.ai");
+            freezeIfSeenOnCamera = settings.GetBool("stalker.freezeIfSeenOnCamera");
+            freezeIfSeenInPerson = settings.GetBool("stalker.freezeIfSeenInPerson");
+            allowShareNodeWithPlayer = settings.GetBool("stalker.allowShareNodeWithPlayer");
+        }
 
         private void Awake() {
             if (nodeMovement == null) nodeMovement = GetComponent<StalkerNodeMovement>();
@@ -245,7 +254,7 @@ namespace FNaS.Entities.Stalker {
             var settings = RuntimeGameSettings.Instance;
 
             StalkerMovementMode mode = settings != null
-                ? settings.stalkerMovementMode
+                ? settings.GetStalkerMovementMode()
                 : StalkerMovementMode.NodeBased;
 
             return mode switch {

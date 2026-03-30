@@ -1,8 +1,10 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using FNaS.Settings;
+using FNaS.Systems;
 
 namespace FNaS.Systems {
-    public class FlashlightTool : MonoBehaviour {
+    public class FlashlightTool : MonoBehaviour, IRuntimeSettingsConsumer {
 
         [Header("Battery")]
         public float maxBatterySeconds = 30f;
@@ -66,6 +68,12 @@ namespace FNaS.Systems {
 
         private float flickerTimer;
         private float offTimer;
+
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) return;
+
+            ApplyMaxBatterySeconds(settings.GetFloat("flashlight.maxBatterySeconds"));
+        }
 
         private void Awake() {
             input = new PlayerInputActions();
