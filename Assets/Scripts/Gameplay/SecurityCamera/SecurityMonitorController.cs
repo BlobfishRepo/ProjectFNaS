@@ -8,6 +8,9 @@ public class SecurityMonitorController : MonoBehaviour {
     public class CamBinding {
         public Camera cam;
         public MasterNode masterNode;
+
+        [Tooltip("World-space thing the stalker should look toward when this feed is being watched.")]
+        public Transform lookTarget;
     }
 
     [Header("Cameras")]
@@ -23,22 +26,41 @@ public class SecurityMonitorController : MonoBehaviour {
     private int activeIndex = -1;
 
     private void Start() {
-        // Disable all, then enable default.
         if (cams != null) {
             for (int i = 0; i < cams.Length; i++) {
                 var c = cams[i]?.cam;
                 if (c == null) continue;
                 c.enabled = false;
+
                 var al = c.GetComponent<AudioListener>();
                 if (al != null) al.enabled = false;
             }
         }
 
-        // Cameras are “powered” in your design
-        if (attentionState != null) attentionState.isCameraActive = true;
+        if (attentionState != null) {
+            attentionState.isCameraActive = false;
+            attentionState.isMonitorInUse = false;
+            attentionState.activeCameraNode = null;
+            attentionState.activeCameraLookTarget = null;
+        }
 
-        // Silent boot (no SFX)
         SetActiveCam(0, playSfx: false);
+    }
+
+    public void BeginMonitorUse() {
+        if (attentionState != null) {
+            attentionState.isMonitorInUse = true;
+            attentionState.isCameraActive = activeIndex >= 0;
+        }
+    }
+
+    public void EndMonitorUse() {
+        if (attentionState != null) {
+            attentionState.isMonitorInUse = false;
+            attentionState.isCameraActive = false;
+            attentionState.activeCameraNode = null;
+            attentionState.activeCameraLookTarget = null;
+        }
     }
 
     public void ActivateCam(int index) {
@@ -52,22 +74,27 @@ public class SecurityMonitorController : MonoBehaviour {
 
         if (activeIndex >= 0 && activeIndex < cams.Length && cams[activeIndex]?.cam != null) {
             cams[activeIndex].cam.enabled = false;
+
             var oldAl = cams[activeIndex].cam.GetComponent<AudioListener>();
             if (oldAl != null) oldAl.enabled = false;
         }
 
-        if (playSfx && uiSource != null && camSwitchClip != null)
+        if (playSfx && uiSource != null && camSwitchClip != null) {
             uiSource.PlayOneShot(camSwitchClip, 1.0f);
+        }
 
         cams[index].cam.enabled = true;
+
         var newAl = cams[index].cam.GetComponent<AudioListener>();
         if (newAl != null) newAl.enabled = true;
 
         activeIndex = index;
 
         if (attentionState != null) {
-            attentionState.isCameraActive = true; // always powered
+            attentionState.isCameraActive = attentionState.isMonitorInUse;
             attentionState.activeCameraNode = cams[index].masterNode;
+            attentionState.activeCameraLookTarget =
+                cams[index].lookTarget != null ? cams[index].lookTarget : cams[index].cam.transform;
         }
     }
 }

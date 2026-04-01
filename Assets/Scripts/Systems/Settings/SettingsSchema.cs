@@ -23,8 +23,9 @@ namespace FNaS.Settings {
         Player,
         Door,
         Stalker,
-        Flashlight,
         LostGirl,
+        Mimic,
+        Flashlight,
         Systems,
         Debug
     }
@@ -116,6 +117,15 @@ namespace FNaS.Settings {
                 max = 20f
             },
             new SettingDefinition {
+                key = "mimic.ai",
+                label = "Mimic AI",
+                category = SettingCategory.Mimic,
+                controlType = SettingControlType.IntSlider,
+                defaultInt = 10,
+                min = 0,
+                max = 20
+            },
+            new SettingDefinition {
                 key = "globalAI.baseIntervalSeconds",
                 label = "Global AI Tick Interval",
                 category = SettingCategory.Systems,
@@ -172,8 +182,9 @@ namespace FNaS.Settings {
                 SettingCategory.Player => "Player",
                 SettingCategory.Door => "Door",
                 SettingCategory.Stalker => "Stalker",
-                SettingCategory.Flashlight => "Flashlight",
                 SettingCategory.LostGirl => "Lost Girl",
+                SettingCategory.Mimic => "Mimic",
+                SettingCategory.Flashlight => "Flashlight",
                 SettingCategory.Systems => "Systems",
                 SettingCategory.Debug => "Debug",
                 _ => category.ToString()

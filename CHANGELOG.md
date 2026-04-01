@@ -1,4 +1,12 @@
 # Changelog
+## April 1
+### Added
+- Mimic added. The mimic spawns at various locations around the apartment, and needs to be shined with the flashlight or else the player will be jumpscared. Jumpscares from the mimic only take battery away, instead of a full game-over.
+- Settings now incorporate the mimic.
+
+### Fixed
+- Stalker now properly looks toward the Player/Cameras.
+
 ## March 30
 ### Added
 - Added a "Reset to Default" button to restore default settings

@@ -2,19 +2,15 @@ using UnityEngine;
 using FNaS.MasterNodes;
 
 namespace FNaS.Systems {
-    [CreateAssetMenu(menuName = "FNaS/Systems/Game Attention State", fileName = "GameAttentionState")]
-    public class GameAttentionState : ScriptableObject {
-        [Header("Attention Flags")]
-        public bool isWorking;
-        public bool isCameraActive;
+    public class GameAttentionState : MonoBehaviour {
+        [Header("Monitor state")]
+        public bool isMonitorInUse;
 
-        [Header("Camera Context")]
+        [Header("Camera feed state")]
+        public bool isCameraActive;
         public MasterNode activeCameraNode;
 
-        public void ResetState() {
-            isWorking = false;
-            isCameraActive = false;
-            activeCameraNode = null;
-        }
+        [Header("World-space look target for AI")]
+        public Transform activeCameraLookTarget;
     }
 }

@@ -301,5 +301,17 @@ namespace FNaS.Systems {
             maxBatterySeconds = value;
             batteryRemaining = value;
         }
+
+        public void DrainPercent(float percent) {
+            percent = Mathf.Clamp01(percent);
+            float drain = maxBatterySeconds * percent;
+            batteryRemaining = Mathf.Max(0f, batteryRemaining - drain);
+
+            if (batteryRemaining <= 0f) {
+                batteryRemaining = 0f;
+                isOn = false;
+                ApplyIndicator(forceOff: false);
+            }
+        }
     }
 }
