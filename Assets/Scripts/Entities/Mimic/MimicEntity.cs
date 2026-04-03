@@ -308,6 +308,9 @@ namespace FNaS.Entities.Mimic {
         }
 
         private IEnumerator PunishRoutine() {
+            if (playerMovement != null) {
+                playerMovement.PauseActiveMovement();
+            }
             phase = Phase.Punishing;
 
             if (punishAnchor != null) {
@@ -382,6 +385,9 @@ namespace FNaS.Entities.Mimic {
             transform.position = startPosition;
             transform.rotation = startRotation;
 
+            if (playerMovement != null) {
+                playerMovement.ResumeActiveMovement();
+            }
             punishCoroutine = null;
 
             if (verboseLogging) {

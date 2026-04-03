@@ -1,4 +1,14 @@
 # Changelog
+### Added
+- There is now subtle view bobbing when the player moves.
+
+### Changed
+- Movement now paused during Mimic jumpscare.
+
+### Fixed
+- Fixed a bug where moving between doors rapidly led to odd camera behavior.
+- Made it harder for the door to close on the player while moving between door-waypoints.
+
 ## April 1
 ### Added
 - Mimic added. The mimic spawns at various locations around the apartment, and needs to be shined with the flashlight or else the player will be jumpscared. Jumpscares from the mimic only take battery away, instead of a full game-over.
@@ -9,7 +19,7 @@
 
 ## March 30
 ### Added
-- Added a "Reset to Default" button to restore default settings
+- Added a "Reset to Default" button to restore default settings.
 - Slider rows have a value input field.
 
 ### Changed
@@ -19,8 +29,8 @@
 
 ## March 29
 ### Added
-- Added jumpscare logic and jumpscare animation to Stalker
-- Updated Stalker model (still WIP)
+- Added jumpscare logic and jumpscare animation to Stalker.
+- Updated Stalker model (still WIP).
 
 ### Note
 - Settings are undergoing an overhaul, so they are unlikely to work properly.

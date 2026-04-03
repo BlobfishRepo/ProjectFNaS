@@ -4380,6 +4380,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1326174450}
     - target: {fileID: 8084468104632451196, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
+      propertyPath: transitions.Array.data[0].facingMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8084468104632451196, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
       propertyPath: transitions.Array.data[1].facingMode
       value: 1
       objectReference: {fileID: 0}
@@ -4407,6 +4411,22 @@ PrefabInstance:
       propertyPath: transitions.Array.data[0].waypoints.Array.data[1].point
       value: 
       objectReference: {fileID: 320153739}
+    - target: {fileID: 8084468104632451196, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
+      propertyPath: transitions.Array.data[0].waypoints.Array.data[0].lookTarget
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 8084468104632451196, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
+      propertyPath: transitions.Array.data[0].waypoints.Array.data[1].lookTarget
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 8084468104632451196, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
+      propertyPath: transitions.Array.data[0].waypoints.Array.data[0].turnDuration
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8084468104632451196, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
+      propertyPath: transitions.Array.data[0].waypoints.Array.data[1].turnDuration
+      value: 0.1
+      objectReference: {fileID: 0}
     - target: {fileID: 8084468104632451196, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
       propertyPath: transitions.Array.data[0].waypoints.Array.data[0].doorActions.Array.size
       value: 1
@@ -5087,7 +5107,7 @@ MonoBehaviour:
   batteryDrainPercent: 0.1
   punishPulseCount: 4
   punishPulseSpacing: 0.25
-  punishVisibleSeconds: 0.35
+  punishVisibleSeconds: 0.5
   playerMovement: {fileID: 2058945196}
   flashlight: {fileID: 1022328916}
   screenFader: {fileID: 508072287}
@@ -10447,6 +10467,11 @@ MonoBehaviour:
   blockerRegistry: {fileID: 11400000, guid: f25f36472eaa82342983e74fa9b98ce9, type: 2}
   loseState: {fileID: 428565956}
   moveSpeed: 5
+  enableMoveBob: 1
+  bobHeight: 0.05
+  bobSideAmount: 0.015
+  bobCyclesPerMove: 1.5
+  bobReturnSpeed: 14
   CurrentWaypoint: {fileID: 0}
   sfxSource: {fileID: 1462857690}
   footstepClip: {fileID: 8300000, guid: 6ae59d03a98aca647be9118f5d6dd7fb, type: 3}
@@ -13363,7 +13388,7 @@ PrefabInstance:
       objectReference: {fileID: 793509767}
     - target: {fileID: 8084468104632451196, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
       propertyPath: transitions.Array.data[0].facingMode
-      value: 2
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8084468104632451196, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
       propertyPath: transitions.Array.data[1].facingMode
