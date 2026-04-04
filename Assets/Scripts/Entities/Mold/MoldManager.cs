@@ -1,0 +1,759 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+using FNaS.Systems;
+using FNaS.Settings;
+
+namespace FNaS.Entities.Mold {
+    public class MoldManager : MonoBehaviour, IRuntimeSettingsConsumer {
+        public static MoldManager Instance { get; private set; }
+
+        [Serializable]
+        public class MoldEdge {
+            public MoldPatch a;
+            public MoldPatch b;
+        }
+
+        [Serializable]
+        public class RoomGroup {
+            public string roomName = "Room";
+            public Transform roomRoot;
+            public List<MoldEdge> edges = new();
+        }
+
+        [Header("Patch Collection")]
+        [Tooltip("Direct children of this root are treated as room objects. All MoldPatch descendants under them are auto-collected.")]
+        public Transform patchRoot;
+
+        [Header("Sources")]
+        [Tooltip("A patch is a source only if it is listed here.")]
+        public List<MoldPatch> sourcePatches = new();
+
+        [Header("Grouped Edge Data")]
+        [Tooltip("Edges are authored centrally here, grouped by room for organization only.")]
+        public List<RoomGroup> roomGroups = new();
+
+        [Header("AI / Spread")]
+        [Range(0, 20)] public int ai = 8;
+        [Min(1)] public int marksPerSuccessfulSpread = 1;
+        [Min(0.01f)] public float markedToActiveSeconds = 1.5f;
+
+        [Header("Surface Weights")]
+        [Min(0)] public int ceilingWeight = 5;
+        [Min(0)] public int wallWeight = 3;
+        [Min(0)] public int floorWeight = 1;
+        [Min(0)] public int lightWeight = 4;
+        [Min(0)] public int cameraWeight = 4;
+
+        [Header("Special Proximity Bias")]
+        public bool useSpecialProximityBias = true;
+        [Min(0)] public int dist0Bonus = 4;
+        [Min(0)] public int dist1Bonus = 2;
+        [Min(0)] public int dist2Bonus = 1;
+
+        [Header("Cleansing")]
+        [Min(0.01f)] public float cleanseTimeConnected = 1.5f;
+        [Min(0.01f)] public float cleanseTimeIsolated = 0.5f;
+
+        [Header("Blood Escalation")]
+        public bool allowBloodPhase = true;
+        [Min(1)] public int bloodAtOrAboveActivePatchCount = 12;
+
+        [Header("Gizmos")]
+        public bool drawAdjacencyGizmos = true;
+        public bool drawPatchSpheres = true;
+        public Color adjacencyColor = Color.cyan;
+        public Color sourceEdgeColor = Color.yellow;
+        public Color isolatedEdgeColor = Color.gray;
+        [Min(0f)] public float gizmoSphereRadius = 0.04f;
+
+        [Header("Graph Data (read-only at runtime)")]
+        [SerializeField] private List<MoldPatch> allPatches = new();
+
+        [Header("Debug")]
+        public bool verboseLogging = false;
+
+        [Header("Runtime (read-only)")]
+        [SerializeField] private int activePatchCount;
+        [SerializeField] private int isolatedPatchCount;
+        [SerializeField] private int bloodPatchCount;
+
+        public IReadOnlyList<MoldPatch> AllPatches => allPatches;
+
+        private GlobalAIScheduler scheduler;
+        private bool subscribed;
+
+        private readonly Dictionary<MoldPatch, List<MoldPatch>> adj = new();
+        private readonly HashSet<MoldPatch> connectedSet = new();
+        private readonly Dictionary<MoldPatch, int> distToNearestLight = new();
+        private readonly Dictionary<MoldPatch, int> distToNearestCamera = new();
+
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) return;
+
+            int runtimeAI = settings.GetInt("mold.ai");
+            if (runtimeAI > 0) {
+                ai = runtimeAI;
+            }
+        }
+
+        private void Awake() {
+            if (Instance != null && Instance != this) {
+                Debug.LogWarning("Duplicate MoldManager found. Destroying extra instance.", this);
+                Destroy(gameObject);
+                return;
+            }
+
+            Instance = this;
+
+            SyncRoomsFromHierarchy();
+            CollectAllPatchesFromRooms();
+            RuntimeCleanup();
+            BuildAdjacency();
+            PrecomputeSpecialDistances();
+            RecomputeConnectivity();
+            RefreshAllPatchStatesAfterConnectivity();
+            RecountDebugStats();
+        }
+
+        private void OnEnable() {
+            TrySubscribeToScheduler();
+        }
+
+        private void Start() {
+            TrySubscribeToScheduler();
+        }
+
+        private void Update() {
+            if (!subscribed) {
+                TrySubscribeToScheduler();
+            }
+        }
+
+        private void OnDisable() {
+            TryUnsubscribeScheduler();
+        }
+
+        private void OnDestroy() {
+            TryUnsubscribeScheduler();
+
+            if (Instance == this) {
+                Instance = null;
+            }
+        }
+
+        private void OnValidate() {
+            if (patchRoot != null) {
+                SyncRoomsFromHierarchy();
+                CollectAllPatchesFromRooms();
+            }
+        }
+
+        private void TrySubscribeToScheduler() {
+            if (subscribed) return;
+
+            if (scheduler == null) {
+                scheduler = GlobalAIScheduler.Instance;
+            }
+
+            if (scheduler == null) return;
+
+            scheduler.OnOpportunityTick -= HandleOpportunityTick;
+            scheduler.OnOpportunityTick += HandleOpportunityTick;
+            subscribed = true;
+
+            if (verboseLogging) {
+                Debug.Log("MoldManager subscribed to GlobalAIScheduler.", this);
+            }
+        }
+
+        private void TryUnsubscribeScheduler() {
+            if (!subscribed) return;
+
+            if (scheduler != null) {
+                scheduler.OnOpportunityTick -= HandleOpportunityTick;
+            }
+
+            subscribed = false;
+        }
+
+        private void HandleOpportunityTick(int tick) {
+            if (ai <= 0) return;
+            if (sourcePatches == null || sourcePatches.Count == 0) return;
+
+            for (int i = 0; i < sourcePatches.Count; i++) {
+                TrySpreadFromSource(sourcePatches[i]);
+            }
+
+            RecomputeConnectivity();
+            RefreshAllPatchStatesAfterConnectivity();
+            TryBloodEscalation();
+            RecountDebugStats();
+        }
+
+        private void SyncRoomsFromHierarchy() {
+            roomGroups ??= new List<RoomGroup>();
+
+            if (patchRoot == null) return;
+
+            var existingByRoot = new Dictionary<Transform, RoomGroup>();
+            foreach (var group in roomGroups) {
+                if (group != null && group.roomRoot != null && !existingByRoot.ContainsKey(group.roomRoot)) {
+                    existingByRoot.Add(group.roomRoot, group);
+                }
+            }
+
+            List<RoomGroup> newGroups = new List<RoomGroup>();
+
+            for (int i = 0; i < patchRoot.childCount; i++) {
+                Transform roomRoot = patchRoot.GetChild(i);
+                if (roomRoot == null) continue;
+
+                RoomGroup group;
+                if (!existingByRoot.TryGetValue(roomRoot, out group) || group == null) {
+                    group = new RoomGroup {
+                        roomRoot = roomRoot,
+                        roomName = roomRoot.name,
+                        edges = new List<MoldEdge>()
+                    };
+                }
+
+                group.roomRoot = roomRoot;
+                group.roomName = roomRoot.name;
+                group.edges ??= new List<MoldEdge>();
+
+                newGroups.Add(group);
+            }
+
+            roomGroups = newGroups;
+        }
+
+        private void CollectAllPatchesFromRooms() {
+            allPatches.Clear();
+
+            if (patchRoot == null) return;
+
+            for (int i = 0; i < patchRoot.childCount; i++) {
+                Transform roomRoot = patchRoot.GetChild(i);
+                if (roomRoot == null) continue;
+
+                List<MoldPatch> roomPatches = roomRoot
+                    .GetComponentsInChildren<MoldPatch>(true)
+                    .Where(p => p != null)
+                    .Distinct()
+                    .ToList();
+
+                foreach (var patch in roomPatches) {
+                    if (!allPatches.Contains(patch)) {
+                        allPatches.Add(patch);
+                    }
+                }
+            }
+        }
+
+        private void RuntimeCleanup() {
+            sourcePatches = sourcePatches.Where(p => p != null).Distinct().ToList();
+            allPatches = allPatches.Where(p => p != null).Distinct().ToList();
+
+            if (roomGroups == null) {
+                roomGroups = new List<RoomGroup>();
+                return;
+            }
+
+            foreach (var group in roomGroups) {
+                if (group == null) continue;
+
+                if (group.roomRoot != null) {
+                    group.roomName = group.roomRoot.name;
+                }
+
+                group.edges ??= new List<MoldEdge>();
+                group.edges = group.edges
+                    .Where(e => e != null && e.a != null && e.b != null && e.a != e.b)
+                    .ToList();
+            }
+        }
+
+        private bool IsSourcePatch(MoldPatch patch) {
+            return patch != null && sourcePatches.Contains(patch);
+        }
+
+        public void BuildAdjacency() {
+            adj.Clear();
+
+            foreach (var patch in allPatches) {
+                if (patch == null) continue;
+                if (!adj.ContainsKey(patch)) {
+                    adj.Add(patch, new List<MoldPatch>());
+                }
+            }
+
+            if (roomGroups == null) return;
+
+            foreach (var group in roomGroups) {
+                if (group == null || group.edges == null) continue;
+
+                foreach (var edge in group.edges) {
+                    if (edge == null || edge.a == null || edge.b == null || edge.a == edge.b) continue;
+
+                    if (!adj.ContainsKey(edge.a)) adj[edge.a] = new List<MoldPatch>();
+                    if (!adj.ContainsKey(edge.b)) adj[edge.b] = new List<MoldPatch>();
+
+                    if (!adj[edge.a].Contains(edge.b)) adj[edge.a].Add(edge.b);
+                    if (!adj[edge.b].Contains(edge.a)) adj[edge.b].Add(edge.a);
+                }
+            }
+        }
+
+        private void TrySpreadFromSource(MoldPatch sourcePatch) {
+            if (sourcePatch == null) return;
+            if (!IsSourcePatch(sourcePatch)) return;
+
+            int roll = UnityEngine.Random.Range(1, 21);
+            if (roll > ai) return;
+
+            List<MoldPatch> connectedRegion = GetConnectedMoldRegionFromSource(sourcePatch);
+            if (connectedRegion.Count == 0) return;
+
+            List<MoldPatch> frontier = GatherLegalFrontier(connectedRegion);
+            if (frontier.Count == 0) return;
+
+            int markCount = Mathf.Min(marksPerSuccessfulSpread, frontier.Count);
+
+            for (int i = 0; i < markCount; i++) {
+                MoldPatch chosen = ChooseWeightedPatch(frontier);
+                if (chosen == null) break;
+
+                frontier.Remove(chosen);
+
+                if (chosen.SpreadState == MoldSpreadState.Clean) {
+                    chosen.SetSpreadState(MoldSpreadState.Marked);
+                    StartCoroutine(CoGrowMarkedToActive(chosen));
+                }
+            }
+        }
+
+        private IEnumerator CoGrowMarkedToActive(MoldPatch patch) {
+            if (patch == null) yield break;
+
+            float t = 0f;
+            while (t < markedToActiveSeconds) {
+                if (patch == null || patch.SpreadState != MoldSpreadState.Marked) yield break;
+
+                t += Time.deltaTime;
+                float fill = Mathf.Clamp01(t / markedToActiveSeconds);
+                patch.SetMarkedFill(fill);
+                yield return null;
+            }
+
+            if (patch != null && patch.SpreadState == MoldSpreadState.Marked) {
+                patch.SetSpreadState(MoldSpreadState.Active);
+                RecomputeConnectivity();
+                RefreshAllPatchStatesAfterConnectivity();
+                TryBloodEscalation();
+                RecountDebugStats();
+            }
+        }
+
+        public bool CanPatchBeCleansed(MoldPatch patch) {
+            if (patch == null) return false;
+            if (IsSourcePatch(patch)) return false;
+            return patch.SpreadState != MoldSpreadState.Clean;
+        }
+
+        public float GetCleanseDuration(MoldPatch patch) {
+            if (patch == null) return cleanseTimeConnected;
+            return patch.SpreadState == MoldSpreadState.Isolated ? cleanseTimeIsolated : cleanseTimeConnected;
+        }
+
+        public void CleansePatch(MoldPatch patch) {
+            if (!CanPatchBeCleansed(patch)) return;
+
+            patch.ForceClean();
+
+            RecomputeConnectivity();
+            RefreshAllPatchStatesAfterConnectivity();
+            RecountDebugStats();
+        }
+
+        private void RecomputeConnectivity() {
+            connectedSet.Clear();
+
+            Queue<MoldPatch> q = new Queue<MoldPatch>();
+
+            foreach (var src in sourcePatches) {
+                if (src == null) continue;
+
+                if (connectedSet.Add(src)) {
+                    q.Enqueue(src);
+                }
+            }
+
+            while (q.Count > 0) {
+                MoldPatch current = q.Dequeue();
+
+                if (!adj.TryGetValue(current, out List<MoldPatch> neighbors)) continue;
+
+                foreach (var next in neighbors) {
+                    if (next == null || connectedSet.Contains(next)) continue;
+
+                    bool traversable =
+                        IsSourcePatch(next) ||
+                        next.SpreadState == MoldSpreadState.Marked ||
+                        next.SpreadState == MoldSpreadState.Active ||
+                        next.SpreadState == MoldSpreadState.Isolated;
+
+                    if (!traversable) continue;
+
+                    connectedSet.Add(next);
+                    q.Enqueue(next);
+                }
+            }
+        }
+
+        private void RefreshAllPatchStatesAfterConnectivity() {
+            foreach (var patch in allPatches) {
+                if (patch == null) continue;
+
+                if (IsSourcePatch(patch)) {
+                    patch.SetSpreadState(MoldSpreadState.Active);
+                    continue;
+                }
+
+                switch (patch.SpreadState) {
+                    case MoldSpreadState.Clean:
+                        break;
+
+                    case MoldSpreadState.Marked:
+                        break;
+
+                    case MoldSpreadState.Active:
+                    case MoldSpreadState.Isolated:
+                        bool connected = connectedSet.Contains(patch);
+                        patch.SetSpreadState(connected ? MoldSpreadState.Active : MoldSpreadState.Isolated);
+                        break;
+                }
+            }
+        }
+
+        private List<MoldPatch> GetConnectedMoldRegionFromSource(MoldPatch sourcePatch) {
+            List<MoldPatch> result = new List<MoldPatch>();
+            if (sourcePatch == null) return result;
+
+            HashSet<MoldPatch> visited = new HashSet<MoldPatch>();
+            Queue<MoldPatch> q = new Queue<MoldPatch>();
+
+            visited.Add(sourcePatch);
+            q.Enqueue(sourcePatch);
+
+            while (q.Count > 0) {
+                MoldPatch current = q.Dequeue();
+                result.Add(current);
+
+                if (!adj.TryGetValue(current, out List<MoldPatch> neighbors)) continue;
+
+                foreach (var next in neighbors) {
+                    if (next == null || visited.Contains(next)) continue;
+
+                    bool traversable = IsSourcePatch(next) || next.SpreadState == MoldSpreadState.Active;
+                    if (!traversable) continue;
+
+                    visited.Add(next);
+                    q.Enqueue(next);
+                }
+            }
+
+            return result;
+        }
+
+        private readonly List<MoldPatch> frontierBuffer = new List<MoldPatch>();
+        private readonly HashSet<MoldPatch> frontierSet = new HashSet<MoldPatch>();
+
+        private List<MoldPatch> GatherLegalFrontier(List<MoldPatch> connectedRegion) {
+            frontierBuffer.Clear();
+            frontierSet.Clear();
+
+            for (int i = 0; i < connectedRegion.Count; i++) {
+                var patch = connectedRegion[i];
+                if (patch == null) continue;
+
+                if (!adj.TryGetValue(patch, out List<MoldPatch> neighbors)) continue;
+
+                for (int j = 0; j < neighbors.Count; j++) {
+                    var next = neighbors[j];
+                    if (next == null) continue;
+                    if (IsSourcePatch(next)) continue;
+                    if (next.SpreadState != MoldSpreadState.Clean) continue;
+
+                    if (frontierSet.Add(next)) {
+                        frontierBuffer.Add(next);
+                    }
+                }
+            }
+
+            return frontierBuffer;
+        }
+
+        private readonly List<int> weightBuffer = new List<int>();
+
+        private MoldPatch ChooseWeightedPatch(List<MoldPatch> candidates) {
+            if (candidates == null || candidates.Count == 0) return null;
+
+            weightBuffer.Clear();
+
+            int total = 0;
+
+            for (int i = 0; i < candidates.Count; i++) {
+                int w = Mathf.Max(0, GetPatchWeight(candidates[i]));
+                weightBuffer.Add(w);
+                total += w;
+            }
+
+            if (total <= 0) {
+                return candidates[UnityEngine.Random.Range(0, candidates.Count)];
+            }
+
+            int roll = UnityEngine.Random.Range(0, total);
+            int running = 0;
+
+            for (int i = 0; i < candidates.Count; i++) {
+                running += weightBuffer[i];
+                if (roll < running) {
+                    return candidates[i];
+                }
+            }
+
+            return candidates[candidates.Count - 1];
+        }
+
+        private int GetPatchWeight(MoldPatch patch) {
+            if (patch == null) return 0;
+
+            int weight = patch.surfaceType switch {
+                MoldSurfaceType.Ceiling => ceilingWeight,
+                MoldSurfaceType.Wall => wallWeight,
+                MoldSurfaceType.Floor => floorWeight,
+                MoldSurfaceType.Light => lightWeight,
+                MoldSurfaceType.Camera => cameraWeight,
+                _ => 1
+            };
+
+            if (useSpecialProximityBias) {
+                if (distToNearestLight.TryGetValue(patch, out int dLight)) {
+                    weight += DistanceBonus(dLight);
+                }
+
+                if (distToNearestCamera.TryGetValue(patch, out int dCam)) {
+                    weight += DistanceBonus(dCam);
+                }
+            }
+
+            return Mathf.Max(0, weight);
+        }
+
+        private int DistanceBonus(int dist) {
+            return dist switch {
+                0 => dist0Bonus,
+                1 => dist1Bonus,
+                2 => dist2Bonus,
+                _ => 0
+            };
+        }
+
+        private void PrecomputeSpecialDistances() {
+            distToNearestLight.Clear();
+            distToNearestCamera.Clear();
+
+            MultiSourceBfsDistance(
+                allPatches.Where(p => p != null && p.surfaceType == MoldSurfaceType.Light).ToList(),
+                distToNearestLight
+            );
+
+            MultiSourceBfsDistance(
+                allPatches.Where(p => p != null && p.surfaceType == MoldSurfaceType.Camera).ToList(),
+                distToNearestCamera
+            );
+        }
+
+        private void MultiSourceBfsDistance(List<MoldPatch> starts, Dictionary<MoldPatch, int> outDistances) {
+            Queue<MoldPatch> q = new Queue<MoldPatch>();
+            HashSet<MoldPatch> visited = new HashSet<MoldPatch>();
+
+            foreach (var s in starts) {
+                if (s == null) continue;
+                visited.Add(s);
+                outDistances[s] = 0;
+                q.Enqueue(s);
+            }
+
+            while (q.Count > 0) {
+                MoldPatch current = q.Dequeue();
+                int baseDist = outDistances[current];
+
+                if (!adj.TryGetValue(current, out List<MoldPatch> neighbors)) continue;
+
+                foreach (var next in neighbors) {
+                    if (next == null || visited.Contains(next)) continue;
+
+                    visited.Add(next);
+                    outDistances[next] = baseDist + 1;
+                    q.Enqueue(next);
+                }
+            }
+        }
+
+        private void TryBloodEscalation() {
+            if (!allowBloodPhase) return;
+
+            int connectedActiveCount = 0;
+
+            for (int i = 0; i < allPatches.Count; i++) {
+                MoldPatch p = allPatches[i];
+                if (p == null) continue;
+
+                if (p.SpreadState == MoldSpreadState.Active || IsSourcePatch(p)) {
+                    connectedActiveCount++;
+                }
+            }
+
+            if (connectedActiveCount < bloodAtOrAboveActivePatchCount) return;
+
+            for (int i = 0; i < allPatches.Count; i++) {
+                MoldPatch p = allPatches[i];
+                if (p == null) continue;
+                if (p.SpreadState == MoldSpreadState.Clean) continue;
+
+                p.SetCorruptionPhase(MoldCorruptionPhase.Blood);
+            }
+        }
+
+        private void RecountDebugStats() {
+            activePatchCount = 0;
+            isolatedPatchCount = 0;
+            bloodPatchCount = 0;
+
+            for (int i = 0; i < allPatches.Count; i++) {
+                MoldPatch p = allPatches[i];
+                if (p == null) continue;
+
+                if (p.SpreadState == MoldSpreadState.Active) {
+                    activePatchCount++;
+                }
+
+                if (p.SpreadState == MoldSpreadState.Isolated) {
+                    isolatedPatchCount++;
+                }
+
+                if (p.CorruptionPhase == MoldCorruptionPhase.Blood &&
+                    p.SpreadState != MoldSpreadState.Clean) {
+                    bloodPatchCount++;
+                }
+            }
+        }
+
+        private Vector3 GetPatchDrawPosition(MoldPatch patch) {
+            if (patch == null) return Vector3.zero;
+
+            if (patch.targetRenderers != null) {
+                for (int i = 0; i < patch.targetRenderers.Length; i++) {
+                    Renderer r = patch.targetRenderers[i];
+                    if (r != null) {
+                        return r.bounds.center;
+                    }
+                }
+            }
+
+            return patch.transform.position;
+        }
+
+        private void OnDrawGizmosSelected() {
+            if (!drawAdjacencyGizmos) return;
+
+            if (adj.Count == 0) {
+                CollectAllPatchesFromRooms();
+                BuildAdjacency();
+            }
+
+            HashSet<(MoldPatch, MoldPatch)> drawn = new HashSet<(MoldPatch, MoldPatch)>();
+
+            foreach (var kvp in adj) {
+                MoldPatch a = kvp.Key;
+                if (a == null) continue;
+
+                Vector3 aPos = GetPatchDrawPosition(a);
+
+                if (drawPatchSpheres) {
+                    Gizmos.color = connectedSet.Contains(a)
+                        ? (IsSourcePatch(a) ? sourceEdgeColor : adjacencyColor)
+                        : isolatedEdgeColor;
+
+                    Gizmos.DrawSphere(aPos, gizmoSphereRadius);
+                }
+
+                foreach (var b in kvp.Value) {
+                    if (b == null) continue;
+
+                    var k1 = (a, b);
+                    var k2 = (b, a);
+                    if (drawn.Contains(k1) || drawn.Contains(k2)) continue;
+
+                    drawn.Add(k1);
+
+                    Vector3 bPos = GetPatchDrawPosition(b);
+
+                    bool eitherSource = IsSourcePatch(a) || IsSourcePatch(b);
+                    bool bothConnected = connectedSet.Contains(a) && connectedSet.Contains(b);
+
+                    if (eitherSource) {
+                        Gizmos.color = sourceEdgeColor;
+                    }
+                    else if (bothConnected) {
+                        Gizmos.color = adjacencyColor;
+                    }
+                    else {
+                        Gizmos.color = isolatedEdgeColor;
+                    }
+
+                    Gizmos.DrawLine(aPos, bPos);
+                }
+            }
+        }
+
+        [ContextMenu("Mold/Sync Rooms From Hierarchy")]
+        private void DebugSyncRoomsFromHierarchy() {
+            SyncRoomsFromHierarchy();
+            CollectAllPatchesFromRooms();
+
+            Debug.Log($"[MoldManager] Synced {roomGroups.Count} room groups and collected {allPatches.Count} patches.", this);
+        }
+
+        [ContextMenu("Mold/Rebuild Graph")]
+        private void DebugRebuildGraph() {
+            CollectAllPatchesFromRooms();
+            RuntimeCleanup();
+            BuildAdjacency();
+            PrecomputeSpecialDistances();
+            RecomputeConnectivity();
+            RefreshAllPatchStatesAfterConnectivity();
+            RecountDebugStats();
+
+            Debug.Log($"[MoldManager] Rebuilt adjacency for {adj.Count} patches.", this);
+        }
+
+        [ContextMenu("Mold/Recompute Connectivity")]
+        private void DebugRecomputeConnectivity() {
+            RecomputeConnectivity();
+            RefreshAllPatchStatesAfterConnectivity();
+            RecountDebugStats();
+
+            Debug.Log($"[MoldManager] Recomputed connectivity. Connected = {connectedSet.Count}", this);
+        }
+
+        [ContextMenu("Mold/Force Opportunity Tick")]
+        private void DebugForceOpportunityTick() {
+            HandleOpportunityTick(scheduler != null ? scheduler.CurrentTick : 0);
+        }
+    }
+}

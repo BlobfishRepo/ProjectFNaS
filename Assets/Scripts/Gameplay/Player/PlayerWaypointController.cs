@@ -11,6 +11,7 @@ namespace FNaS.Gameplay {
         public Transform rigTransform;
         public Transform viewPivot;
         public Waypoint startingWaypoint;
+        public PlayerSlowZoneTracker slowZoneTracker;
 
         [Header("Systems")]
         public BlockerRegistry blockerRegistry;
@@ -234,7 +235,7 @@ namespace FNaS.Gameplay {
                 yield break;
             }
 
-            float speed = Mathf.Max(0.01f, moveSpeed);
+            float baseSpeed = Mathf.Max(0.01f, moveSpeed);
 
             int nextTurnIndex = 0;
             Quaternion turnFrom = startYaw;
@@ -258,7 +259,17 @@ namespace FNaS.Gameplay {
                 distAtPoint[i] = distAtPoint[i - 1] + segLen[i - 1];
             }
 
-            float AnticipationDist() => speed * Mathf.Max(0f, turnAnticipationSeconds);
+            float CurrentSpeed() {
+                float s = baseSpeed;
+
+                if (slowZoneTracker != null) {
+                    s *= slowZoneTracker.Multiplier;
+                }
+
+                return s;
+            }
+
+            float AnticipationDist() => CurrentSpeed() * Mathf.Max(0f, turnAnticipationSeconds);
 
             float traveled = 0f;
 
@@ -268,7 +279,13 @@ namespace FNaS.Gameplay {
                     continue;
                 }
 
-                traveled += speed * Time.deltaTime;
+                float speed = baseSpeed;
+
+                if (slowZoneTracker != null) {
+                    speed *= slowZoneTracker.Multiplier;
+                }
+
+                traveled += CurrentSpeed() * Time.deltaTime;
                 traveled = Mathf.Min(traveled, totalLen);
 
                 int seg = 0;

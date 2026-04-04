@@ -55,7 +55,7 @@ namespace FNaS.Settings {
                 label = "Player Move Speed",
                 category = SettingCategory.Player,
                 controlType = SettingControlType.FloatSlider,
-                defaultFloat = 6f,
+                defaultFloat = 5f,
                 min = 1f,
                 max = 10f
             },

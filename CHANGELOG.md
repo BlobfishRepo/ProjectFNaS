@@ -1,4 +1,14 @@
 # Changelog
+## April 4
+### Added
+- Mold backend first-pass implementation added. The Mold will spread from sources, hindering movement, camera visibility, and light visibility to relevant regions.
+- Added a new waypoint node close at the left-side of the hallway.
+- Added a Mold Spray (set to E) to revert status of a patch of mold.
+
+### Issues
+- Significant issues with framerate are present.
+
+## April 2
 ### Added
 - There is now subtle view bobbing when the player moves.
 
