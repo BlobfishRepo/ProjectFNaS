@@ -25,6 +25,7 @@ namespace FNaS.Settings {
         Stalker,
         LostGirl,
         Mimic,
+        Mold,
         Flashlight,
         Systems,
         Debug
@@ -126,6 +127,15 @@ namespace FNaS.Settings {
                 max = 20
             },
             new SettingDefinition {
+                key = "mold.ai",
+                label = "Mold AI",
+                category = SettingCategory.Mold,
+                controlType = SettingControlType.IntSlider,
+                defaultInt = 10,
+                min = 0,
+                max = 20
+            },
+            new SettingDefinition {
                 key = "globalAI.baseIntervalSeconds",
                 label = "Global AI Tick Interval",
                 category = SettingCategory.Systems,
@@ -184,6 +194,7 @@ namespace FNaS.Settings {
                 SettingCategory.Stalker => "Stalker",
                 SettingCategory.LostGirl => "Lost Girl",
                 SettingCategory.Mimic => "Mimic",
+                SettingCategory.Mold => "Mold",
                 SettingCategory.Flashlight => "Flashlight",
                 SettingCategory.Systems => "Systems",
                 SettingCategory.Debug => "Debug",

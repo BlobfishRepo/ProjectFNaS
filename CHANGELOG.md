@@ -1,4 +1,18 @@
 # Changelog
+## April 5
+### Added
+- Mold AI added to settings page.
+- Blood mode for Mold properly added.
+
+### Changed
+- Apartment lighting changed to mixed lighting for significantly improved framerate.
+- Monitor static noise changed to a shader to reduce load on CPU.
+- Slight tweaks to lighting and global volume settings.
+
+### Issues
+- Debug settings go off the page.
+- Security Cameras are basically unreadable.
+
 ## April 4
 ### Added
 - Mold backend first-pass implementation added. The Mold will spread from sources, hindering movement, camera visibility, and light visibility to relevant regions.

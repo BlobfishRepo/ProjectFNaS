@@ -59,7 +59,7 @@ namespace FNaS.Entities.Mold {
 
         [Header("Blood Escalation")]
         public bool allowBloodPhase = true;
-        [Min(1)] public int bloodAtOrAboveActivePatchCount = 12;
+        [Min(0.01f)] public float bloodTransitionSeconds = 30f;
 
         [Header("Gizmos")]
         public bool drawAdjacencyGizmos = true;
@@ -84,19 +84,17 @@ namespace FNaS.Entities.Mold {
 
         private GlobalAIScheduler scheduler;
         private bool subscribed;
+        private bool aiDisabled;
 
         private readonly Dictionary<MoldPatch, List<MoldPatch>> adj = new();
         private readonly HashSet<MoldPatch> connectedSet = new();
         private readonly Dictionary<MoldPatch, int> distToNearestLight = new();
         private readonly Dictionary<MoldPatch, int> distToNearestCamera = new();
+        private readonly Dictionary<MoldPatch, float> bloodTimerByPatch = new();
 
         public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
             if (settings == null) return;
-
-            int runtimeAI = settings.GetInt("mold.ai");
-            if (runtimeAI > 0) {
-                ai = runtimeAI;
-            }
+            ai = settings.GetInt("mold.ai");
         }
 
         private void Awake() {
@@ -124,12 +122,37 @@ namespace FNaS.Entities.Mold {
 
         private void Start() {
             TrySubscribeToScheduler();
+
+            if (ai <= 0) {
+                EnterAIDisabledState();
+            }
+            else {
+                ExitAIDisabledState();
+            }
         }
 
         private void Update() {
             if (!subscribed) {
                 TrySubscribeToScheduler();
             }
+
+            HandleAIDisabledState();
+            UpdateBloodTimers();
+        }
+
+        private bool HandleAIDisabledState() {
+            if (ai <= 0) {
+                if (!aiDisabled) {
+                    EnterAIDisabledState();
+                }
+                return true;
+            }
+
+            if (aiDisabled) {
+                ExitAIDisabledState();
+            }
+
+            return false;
         }
 
         private void OnDisable() {
@@ -179,8 +202,53 @@ namespace FNaS.Entities.Mold {
             subscribed = false;
         }
 
+        private void EnterAIDisabledState() {
+            aiDisabled = true;
+            StopAllCoroutines();
+            ResetAllMoldToClean();
+        }
+
+        private void ExitAIDisabledState() {
+            aiDisabled = false;
+            StopAllCoroutines();
+            ResetToSourceOnlyState();
+        }
+
+        private void ResetAllMoldToClean() {
+            for (int i = 0; i < allPatches.Count; i++) {
+                MoldPatch patch = allPatches[i];
+                if (patch == null) continue;
+
+                patch.ForceClean();
+            }
+
+            connectedSet.Clear();
+            RecountDebugStats();
+        }
+
+        private void ResetToSourceOnlyState() {
+            for (int i = 0; i < allPatches.Count; i++) {
+                MoldPatch patch = allPatches[i];
+                if (patch == null) continue;
+
+                patch.ForceClean();
+            }
+
+            for (int i = 0; i < sourcePatches.Count; i++) {
+                MoldPatch src = sourcePatches[i];
+                if (src == null) continue;
+
+                src.SetSpreadState(MoldSpreadState.Active);
+                src.SetCorruptionPhase(MoldCorruptionPhase.Normal);
+            }
+
+            RecomputeConnectivity();
+            RefreshAllPatchStatesAfterConnectivity();
+            RecountDebugStats();
+        }
+
         private void HandleOpportunityTick(int tick) {
-            if (ai <= 0) return;
+            if (aiDisabled || ai <= 0) return;
             if (sourcePatches == null || sourcePatches.Count == 0) return;
 
             for (int i = 0; i < sourcePatches.Count; i++) {
@@ -189,7 +257,7 @@ namespace FNaS.Entities.Mold {
 
             RecomputeConnectivity();
             RefreshAllPatchStatesAfterConnectivity();
-            TryBloodEscalation();
+            UpdateBloodTimers();
             RecountDebugStats();
         }
 
@@ -352,7 +420,7 @@ namespace FNaS.Entities.Mold {
                 patch.SetSpreadState(MoldSpreadState.Active);
                 RecomputeConnectivity();
                 RefreshAllPatchStatesAfterConnectivity();
-                TryBloodEscalation();
+                UpdateBloodTimers();
                 RecountDebugStats();
             }
         }
@@ -372,6 +440,7 @@ namespace FNaS.Entities.Mold {
             if (!CanPatchBeCleansed(patch)) return;
 
             patch.ForceClean();
+            bloodTimerByPatch.Remove(patch);
 
             RecomputeConnectivity();
             RefreshAllPatchStatesAfterConnectivity();
@@ -418,7 +487,9 @@ namespace FNaS.Entities.Mold {
                 if (patch == null) continue;
 
                 if (IsSourcePatch(patch)) {
-                    patch.SetSpreadState(MoldSpreadState.Active);
+                    if (!aiDisabled) {
+                        patch.SetSpreadState(MoldSpreadState.Active);
+                    }
                     continue;
                 }
 
@@ -604,28 +675,89 @@ namespace FNaS.Entities.Mold {
             }
         }
 
-        private void TryBloodEscalation() {
-            if (!allowBloodPhase) return;
+        private void UpdateBloodTimers() {
+            if (!allowBloodPhase) {
+                ClearAllBlood();
+                return;
+            }
 
-            int connectedActiveCount = 0;
+            if (ai <= 0) {
+                ClearAllBlood();
+                return;
+            }
 
             for (int i = 0; i < allPatches.Count; i++) {
-                MoldPatch p = allPatches[i];
-                if (p == null) continue;
+                MoldPatch patch = allPatches[i];
+                if (patch == null) continue;
 
-                if (p.SpreadState == MoldSpreadState.Active || IsSourcePatch(p)) {
-                    connectedActiveCount++;
+                if (patch.SpreadState == MoldSpreadState.Clean) {
+                    bloodTimerByPatch.Remove(patch);
+
+                    if (patch.CorruptionPhase != MoldCorruptionPhase.Normal) {
+                        patch.SetCorruptionPhase(MoldCorruptionPhase.Normal);
+                    }
+
+                    continue;
+                }
+
+                bool shouldAccumulate = HasMarkedOrActiveNeighbor(patch);
+
+                if (!shouldAccumulate) {
+                    bloodTimerByPatch.Remove(patch);
+
+                    if (patch.CorruptionPhase != MoldCorruptionPhase.Normal) {
+                        patch.SetCorruptionPhase(MoldCorruptionPhase.Normal);
+                    }
+
+                    continue;
+                }
+
+                float timer = 0f;
+                bloodTimerByPatch.TryGetValue(patch, out timer);
+                timer += Time.deltaTime;
+                bloodTimerByPatch[patch] = timer;
+
+                if (timer >= bloodTransitionSeconds) {
+                    if (patch.CorruptionPhase != MoldCorruptionPhase.Blood) {
+                        patch.SetCorruptionPhase(MoldCorruptionPhase.Blood);
+                    }
+                }
+                else {
+                    if (patch.CorruptionPhase != MoldCorruptionPhase.Normal) {
+                        patch.SetCorruptionPhase(MoldCorruptionPhase.Normal);
+                    }
+                }
+            }
+        }
+
+        private bool HasMarkedOrActiveNeighbor(MoldPatch patch) {
+            if (patch == null) return false;
+            if (!adj.TryGetValue(patch, out List<MoldPatch> neighbors)) return false;
+
+            for (int i = 0; i < neighbors.Count; i++) {
+                MoldPatch n = neighbors[i];
+                if (n == null) continue;
+
+                if (n.SpreadState == MoldSpreadState.Marked ||
+                    n.SpreadState == MoldSpreadState.Active) {
+                    return true;
                 }
             }
 
-            if (connectedActiveCount < bloodAtOrAboveActivePatchCount) return;
+            return false;
+        }
+
+        private void ClearAllBlood() {
+            bloodTimerByPatch.Clear();
 
             for (int i = 0; i < allPatches.Count; i++) {
-                MoldPatch p = allPatches[i];
-                if (p == null) continue;
-                if (p.SpreadState == MoldSpreadState.Clean) continue;
+                MoldPatch patch = allPatches[i];
+                if (patch == null) continue;
+                if (patch.SpreadState == MoldSpreadState.Clean) continue;
 
-                p.SetCorruptionPhase(MoldCorruptionPhase.Blood);
+                if (patch.CorruptionPhase != MoldCorruptionPhase.Normal) {
+                    patch.SetCorruptionPhase(MoldCorruptionPhase.Normal);
+                }
             }
         }
 
@@ -744,6 +876,12 @@ namespace FNaS.Entities.Mold {
 
         [ContextMenu("Mold/Recompute Connectivity")]
         private void DebugRecomputeConnectivity() {
+            if (aiDisabled || ai <= 0) {
+                ResetAllMoldToClean();
+                Debug.Log("[MoldManager] AI disabled; forced all mold clean.", this);
+                return;
+            }
+
             RecomputeConnectivity();
             RefreshAllPatchStatesAfterConnectivity();
             RecountDebugStats();
