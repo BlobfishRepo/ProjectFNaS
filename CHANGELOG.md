@@ -1,4 +1,8 @@
 # Changelog
+## April 7
+### Changed
+- Added Camera-only lights, improving visibility.
+
 ## April 5
 ### Added
 - Mold AI added to settings page.

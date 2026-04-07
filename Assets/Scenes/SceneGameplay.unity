@@ -1121,6 +1121,10 @@ PrefabInstance:
       propertyPath: m_BackGroundColor.r
       value: 0.11764706
       objectReference: {fileID: 0}
+    - target: {fileID: 6908930273941332909, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8376790476646387499, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_LocalPosition.x
       value: -24.67
@@ -13294,23 +13298,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8376790476646387499, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.48354173
+      value: 0.47224268
       objectReference: {fileID: 0}
     - target: {fileID: 8376790476646387499, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.059361372
+      value: 0.12771375
       objectReference: {fileID: 0}
     - target: {fileID: 8376790476646387499, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.8645166
+      value: -0.84192234
       objectReference: {fileID: 0}
     - target: {fileID: 8376790476646387499, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.12359099
+      value: 0.2276903
       objectReference: {fileID: 0}
     - target: {fileID: 8376790476646387499, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
-      value: 15.73
+      value: 30.266
       objectReference: {fileID: 0}
     - target: {fileID: 8376790476646387499, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
@@ -13318,7 +13322,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8376790476646387499, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: 1.005
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 9222466221836442537, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_RenderPostProcessing
