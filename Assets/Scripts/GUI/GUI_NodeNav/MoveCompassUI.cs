@@ -89,10 +89,7 @@ namespace FNaS.Gameplay {
                 var ov = view.GetOverride(dir);
 
                 if (ov.enabled) {
-                    if (ov.targetWaypoint == null) return false;
-
-                    WaypointTransition tr = waypoint.GetTransition(dir);
-                    return tr != null && tr.target == ov.targetWaypoint;
+                    return ov.targetWaypoint != null;
                 }
             }
 

@@ -244,7 +244,12 @@ namespace FNaS.Gameplay {
 
             if (currentView != null) {
                 var overrideMove = currentView.GetOverride(dir);
-                if (overrideMove.enabled && overrideMove.targetWaypoint != null) {
+
+                if (overrideMove.enabled) {
+                    if (overrideMove.targetWaypoint == null) {
+                        return;
+                    }
+
                     transition = waypoint.GetTransitionTo(overrideMove.targetWaypoint);
                 }
             }

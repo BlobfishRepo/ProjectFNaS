@@ -3,6 +3,10 @@
 ### Changed
 - Added Camera-only lights, improving visibility.
 
+### Fixed
+- Fixed a bug with the movement compass not displaying the correct possible moves in an override situation.
+- Fixed empty overrides not properly preventing movement.
+
 ## April 5
 ### Added
 - Mold AI added to settings page.
