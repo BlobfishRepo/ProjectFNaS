@@ -20,7 +20,7 @@ namespace FNaS.Entities.LostGirl {
 
         [Header("Settings")]
         [SerializeField] private string triggerName = "JumpscareTrigger";
-        [SerializeField] private float jumpscareDelayBeforeLose = 0.5f;
+        [SerializeField] private float jumpscareDelayBeforeLose = 0.35f;
 
         [Header("Audio")]
         [SerializeField] private AudioClip jumpscareClip;

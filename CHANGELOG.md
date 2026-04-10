@@ -1,4 +1,25 @@
 # Changelog
+## April 10
+### Added
+- 3 new cameras added monitoring:
+  - Pantry
+  - Living room
+  - Dining room
+
+### Changed
+- Movement nodes and views expanded to allow movement through:
+  - Hallway
+  - Living room
+  - TV area
+  - Dining room
+  - Kitchen
+- Security monitor updated to account for new cameras.
+- Adjusted position of some cameras, mold patches, mimic spawns, and Lost Girl glasses to account for new layout.
+- Adjusted light in several rooms.
+
+### Fixed
+- Increased radius of mold spray to make it easier to target mold clumps.
+
 ## April 9
 ### Added
 - Apartment model now has added rooms:

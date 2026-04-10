@@ -80,7 +80,7 @@ namespace FNaS.Entities.Stalker {
                 return;
             }
 
-            Debug.Log(target != null ? $"Look target: {target.name}" : "Look target: null");
+            //Debug.Log(target != null ? $"Look target: {target.name}" : "Look target: null");
             ApplyLook(target.position);
         }
 
