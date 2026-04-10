@@ -1,4 +1,12 @@
 # Changelog
+## April 9
+### Added
+- Apartment model now has added rooms:
+  - Pantry
+  - Hallway
+  - Living room
+  - Kitchen
+
 ## April 7
 ### Changed
 - Added Camera-only lights, improving visibility.
