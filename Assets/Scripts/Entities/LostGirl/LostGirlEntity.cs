@@ -8,6 +8,7 @@ namespace FNaS.Entities.LostGirl {
         public enum LostGirlPhase {
             PreSpawn,
             InGlass,
+            Queued,
             Emerging,
             Chasing,
             Jumpscare
@@ -15,25 +16,45 @@ namespace FNaS.Entities.LostGirl {
 
         [Header("Core AI")]
         [Range(0, 20)] public int ai = 10;
-
-        [Header("Scheduler")]
         [Min(1)] public int preSpawnOpportunityTicks = 2;
         [Min(1)] public int glassProgressOpportunityTicks = 2;
 
-        [Header("Glass Stages")]
-        [Tooltip("Visible glass stages are 0..maxGlassStage.")]
+        [Header("Glass")]
         public int maxGlassStage = 3;
 
-        [Header("Flashlight")]
-        public float flashlightHoldSecondsToPushback = 2f;
+        [Header("Observation")]
+        public float observeHoldSecondsToPushback = 1.25f;
+        public float observationCheckInterval = 0.10f;
+        [Range(0f, 180f)] public float directObserveAngleDegrees = 25f;
+        public float directObserveMaxDistance = 25f;
+        public LayerMask observationBlockers = ~0;
+        public Transform playerViewOrigin;
+        public GameAttentionState attentionState;
 
         [Header("Emerging")]
-        public float emergeLingerSeconds = 2f;
+        public float emergeLingerSeconds = 0.2f;
 
         [Header("Chase")]
-        public LostGirlMovement.ActiveMoveMode activeMoveMode = LostGirlMovement.ActiveMoveMode.ChaseCurrentPlayer;
-        public float activeChaseDurationSeconds = 5f;
+        public float activeChaseDurationSeconds = 8f;
         public float killDistance = 1.25f;
+        public bool requireLineOfSightForKill = true;
+
+        [Header("Open Door Kill")]
+        public bool instantKillIfAnyDoorOpen = true;
+        public List<Door> trackedDoors = new();
+
+        [Header("Spawn / Region")]
+        public bool requireReachableRegionToSpawn = true;
+        public Transform playerTarget;
+        public Transform playerRegionProbe;
+        public List<LostGirlRegionVolume> playerRegionVolumes = new();
+        public List<LostGirlGlassAnchor> anchors = new();
+
+        [Header("References")]
+        public LoseState loseState;
+        public LostGirlMovement movement;
+        public GameObject activeVisualRoot;
+        public LostGirlJumpscareController jumpscareController;
 
         [Header("Audio")]
         public AudioSource audioSource;
@@ -45,31 +66,24 @@ namespace FNaS.Entities.LostGirl {
         public AudioClip runningLoopClip;
         [Range(0f, 1f)] public float runningLoopVolume = 0.9f;
 
-        [Header("References")]
-        public Transform playerTarget;
-        public FlashlightTool flashlight;
-        public LoseState loseState;
-        public LostGirlMovement movement;
-        public GameObject activeVisualRoot;
-        public LostGirlJumpscareController jumpscareController;
+        [Header("Debug")]
+        public bool verboseLogging = false;
 
-        [Header("Glass Anchors")]
-        public List<LostGirlGlassAnchor> anchors = new();
-
-        [Header("Runtime (read-only)")]
+        [Header("Runtime")]
         [SerializeField] private LostGirlPhase phase = LostGirlPhase.PreSpawn;
         [SerializeField] private int glassStage;
         [SerializeField] private LostGirlGlassAnchor currentAnchor;
+        [SerializeField] private LostGirlRegionId currentPlayerRegion = LostGirlRegionId.None;
 
         private bool subscribedToScheduler;
-        private bool flashlightTouchedSinceLastEligibleTick;
         private bool aiDisabled;
-
-        private float flashlightHoldTimer;
+        private bool reachedMaxStageThisCycle;
         private float emergeTimer;
         private float activeTimer;
-
+        private float observedHoldTimer;
+        private float nextObservationCheckTime;
         private AudioSource runningLoopSource;
+        private LostGirlGlassAnchor lastUsedAnchor;
 
         public LostGirlPhase Phase => phase;
         public int GlassStage => glassStage;
@@ -77,63 +91,365 @@ namespace FNaS.Entities.LostGirl {
 
         public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
             if (settings == null) return;
-
             ai = settings.GetInt("lostGirl.ai");
         }
 
         private void Awake() {
             if (movement == null) movement = GetComponent<LostGirlMovement>();
-
-            if (activeVisualRoot != null) {
-                activeVisualRoot.SetActive(false);
-            }
-
+            if (activeVisualRoot != null) activeVisualRoot.SetActive(false);
             movement?.StopMovement();
-            HideAllAnchorStages();
             StopRunningLoop();
         }
 
         private void OnEnable() {
             TrySubscribeScheduler();
-        }
 
-        private void Start() {
-            EnsureAudioSource();
-            TrySubscribeScheduler();
-            ResetToPreSpawn();
-
-            if (ai <= 0) {
-                EnterAIDisabledState();
-            }
-        }
-
-        private void Update() {
-            if (phase == LostGirlPhase.Jumpscare) return;
-            if (HandleAIDisabledState()) return;
-            if (loseState != null && loseState.hasLost) return;
-
-            if (phase == LostGirlPhase.InGlass) {
-                TrackGlassFlashlightContact();
-                return;
-            }
-
-            if (phase == LostGirlPhase.Emerging) {
-                UpdateEmerging();
-                return;
-            }
-
-            if (phase == LostGirlPhase.Chasing) {
-                UpdateChasing();
+            if (movement != null) {
+                movement.OnMovementFailed += HandleMovementFailed;
+                movement.OnReachedOpenDoor += HandleReachedOpenDoor;
+                movement.verboseLogging = verboseLogging;
             }
         }
 
         private void OnDisable() {
             TryUnsubscribeScheduler();
+
+            if (movement != null) {
+                movement.OnMovementFailed -= HandleMovementFailed;
+                movement.OnReachedOpenDoor -= HandleReachedOpenDoor;
+            }
+
             StopRunningLoop();
         }
 
         private void OnDestroy() {
             TryUnsubscribeScheduler();
+
+            if (movement != null) {
+                movement.OnMovementFailed -= HandleMovementFailed;
+                movement.OnReachedOpenDoor -= HandleReachedOpenDoor;
+            }
+        }
+
+        private void Start() {
+            EnsureAudioSource();
+            ResetToPreSpawn();
+            if (ai <= 0) EnterAIDisabledState();
+        }
+
+        private void Update() {
+            if (phase == LostGirlPhase.Jumpscare) return;
+            if (loseState != null && loseState.hasLost) return;
+            if (HandleAIDisabledState()) return;
+
+            currentPlayerRegion = GetCurrentPlayerRegion();
+
+            if (phase == LostGirlPhase.InGlass || phase == LostGirlPhase.Queued) {
+                UpdateObservation();
+            }
+
+            switch (phase) {
+                case LostGirlPhase.Queued:
+                    if (!IsObserved() && IsCurrentAnchorReachable()) {
+                        ActivateLostGirl();
+                    }
+                    break;
+
+                case LostGirlPhase.Emerging:
+                    emergeTimer += Time.deltaTime;
+                    if (emergeTimer >= emergeLingerSeconds) {
+                        StartChasing();
+                    }
+                    break;
+
+                case LostGirlPhase.Chasing:
+                    UpdateChasing();
+                    break;
+            }
+        }
+
+        private void HandleOpportunityTick(int tick) {
+            if (aiDisabled || ai <= 0) return;
+            if (loseState != null && loseState.hasLost) return;
+
+            if (phase == LostGirlPhase.PreSpawn) {
+                if (tick % Mathf.Max(1, preSpawnOpportunityTicks) != 0) return;
+                if (Random.Range(0, 21) <= ai) {
+                    SpawnIntoRandomGlass();
+                }
+                return;
+            }
+
+            if (phase == LostGirlPhase.InGlass) {
+                if (tick % Mathf.Max(1, glassProgressOpportunityTicks) != 0) return;
+                if (IsObserved()) return;
+
+                if (glassStage < maxGlassStage) {
+                    glassStage++;
+                    reachedMaxStageThisCycle = glassStage >= maxGlassStage;
+                    ShowCurrentGlassStage();
+                    PlayOneShot(stageProgressClip);
+                    return;
+                }
+
+                if (reachedMaxStageThisCycle) {
+                    reachedMaxStageThisCycle = false;
+                    phase = LostGirlPhase.Queued;
+                    observedHoldTimer = 0f;
+                }
+            }
+        }
+
+        private void SpawnIntoRandomGlass() {
+            LostGirlGlassAnchor next = GetRandomAnchorAvoidingLast();
+            if (next == null) return;
+
+            phase = LostGirlPhase.InGlass;
+            currentAnchor = next;
+            glassStage = 0;
+            observedHoldTimer = 0f;
+            emergeTimer = 0f;
+            activeTimer = 0f;
+            reachedMaxStageThisCycle = false;
+
+            movement?.StopMovement();
+            if (activeVisualRoot != null) activeVisualRoot.SetActive(false);
+
+            HideAllAnchorStages();
+            ShowCurrentGlassStage();
+            StopRunningLoop();
+            PlayOneShot(spawnInClip);
+        }
+
+        private void ActivateLostGirl() {
+            if (currentAnchor == null || currentAnchor.activeSpawnPoint == null) {
+                ResetToPreSpawn();
+                return;
+            }
+
+            bool warped = movement != null && movement.WarpToSpawnPoint(currentAnchor.activeSpawnPoint);
+            if (!warped) {
+                ResetToPreSpawn();
+                return;
+            }
+
+            phase = LostGirlPhase.Emerging;
+            emergeTimer = 0f;
+            activeTimer = 0f;
+            observedHoldTimer = 0f;
+
+            currentAnchor.HideAllStages();
+            if (activeVisualRoot != null) activeVisualRoot.SetActive(true);
+
+            movement?.StopMovement();
+            StopRunningLoop();
+            PlayOneShot(activationClip);
+        }
+
+        private void StartChasing() {
+            phase = LostGirlPhase.Chasing;
+            activeTimer = 0f;
+
+            if (movement != null) {
+                movement.BeginMovement(playerTarget, movement.moveMode);
+            }
+
+            PlayOneShot(runStartClip);
+            StartRunningLoop();
+        }
+
+        private void UpdateChasing() {
+            activeTimer += Time.deltaTime;
+
+            if (CheckOpenDoorAutoKill()) return;
+            if (CheckPlayerKill()) return;
+
+            if (activeTimer >= activeChaseDurationSeconds) {
+                ResetToPreSpawn();
+            }
+        }
+
+        private bool CheckOpenDoorAutoKill() {
+            if (!instantKillIfAnyDoorOpen) return false;
+
+            for (int i = 0; i < trackedDoors.Count; i++) {
+                Door door = trackedDoors[i];
+                if (door != null && door.isOpen) {
+                    TriggerJumpscare("The Lost Girl reached the open door.");
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool CheckPlayerKill() {
+            if (playerTarget == null) return false;
+
+            Vector3 a = transform.position; a.y = 0f;
+            Vector3 b = playerTarget.position; b.y = 0f;
+
+            if (Vector3.Distance(a, b) > killDistance) return false;
+            if (requireLineOfSightForKill && !HasLineOfSight(GetKillOrigin(), GetKillTarget())) return false;
+
+            TriggerJumpscare("The Lost Girl caught the player.");
+            return true;
+        }
+
+        private void TriggerJumpscare(string reason) {
+            if (phase == LostGirlPhase.Jumpscare) return;
+
+            phase = LostGirlPhase.Jumpscare;
+            movement?.StopMovement();
+            StopRunningLoop();
+
+            if (jumpscareController != null) {
+                jumpscareController.PlayJumpscare(reason);
+            }
+            else {
+                loseState?.TriggerLose(reason);
+            }
+        }
+
+        private void UpdateObservation() {
+            if (Time.time < nextObservationCheckTime) return;
+            nextObservationCheckTime = Time.time + Mathf.Max(0.02f, observationCheckInterval);
+
+            if (!IsObserved()) {
+                observedHoldTimer = 0f;
+                return;
+            }
+
+            if (phase != LostGirlPhase.InGlass) return;
+
+            observedHoldTimer += observationCheckInterval;
+            if (observedHoldTimer < observeHoldSecondsToPushback) return;
+
+            observedHoldTimer = 0f;
+            if (glassStage > 0) {
+                glassStage--;
+                reachedMaxStageThisCycle = false;
+                ShowCurrentGlassStage();
+            }
+        }
+
+        private bool IsObserved() {
+            return IsObservedByCamera() || IsObservedInPerson();
+        }
+
+        private bool IsObservedByCamera() {
+            if (attentionState == null) return false;
+            if (!attentionState.isMonitorInUse) return false;
+            if (!attentionState.isCameraActive) return false;
+            if (currentAnchor == null) return false;
+            if (currentAnchor.cameraNode == null) return false;
+
+            return attentionState.activeCameraNode == currentAnchor.cameraNode;
+        }
+
+        private bool IsObservedInPerson() {
+            if (playerViewOrigin == null) return false;
+
+            Transform target = GetObservationTarget();
+            if (target == null) return false;
+
+            Vector3 toTarget = target.position - playerViewOrigin.position;
+            float dist = toTarget.magnitude;
+            if (dist > Mathf.Max(0.01f, directObserveMaxDistance)) return false;
+            if (dist > 0.001f && Vector3.Angle(playerViewOrigin.forward, toTarget) > directObserveAngleDegrees) return false;
+
+            return HasLineOfSight(playerViewOrigin.position, target.position);
+        }
+
+        private bool HasLineOfSight(Vector3 from, Vector3 to) {
+            Vector3 dir = to - from;
+            float len = dir.magnitude;
+            if (len <= 0.001f) return true;
+
+            if (!Physics.Raycast(from, dir.normalized, out RaycastHit hit, len, observationBlockers, QueryTriggerInteraction.Ignore)) {
+                return true;
+            }
+
+            Transform target = GetObservationTarget();
+            return target != null && (hit.transform == target || hit.transform.IsChildOf(target));
+        }
+
+        private Transform GetObservationTarget() {
+            if (currentAnchor == null) return null;
+            return currentAnchor.flashlightTarget != null ? currentAnchor.flashlightTarget : currentAnchor.transform;
+        }
+
+        private bool IsCurrentAnchorReachable() {
+            if (!requireReachableRegionToSpawn) return true;
+            if (currentAnchor == null) return false;
+
+            LostGirlSpawnGate gate = currentAnchor.GetComponentInParent<LostGirlSpawnGate>();
+            return gate != null && gate.Allows(currentPlayerRegion);
+        }
+
+        private LostGirlRegionId GetCurrentPlayerRegion() {
+            Vector3 probePos =
+                playerRegionProbe != null ? playerRegionProbe.position :
+                playerTarget != null ? playerTarget.position :
+                Vector3.positiveInfinity;
+
+            if (!float.IsFinite(probePos.x)) return LostGirlRegionId.None;
+
+            for (int i = 0; i < playerRegionVolumes.Count; i++) {
+                LostGirlRegionVolume v = playerRegionVolumes[i];
+                if (v != null && v.Contains(probePos)) return v.Region;
+            }
+
+            return LostGirlRegionId.None;
+        }
+
+        private LostGirlGlassAnchor GetRandomAnchorAvoidingLast() {
+            if (anchors == null || anchors.Count == 0) return null;
+
+            List<LostGirlGlassAnchor> valid = new();
+            for (int i = 0; i < anchors.Count; i++) {
+                if (anchors[i] != null && anchors[i] != lastUsedAnchor) {
+                    valid.Add(anchors[i]);
+                }
+            }
+
+            if (valid.Count == 0) {
+                for (int i = 0; i < anchors.Count; i++) {
+                    if (anchors[i] != null) valid.Add(anchors[i]);
+                }
+            }
+
+            return valid.Count == 0 ? null : valid[Random.Range(0, valid.Count)];
+        }
+
+        private void HandleMovementFailed(LostGirlMovement.FailureReason reason, Door door) {
+            ResetToPreSpawn();
+        }
+
+        private void HandleReachedOpenDoor(Door door) {
+            TriggerJumpscare("The Lost Girl reached the open door.");
+        }
+
+        public void ResetToPreSpawn() {
+            if (currentAnchor != null) {
+                lastUsedAnchor = currentAnchor;
+            }
+
+            phase = LostGirlPhase.PreSpawn;
+            glassStage = 0;
+            currentAnchor = null;
+            currentPlayerRegion = LostGirlRegionId.None;
+            observedHoldTimer = 0f;
+            emergeTimer = 0f;
+            activeTimer = 0f;
+            reachedMaxStageThisCycle = false;
+
+            movement?.StopMovement();
+
+            if (activeVisualRoot != null) activeVisualRoot.SetActive(false);
+
+            HideAllAnchorStages();
+            StopRunningLoop();
         }
 
         private bool HandleAIDisabledState() {
@@ -142,10 +458,7 @@ namespace FNaS.Entities.LostGirl {
                 return true;
             }
 
-            if (aiDisabled) {
-                ExitAIDisabledState();
-            }
-
+            if (aiDisabled) ExitAIDisabledState();
             return false;
         }
 
@@ -160,291 +473,36 @@ namespace FNaS.Entities.LostGirl {
         }
 
         private void TrySubscribeScheduler() {
-            if (subscribedToScheduler) return;
-            if (GlobalAIScheduler.Instance == null) return;
-
+            if (subscribedToScheduler || GlobalAIScheduler.Instance == null) return;
             GlobalAIScheduler.Instance.OnOpportunityTick += HandleOpportunityTick;
             subscribedToScheduler = true;
         }
 
         private void TryUnsubscribeScheduler() {
             if (!subscribedToScheduler) return;
-
             if (GlobalAIScheduler.Instance != null) {
                 GlobalAIScheduler.Instance.OnOpportunityTick -= HandleOpportunityTick;
             }
-
             subscribedToScheduler = false;
         }
 
-        private void EnsureAudioSource() {
-            if (audioSource == null) {
-                audioSource = GetComponent<AudioSource>();
-                if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
-            }
-
-            audioSource.playOnAwake = false;
-            audioSource.loop = false;
-        }
-
-        private void EnsureRunningLoopSource() {
-            if (runningLoopSource != null) return;
-
-            runningLoopSource = gameObject.AddComponent<AudioSource>();
-            runningLoopSource.playOnAwake = false;
-            runningLoopSource.loop = true;
-            runningLoopSource.spatialBlend = 0f;
-            runningLoopSource.volume = runningLoopVolume;
-        }
-
-        private void HandleOpportunityTick(int tick) {
-            if (aiDisabled || ai <= 0) return;
-            if (loseState != null && loseState.hasLost) return;
-
-            switch (phase) {
-                case LostGirlPhase.PreSpawn:
-                    HandlePreSpawnOpportunity(tick);
-                    break;
-
-                case LostGirlPhase.InGlass:
-                    HandleGlassOpportunity(tick);
-                    break;
-            }
-        }
-
-        private void HandlePreSpawnOpportunity(int tick) {
-            if (preSpawnOpportunityTicks < 1) preSpawnOpportunityTicks = 1;
-            if (tick % preSpawnOpportunityTicks != 0) return;
-
-            int roll = Random.Range(0, 21);
-            if (roll > ai) return;
-
-            SpawnIntoRandomGlass();
-        }
-
-        private void HandleGlassOpportunity(int tick) {
-            if (glassProgressOpportunityTicks < 1) glassProgressOpportunityTicks = 1;
-            if (tick % glassProgressOpportunityTicks != 0) return;
-
-            if (flashlightTouchedSinceLastEligibleTick) {
-                flashlightTouchedSinceLastEligibleTick = false;
-                return;
-            }
-
-            if (glassStage < maxGlassStage) {
-                glassStage++;
-                ShowCurrentGlassStage();
-                PlayOneShot(stageProgressClip);
-                return;
-            }
-
-            ActivateLostGirl();
-        }
-
-        private void TrackGlassFlashlightContact() {
-            if (flashlight == null || !flashlight.isOn) {
-                flashlightHoldTimer = 0f;
-                return;
-            }
-
-            if (currentAnchor == null || currentAnchor.flashlightTarget == null) {
-                flashlightHoldTimer = 0f;
-                return;
-            }
-
-            bool affecting = flashlight.IsIlluminating(currentAnchor.flashlightTarget);
-
-            if (!affecting) {
-                flashlightHoldTimer = 0f;
-                return;
-            }
-
-            // Shared stall rule
-            flashlightTouchedSinceLastEligibleTick = true;
-
-            // Restored pushback rule
-            flashlightHoldTimer += Time.deltaTime;
-            if (flashlightHoldTimer >= flashlightHoldSecondsToPushback) {
-                flashlightHoldTimer = 0f;
-                RevertOneGlassStage();
-            }
-        }
-
-        private void RevertOneGlassStage() {
-            int oldStage = glassStage;
-            glassStage = Mathf.Max(0, glassStage - 1);
-
-            if (glassStage != oldStage) {
-                ShowCurrentGlassStage();
-            }
-
-            // Keep the next eligible progression stalled too.
-            flashlightTouchedSinceLastEligibleTick = true;
-        }
-
-        private void SpawnIntoRandomGlass() {
-            LostGirlGlassAnchor next = GetRandomAnchorExcluding(null);
-            if (next == null) return;
-
-            phase = LostGirlPhase.InGlass;
-            currentAnchor = next;
-            glassStage = 0;
-            flashlightTouchedSinceLastEligibleTick = false;
-            flashlightHoldTimer = 0f;
-            emergeTimer = 0f;
-            activeTimer = 0f;
-
-            movement?.StopMovement();
-
-            if (activeVisualRoot != null) {
-                activeVisualRoot.SetActive(false);
-            }
-
-            StopRunningLoop();
-            HideAllAnchorStages();
-            ShowCurrentGlassStage();
-            PlayOneShot(spawnInClip);
-        }
-
-        private void ActivateLostGirl() {
-            phase = LostGirlPhase.Emerging;
-            flashlightTouchedSinceLastEligibleTick = false;
-            flashlightHoldTimer = 0f;
-            emergeTimer = 0f;
-            activeTimer = 0f;
-
-            currentAnchor?.HideAllStages();
-
-            Transform spawnPoint = null;
-            if (currentAnchor != null) {
-                spawnPoint = currentAnchor.activeSpawnPoint != null
-                    ? currentAnchor.activeSpawnPoint
-                    : currentAnchor.transform;
-            }
-
-            if (spawnPoint != null) {
-                transform.position = spawnPoint.position;
-                transform.rotation = spawnPoint.rotation;
-            }
-
-            if (activeVisualRoot != null) {
-                activeVisualRoot.SetActive(true);
-            }
-
-            movement?.StopMovement();
-            StopRunningLoop();
-            PlayOneShot(activationClip);
-        }
-
-        private void UpdateEmerging() {
-            emergeTimer += Time.deltaTime;
-            if (emergeTimer < emergeLingerSeconds) return;
-
-            StartChasing();
-        }
-
-        private void StartChasing() {
-            phase = LostGirlPhase.Chasing;
-            activeTimer = 0f;
-
-            movement?.BeginMovement(playerTarget, activeMoveMode);
-
-            PlayOneShot(runStartClip);
-            StartRunningLoop();
-        }
-
-        private void UpdateChasing() {
-            activeTimer += Time.deltaTime;
-
-            if (CheckPlayerKill()) {
-                return;
-            }
-
-            if (activeTimer >= activeChaseDurationSeconds) {
-                OnMissedPlayer();
-            }
-        }
-
-        private bool CheckPlayerKill() {
-            if (playerTarget == null) return false;
-
-            Vector3 a = transform.position;
-            Vector3 b = playerTarget.position;
-            a.y = 0f;
-            b.y = 0f;
-
-            float dist = Vector3.Distance(a, b);
-            if (dist > killDistance) return false;
-
-            phase = LostGirlPhase.Jumpscare;
-            movement?.StopMovement();
-            StopRunningLoop();
-
-            if (jumpscareController != null) {
-                jumpscareController.PlayJumpscare("The Lost Girl caught the player.");
-            }
-            else {
-                loseState?.TriggerLose("The Lost Girl caught the player.");
-            }
-
-            return true;
-        }
-
-        private void OnMissedPlayer() {
-            ResetToPreSpawn();
-        }
-
-        public void ResetToPreSpawn() {
-            phase = LostGirlPhase.PreSpawn;
-            glassStage = 0;
-            currentAnchor = null;
-            flashlightTouchedSinceLastEligibleTick = false;
-            flashlightHoldTimer = 0f;
-            emergeTimer = 0f;
-            activeTimer = 0f;
-
-            movement?.StopMovement();
-
-            if (activeVisualRoot != null) {
-                activeVisualRoot.SetActive(false);
-            }
-
-            HideAllAnchorStages();
-            StopRunningLoop();
-        }
-
         private void ShowCurrentGlassStage() {
-            if (currentAnchor != null) {
-                currentAnchor.ShowStage(glassStage);
-            }
+            if (currentAnchor != null) currentAnchor.ShowStage(glassStage);
         }
 
         private void HideAllAnchorStages() {
             if (anchors == null) return;
-
             for (int i = 0; i < anchors.Count; i++) {
-                if (anchors[i] != null) {
-                    anchors[i].HideAllStages();
-                }
+                if (anchors[i] != null) anchors[i].HideAllStages();
             }
         }
 
-        private LostGirlGlassAnchor GetRandomAnchorExcluding(LostGirlGlassAnchor exclude) {
-            if (anchors == null || anchors.Count == 0) return null;
-
-            List<LostGirlGlassAnchor> valid = new();
-            for (int i = 0; i < anchors.Count; i++) {
-                var a = anchors[i];
-                if (a == null) continue;
-                if (a == exclude) continue;
-                valid.Add(a);
-            }
-
-            if (valid.Count == 0) {
-                return exclude;
-            }
-
-            return valid[Random.Range(0, valid.Count)];
+        private void EnsureAudioSource() {
+            if (audioSource != null) return;
+            audioSource = GetComponent<AudioSource>();
+            if (audioSource == null) audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+            audioSource.loop = false;
         }
 
         private void PlayOneShot(AudioClip clip) {
@@ -453,17 +511,16 @@ namespace FNaS.Entities.LostGirl {
         }
 
         private void StartRunningLoop() {
-            EnsureRunningLoopSource();
+            if (runningLoopClip == null) return;
 
-            if (runningLoopClip == null) {
-                StopRunningLoop();
-                return;
+            if (runningLoopSource == null) {
+                runningLoopSource = gameObject.AddComponent<AudioSource>();
+                runningLoopSource.playOnAwake = false;
+                runningLoopSource.loop = true;
+                runningLoopSource.spatialBlend = 0f;
             }
 
-            if (runningLoopSource.clip != runningLoopClip) {
-                runningLoopSource.clip = runningLoopClip;
-            }
-
+            runningLoopSource.clip = runningLoopClip;
             runningLoopSource.volume = runningLoopVolume;
 
             if (!runningLoopSource.isPlaying) {
@@ -475,6 +532,14 @@ namespace FNaS.Entities.LostGirl {
             if (runningLoopSource != null && runningLoopSource.isPlaying) {
                 runningLoopSource.Stop();
             }
+        }
+
+        private Vector3 GetKillOrigin() {
+            return (activeVisualRoot != null ? activeVisualRoot.transform.position : transform.position) + Vector3.up * 1.2f;
+        }
+
+        private Vector3 GetKillTarget() {
+            return playerTarget != null ? playerTarget.position + Vector3.up * 1.2f : transform.position;
         }
     }
 }

@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using UnityEngine.AI;
 using FNaS.Systems;
 using FNaS.Gameplay;
 
@@ -29,6 +30,7 @@ namespace FNaS.Entities.LostGirl {
         private bool isPlaying;
         private int originalLayer = -1;
         private int jumpscareLayer = -1;
+        private NavMeshAgent cachedAgent;
 
         public bool IsPlaying => isPlaying;
 
@@ -41,6 +43,13 @@ namespace FNaS.Entities.LostGirl {
 
             if (jumpscareCamera != null) {
                 jumpscareCamera.enabled = false;
+            }
+
+            if (lostGirlRoot != null) {
+                cachedAgent = lostGirlRoot.GetComponent<NavMeshAgent>();
+                if (cachedAgent == null) {
+                    cachedAgent = lostGirlRoot.GetComponentInChildren<NavMeshAgent>();
+                }
             }
         }
 
@@ -64,6 +73,12 @@ namespace FNaS.Entities.LostGirl {
             if (lostGirlMovement != null) {
                 lostGirlMovement.StopMovement();
                 lostGirlMovement.enabled = false;
+            }
+
+            if (cachedAgent != null) {
+                cachedAgent.isStopped = true;
+                cachedAgent.ResetPath();
+                cachedAgent.enabled = false;
             }
 
             if (lostGirlRoot != null && jumpscareAnchor != null) {

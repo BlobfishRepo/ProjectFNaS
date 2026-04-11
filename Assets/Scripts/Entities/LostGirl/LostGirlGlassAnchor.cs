@@ -1,11 +1,15 @@
 using UnityEngine;
 using FNaS.Systems;
+using FNaS.MasterNodes;
 
 namespace FNaS.Entities.LostGirl {
     public class LostGirlGlassAnchor : MonoBehaviour {
-        [Header("Flashlight Target")]
-        [Tooltip("World-space target that the flashlight must illuminate to affect this glass.")]
+        [Header("Observation")]
+        [Tooltip("Used for direct player observation raycasts. If null, falls back to this transform.")]
         public Transform flashlightTarget;
+
+        [Tooltip("If assigned, this glass is considered observed when this camera node is active on the monitor.")]
+        public MasterNode cameraNode;
 
         [Header("Screen FX (optional)")]
         public ScreenFader screenFader;

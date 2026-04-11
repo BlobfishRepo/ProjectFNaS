@@ -5,6 +5,7 @@
   - Pantry
   - Living room
   - Dining room
+- Added Navmesh pathfinding to Lost Girl.
 
 ### Changed
 - Movement nodes and views expanded to allow movement through:
@@ -16,6 +17,9 @@
 - Security monitor updated to account for new cameras.
 - Adjusted position of some cameras, mold patches, mimic spawns, and Lost Girl glasses to account for new layout.
 - Adjusted light in several rooms.
+- Lost Girl AI changed:
+  - Chase state now using navmesh pathfinding.
+  - Stalling/pushback now based on LOS or viewing on camera, not flashlight.
 
 ### Fixed
 - Increased radius of mold spray to make it easier to target mold clumps.

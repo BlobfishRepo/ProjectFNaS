@@ -78,7 +78,7 @@ GameObject:
   - component: {fileID: 4800342598479052448}
   - component: {fileID: 610283241000259736}
   m_Layer: 0
-  m_Name: FlashlightTarget
+  m_Name: ViewTarget
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -563,6 +563,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.LostGirl.LostGirlGlassAnchor
   flashlightTarget: {fileID: 4800342598479052448}
+  cameraNode: {fileID: 0}
   screenFader: {fileID: 0}
   stageVisuals:
   - {fileID: 2946246042501330013}

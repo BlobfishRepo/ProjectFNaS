@@ -980,14 +980,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 130916668}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 493465667}
   - {fileID: 456353710}
-  m_Father: {fileID: 1155280500}
+  m_Father: {fileID: 1490126175}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &168089310 stripped
 Transform:
@@ -2250,6 +2250,7 @@ MonoBehaviour:
   attentionState: {fileID: 428565957}
   monitorView: {fileID: 365645248}
   monitorViewNameFallback: Monitor
+  verboseLogging: 0
 --- !u!1 &431908877
 GameObject:
   m_ObjectHideFlags: 0
@@ -2819,6 +2820,73 @@ Transform:
   m_Children: []
   m_Father: {fileID: 554164666}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &487557379
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 487557380}
+  - component: {fileID: 487557381}
+  - component: {fileID: 487557382}
+  m_Layer: 0
+  m_Name: RegionMain
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &487557380
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 487557379}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.32, y: 2.52, z: -47.21}
+  m_LocalScale: {x: 35.467, y: 14.832751, z: 47.745754}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2052454060}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &487557381
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 487557379}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &487557382
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 487557379}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20f35feb64615ef4c98f362bbcbdb1fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.LostGirl.LostGirlRegionVolume
+  region: 1
 --- !u!4 &493084839 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 7271064214206147687, guid: 4d9a2ed26b917b74fb5436fddead8075, type: 3}
@@ -3228,14 +3296,45 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6803656326791992853, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -1.7
+      objectReference: {fileID: 0}
+    - target: {fileID: 6803656326791992853, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -2.66
+      value: -7.0470443
+      objectReference: {fileID: 0}
+    - target: {fileID: 6803656326791992853, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -5.42
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 526764132729302330, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 559062059}
   m_SourcePrefab: {fileID: 100100000, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
+--- !u!1 &559062058 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 526764132729302330, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
+  m_PrefabInstance: {fileID: 559062057}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &559062059
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 559062058}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b56893716d73e594bbabc9b4790dda7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.LostGirl.LostGirlSpawnGate
+  anchor: {fileID: 1995889996}
+  allowedPlayerRegions: 02000000
+  allowAnyIfEmpty: 1
 --- !u!4 &559107548 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6721858256046684634, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
@@ -4262,6 +4361,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 822925186}
     m_Modifications:
+    - target: {fileID: 640309195904590623, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -5.23
+      objectReference: {fileID: 0}
+    - target: {fileID: 640309195904590623, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 4.41
+      objectReference: {fileID: 0}
+    - target: {fileID: 640309195904590623, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 7.76
+      objectReference: {fileID: 0}
     - target: {fileID: 2218951868867926811, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_Name
       value: Cam_TV
@@ -4620,7 +4731,7 @@ MonoBehaviour:
   - {fileID: 1772228223}
   - {fileID: 1777347202}
   - {fileID: 925663354}
-  verboseLogging: 1
+  verboseLogging: 0
   activePatchCount: 0
   isolatedPatchCount: 0
   bloodPatchCount: 0
@@ -4751,6 +4862,73 @@ Transform:
   m_Children: []
   m_Father: {fileID: 554164666}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &754290956
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 754290957}
+  - component: {fileID: 754290958}
+  - component: {fileID: 754290959}
+  m_Layer: 0
+  m_Name: RegionBathroom
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &754290957
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 754290956}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -23.47, y: 2.52, z: -29.63}
+  m_LocalScale: {x: 13.239134, y: 14.832751, z: 11.679429}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2052454060}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &754290958
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 754290956}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &754290959
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 754290956}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20f35feb64615ef4c98f362bbcbdb1fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.LostGirl.LostGirlRegionVolume
+  region: 4
 --- !u!1001 &763168913
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7060,6 +7238,70 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50d24a1d5a254ef479968980f569dece, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NodeView
+--- !u!1 &1153080917
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1153080918}
+  - component: {fileID: 1153080919}
+  m_Layer: 0
+  m_Name: _LostGirlNavMesh
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1153080918
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1153080917}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1490126175}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1153080919
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1153080917}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a5ac11cc976e418e8d13136b07e1f52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshSurface
+  m_SerializedVersion: 0
+  m_AgentTypeID: 0
+  m_CollectObjects: 0
+  m_Size: {x: 10, y: 10, z: 10}
+  m_Center: {x: 0, y: 2, z: 0}
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_UseGeometry: 0
+  m_DefaultArea: 0
+  m_GenerateLinks: 0
+  m_IgnoreNavMeshAgent: 1
+  m_IgnoreNavMeshObstacle: 1
+  m_OverrideTileSize: 0
+  m_TileSize: 256
+  m_OverrideVoxelSize: 0
+  m_VoxelSize: 0.16666667
+  m_MinRegionArea: 2
+  m_NavMeshData: {fileID: 23800000, guid: 9dce6a8592ca7144595f06471d7cf3c0, type: 2}
+  m_BuildHeightMesh: 0
 --- !u!1001 &1153965627
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7176,8 +7418,8 @@ Transform:
   - {fileID: 543450653289065902}
   - {fileID: 699046454}
   - {fileID: 9727686}
-  - {fileID: 130916669}
   - {fileID: 667011004}
+  - {fileID: 1490126175}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1159143484
@@ -8603,6 +8845,73 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1333113690584784689, guid: 4d9a2ed26b917b74fb5436fddead8075, type: 3}
   m_PrefabInstance: {fileID: 1316549161}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1318621449
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1318621450}
+  - component: {fileID: 1318621451}
+  - component: {fileID: 1318621452}
+  m_Layer: 0
+  m_Name: RegionBedroom
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1318621450
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1318621449}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1.22, y: 2.52, z: -11.54}
+  m_LocalScale: {x: 17.510078, y: 14.832751, z: 21.664837}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2052454060}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &1318621451
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1318621449}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1318621452
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1318621449}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20f35feb64615ef4c98f362bbcbdb1fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.LostGirl.LostGirlRegionVolume
+  region: 2
 --- !u!4 &1326174449 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6465003266287612450, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
@@ -8778,6 +9087,7 @@ Transform:
   - {fileID: 297955388}
   - {fileID: 953040959}
   - {fileID: 1300380893}
+  - {fileID: 2140246577}
   m_Father: {fileID: 2058945195}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1359168515
@@ -9233,6 +9543,7 @@ GameObject:
   - component: {fileID: 1426053292}
   - component: {fileID: 1426053291}
   - component: {fileID: 1426053293}
+  - component: {fileID: 1426053294}
   m_Layer: 0
   m_Name: LostGirl
   m_TagString: Untagged
@@ -9249,7 +9560,7 @@ Transform:
   m_GameObject: {fileID: 1426053289}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 6.78}
+  m_LocalPosition: {x: 0, y: -2.5, z: -7.986}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -9268,11 +9579,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4ff3ab68102efa44aa5f72d6837c4c1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.LostGirl.LostGirlMovement
+  agent: {fileID: 1426053294}
   moveMode: 1
   moveSpeed: 5
-  rotateSpeedDegreesPerSecond: 5000
+  snapshotRefreshInterval: 0.3
+  stoppingDistance: 0.05
+  destinationSampleDistance: 1.25
+  repathInterval: 0.1
+  invalidPathGraceSeconds: 0.2
+  spawnSnapDistance: 1.5
+  stuckCheckInterval: 0.35
+  minProgressDistance: 0.05
+  stuckSecondsBeforeFail: 0.75
+  verboseLogging: 1
   isActive: 0
   snapshotTarget: {x: 0, y: 0, z: 0}
+  lastFailureReason: 0
 --- !u!114 &1426053292
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9289,11 +9611,39 @@ MonoBehaviour:
   preSpawnOpportunityTicks: 1
   glassProgressOpportunityTicks: 2
   maxGlassStage: 3
-  flashlightHoldSecondsToPushback: 2
+  observeHoldSecondsToPushback: 1.25
+  observationCheckInterval: 0.1
+  directObserveAngleDegrees: 25
+  directObserveMaxDistance: 25
+  observationBlockers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  playerViewOrigin: {fileID: 297955388}
+  attentionState: {fileID: 428565957}
   emergeLingerSeconds: 2
-  activeMoveMode: 0
-  activeChaseDurationSeconds: 5
+  activeChaseDurationSeconds: 20
   killDistance: 1.25
+  requireLineOfSightForKill: 0
+  instantKillIfAnyDoorOpen: 1
+  trackedDoors:
+  - {fileID: 1326174450}
+  - {fileID: 8021983673751543307}
+  - {fileID: 8021983673415863222}
+  requireReachableRegionToSpawn: 1
+  playerTarget: {fileID: 2058945195}
+  playerRegionProbe: {fileID: 2058945195}
+  playerRegionVolumes:
+  - {fileID: 487557382}
+  - {fileID: 1318621452}
+  - {fileID: 754290959}
+  - {fileID: 1864851693}
+  anchors:
+  - {fileID: 1915305959}
+  - {fileID: 1995889996}
+  loseState: {fileID: 428565956}
+  movement: {fileID: 1426053291}
+  activeVisualRoot: {fileID: 1871840425}
+  jumpscareController: {fileID: 1426053293}
   audioSource: {fileID: 1462857690}
   sfxVolume: 1
   spawnInClip: {fileID: 8300000, guid: 754d6143e48ab664b998f515dff0a71b, type: 3}
@@ -9302,18 +9652,11 @@ MonoBehaviour:
   runStartClip: {fileID: 0}
   runningLoopClip: {fileID: 0}
   runningLoopVolume: 0.9
-  playerTarget: {fileID: 2058945195}
-  flashlight: {fileID: 1022328916}
-  loseState: {fileID: 428565956}
-  movement: {fileID: 1426053291}
-  activeVisualRoot: {fileID: 1871840425}
-  jumpscareController: {fileID: 1426053293}
-  anchors:
-  - {fileID: 1915305959}
-  - {fileID: 1995889996}
+  verboseLogging: 0
   phase: 0
   glassStage: 0
   currentAnchor: {fileID: 0}
+  currentPlayerRegion: 0
 --- !u!114 &1426053293
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9331,7 +9674,7 @@ MonoBehaviour:
   lostGirlMovement: {fileID: 1426053291}
   animator: {fileID: 0}
   lostGirlRoot: {fileID: 1426053290}
-  jumpscareAnchor: {fileID: 953040959}
+  jumpscareAnchor: {fileID: 2140246577}
   visualRoot: {fileID: 1871840425}
   jumpscareCamera: {fileID: 730304183}
   jumpscareLayerName: Jumpscare
@@ -9339,6 +9682,28 @@ MonoBehaviour:
   jumpscareDelayBeforeLose: 0.5
   jumpscareClip: {fileID: 8300000, guid: 33b676a91239dec44b4a25a6c130d111, type: 3}
   jumpscareVolume: 1
+--- !u!195 &1426053294
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1426053289}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 6
+  m_Acceleration: 30
+  avoidancePriority: 50
+  m_AngularSpeed: 1440
+  m_StoppingDistance: 0.05
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 1
 --- !u!1 &1451912284
 GameObject:
   m_ObjectHideFlags: 0
@@ -10017,6 +10382,40 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 897eec3f2181bcc4fbe604c24667a597, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Node
+--- !u!1 &1490126174
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1490126175}
+  m_Layer: 0
+  m_Name: _LostGirlHelper
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1490126175
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1490126174}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 130916669}
+  - {fileID: 1153080918}
+  - {fileID: 2052454060}
+  m_Father: {fileID: 1155280500}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1495154467
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10025,6 +10424,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 822925186}
     m_Modifications:
+    - target: {fileID: 640309195904590623, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -1.81
+      objectReference: {fileID: 0}
+    - target: {fileID: 640309195904590623, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 6.59
+      objectReference: {fileID: 0}
+    - target: {fileID: 640309195904590623, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 8.1
+      objectReference: {fileID: 0}
     - target: {fileID: 2218951868867926811, guid: 6937af5aee317574daf36e18af727f9b, type: 3}
       propertyPath: m_Name
       value: Cam_Pantry
@@ -10244,7 +10655,7 @@ AudioListener:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1498650400}
-  m_Enabled: 1
+  m_Enabled: 0
 --- !u!20 &1498650403
 Camera:
   m_ObjectHideFlags: 0
@@ -10304,13 +10715,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1498650400}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: -10.819326, y: 42.264824, z: -18.963202}
+  m_LocalRotation: {x: 0.5, y: 0.5, z: -0.5, w: 0.5}
+  m_LocalPosition: {x: -6.13, y: 43.85, z: -32.46}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 90, y: 90, z: 0}
 --- !u!1001 &1505908138
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10330,6 +10741,18 @@ PrefabInstance:
     - target: {fileID: 2211636720516984540, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
       propertyPath: m_LocalPosition.z
       value: -1.97
+      objectReference: {fileID: 0}
+    - target: {fileID: 5439130817571540228, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 5439130817571540228, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 4.257847
+      objectReference: {fileID: 0}
+    - target: {fileID: 5439130817571540228, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -0.03
       objectReference: {fileID: 0}
     - target: {fileID: 6465003266287612450, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
       propertyPath: m_LocalPosition.x
@@ -12945,6 +13368,73 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: efa63d8e1e6b5284ba9e41f837f82fe6, type: 3}
+--- !u!1 &1864851690
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1864851691}
+  - component: {fileID: 1864851692}
+  - component: {fileID: 1864851693}
+  m_Layer: 0
+  m_Name: RegionOtherBedroom
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1864851691
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1864851690}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -18.71, y: 2.52, z: -11.54}
+  m_LocalScale: {x: 17.510078, y: 14.832751, z: 21.664837}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2052454060}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &1864851692
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1864851690}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1864851693
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1864851690}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20f35feb64615ef4c98f362bbcbdb1fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.LostGirl.LostGirlRegionVolume
+  region: 3
 --- !u!1 &1871840425
 GameObject:
   m_ObjectHideFlags: 0
@@ -12956,7 +13446,8 @@ GameObject:
   - component: {fileID: 1871840426}
   - component: {fileID: 1871840429}
   - component: {fileID: 1871840428}
-  - component: {fileID: 1871840427}
+  - component: {fileID: 1871840430}
+  - component: {fileID: 1871840431}
   m_Layer: 0
   m_Name: LostGirlModel
   m_TagString: Untagged
@@ -12973,33 +13464,12 @@ Transform:
   m_GameObject: {fileID: 1871840425}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 1, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 3}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1426053290}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!135 &1871840427
-SphereCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1871840425}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Radius: 0.5
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!23 &1871840428
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -13057,6 +13527,40 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1871840425}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!114 &1871840430
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1871840425}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 930cc627b05f6f14bb933e5325afb930, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.LostGirl.LostGirlDoorBumpSensor
+  movement: {fileID: 1426053291}
+--- !u!135 &1871840431
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1871840425}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.5
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!1 &1874527955
 GameObject:
   m_ObjectHideFlags: 0
@@ -13205,7 +13709,7 @@ MonoBehaviour:
   range: 20
   radius: 2
   sprayOrigin: {fileID: 0}
-  verboseLogging: 1
+  verboseLogging: 0
   isSprayToggledOn: 0
 --- !u!114 &1885751350 stripped
 MonoBehaviour:
@@ -13824,6 +14328,14 @@ PrefabInstance:
       propertyPath: m_LocalPosition.x
       value: -2.69
       objectReference: {fileID: 0}
+    - target: {fileID: 5439130817571540228, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -2.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 5439130817571540228, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 6465003266287612450, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
       propertyPath: m_LocalPosition.x
       value: -9.177405
@@ -14254,6 +14766,41 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
+--- !u!1 &2052454059
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2052454060}
+  m_Layer: 0
+  m_Name: _LostGirlRegion
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2052454060
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2052454059}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 487557380}
+  - {fileID: 1318621450}
+  - {fileID: 754290957}
+  - {fileID: 1864851691}
+  m_Father: {fileID: 1490126175}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2058945194
 GameObject:
   m_ObjectHideFlags: 0
@@ -14794,6 +15341,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1333113690584784689, guid: 4d9a2ed26b917b74fb5436fddead8075, type: 3}
   m_PrefabInstance: {fileID: 2109427241}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &2140246576
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2140246577}
+  m_Layer: 0
+  m_Name: LostGirlJumpscareAnchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2140246577
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2140246576}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -1, z: 3}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1351937067}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &7877971685852607
 Transform:
   m_ObjectHideFlags: 0
@@ -19563,6 +20141,7 @@ GameObject:
   - component: {fileID: 8047712244898234814}
   - component: {fileID: 5867612850140997199}
   - component: {fileID: 4772490380032429488}
+  - component: {fileID: 8047712244898234815}
   m_Layer: 0
   m_Name: Desk Table
   m_TagString: Untagged
@@ -23007,7 +23586,7 @@ Transform:
   m_LocalRotation: {x: 0.5, y: 0.49999997, z: -0.5, w: 0.5}
   m_LocalPosition: {x: -6.400383, y: -3.5029943, z: -70.26541}
   m_LocalScale: {x: -40.695675, y: -99.35993, z: -49.345863}
-  m_ConstrainProportionsScale: 0
+  m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 543450653289065902}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -30565,17 +31144,44 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6803656326791992853, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -4.79
+      value: -4.5
       objectReference: {fileID: 0}
     - target: {fileID: 6803656326791992853, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
       propertyPath: m_LocalPosition.z
       value: -4.41
       objectReference: {fileID: 0}
+    - target: {fileID: 8260001224940559917, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
+      propertyPath: cameraNode
+      value: 
+      objectReference: {fileID: 526662831}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 526764132729302330, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7793104974859545232}
   m_SourcePrefab: {fileID: 100100000, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
+--- !u!1 &7793104974859545231 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 526764132729302330, guid: 549147aa541d7a04292ee871e0c90c2e, type: 3}
+  m_PrefabInstance: {fileID: 7793104974859545230}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7793104974859545232
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7793104974859545231}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b56893716d73e594bbabc9b4790dda7e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.LostGirl.LostGirlSpawnGate
+  anchor: {fileID: 1915305959}
+  allowedPlayerRegions: 01000000
+  allowAnyIfEmpty: 1
 --- !u!1 &7793591295588650969
 GameObject:
   m_ObjectHideFlags: 0
@@ -31060,6 +31666,26 @@ Transform:
   m_Children: []
   m_Father: {fileID: 543450653289065902}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8047712244898234815
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1886833153359896083}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e3fdca004f2d45fe8abbed571a8abd5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshModifier
+  m_SerializedVersion: 0
+  m_OverrideArea: 0
+  m_Area: 0
+  m_OverrideGenerateLinks: 0
+  m_GenerateLinks: 0
+  m_IgnoreFromBuild: 1
+  m_ApplyToChildren: 1
+  m_AffectedAgents: ffffffff
 --- !u!4 &8091796225631256536
 Transform:
   m_ObjectHideFlags: 0
@@ -31896,6 +32522,7 @@ GameObject:
   - component: {fileID: 36980949029405019}
   - component: {fileID: 6401770686840699681}
   - component: {fileID: 5110952883836663446}
+  - component: {fileID: 8493015188115373860}
   m_Layer: 0
   m_Name: Chair
   m_TagString: Untagged
@@ -31903,6 +32530,26 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &8493015188115373860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8493015188115373859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e3fdca004f2d45fe8abbed571a8abd5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.AI.Navigation::Unity.AI.Navigation.NavMeshModifier
+  m_SerializedVersion: 0
+  m_OverrideArea: 0
+  m_Area: 0
+  m_OverrideGenerateLinks: 0
+  m_GenerateLinks: 0
+  m_IgnoreFromBuild: 1
+  m_ApplyToChildren: 1
+  m_AffectedAgents: ffffffff
 --- !u!23 &8520516292310558573
 MeshRenderer:
   m_ObjectHideFlags: 0

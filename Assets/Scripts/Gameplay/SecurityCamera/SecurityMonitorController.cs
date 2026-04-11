@@ -25,6 +25,24 @@ public class SecurityMonitorController : MonoBehaviour {
 
     private int activeIndex = -1;
 
+    public int ActiveIndex => activeIndex;
+
+    public MasterNode GetActiveMasterNode() {
+        if (cams == null) return null;
+        if (activeIndex < 0 || activeIndex >= cams.Length) return null;
+        return cams[activeIndex] != null ? cams[activeIndex].masterNode : null;
+    }
+
+    public Transform GetActiveLookTarget() {
+        if (cams == null) return null;
+        if (activeIndex < 0 || activeIndex >= cams.Length) return null;
+        if (cams[activeIndex] == null) return null;
+
+        return cams[activeIndex].lookTarget != null
+            ? cams[activeIndex].lookTarget
+            : (cams[activeIndex].cam != null ? cams[activeIndex].cam.transform : null);
+    }
+
     private void Start() {
         if (cams != null) {
             for (int i = 0; i < cams.Length; i++) {
@@ -37,30 +55,7 @@ public class SecurityMonitorController : MonoBehaviour {
             }
         }
 
-        if (attentionState != null) {
-            attentionState.isCameraActive = false;
-            attentionState.isMonitorInUse = false;
-            attentionState.activeCameraNode = null;
-            attentionState.activeCameraLookTarget = null;
-        }
-
         SetActiveCam(0, playSfx: false);
-    }
-
-    public void BeginMonitorUse() {
-        if (attentionState != null) {
-            attentionState.isMonitorInUse = true;
-            attentionState.isCameraActive = activeIndex >= 0;
-        }
-    }
-
-    public void EndMonitorUse() {
-        if (attentionState != null) {
-            attentionState.isMonitorInUse = false;
-            attentionState.isCameraActive = false;
-            attentionState.activeCameraNode = null;
-            attentionState.activeCameraLookTarget = null;
-        }
     }
 
     public void ActivateCam(int index) {
@@ -89,12 +84,5 @@ public class SecurityMonitorController : MonoBehaviour {
         if (newAl != null) newAl.enabled = true;
 
         activeIndex = index;
-
-        if (attentionState != null) {
-            attentionState.isCameraActive = attentionState.isMonitorInUse;
-            attentionState.activeCameraNode = cams[index].masterNode;
-            attentionState.activeCameraLookTarget =
-                cams[index].lookTarget != null ? cams[index].lookTarget : cams[index].cam.transform;
-        }
     }
 }
