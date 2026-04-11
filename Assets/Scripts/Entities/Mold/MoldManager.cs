@@ -57,6 +57,9 @@ namespace FNaS.Entities.Mold {
         [Min(0.01f)] public float cleanseTimeConnected = 1.5f;
         [Min(0.01f)] public float cleanseTimeIsolated = 0.5f;
 
+        [Header("Spray Spread Lockout")]
+        [Min(0.01f)] public float spraySpreadBlockSeconds = 5f;
+
         [Header("Blood Escalation")]
         public bool allowBloodPhase = true;
         [Min(0.01f)] public float bloodTransitionSeconds = 30f;
@@ -79,6 +82,7 @@ namespace FNaS.Entities.Mold {
         [SerializeField] private int activePatchCount;
         [SerializeField] private int isolatedPatchCount;
         [SerializeField] private int bloodPatchCount;
+        [SerializeField] private int sprayBlockedPatchCount;
 
         public IReadOnlyList<MoldPatch> AllPatches => allPatches;
 
@@ -91,6 +95,14 @@ namespace FNaS.Entities.Mold {
         private readonly Dictionary<MoldPatch, int> distToNearestLight = new();
         private readonly Dictionary<MoldPatch, int> distToNearestCamera = new();
         private readonly Dictionary<MoldPatch, float> bloodTimerByPatch = new();
+
+        private readonly Dictionary<MoldPatch, float> sprayBlockTimerByPatch = new();
+        private readonly List<MoldPatch> expiredSprayBlocksBuffer = new();
+
+        private readonly List<MoldPatch> frontierBuffer = new List<MoldPatch>();
+        private readonly HashSet<MoldPatch> frontierSet = new HashSet<MoldPatch>();
+        private readonly List<int> weightBuffer = new List<int>();
+        private readonly List<MoldPatch> sprayBlockKeysBuffer = new();
 
         public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
             if (settings == null) return;
@@ -137,6 +149,7 @@ namespace FNaS.Entities.Mold {
             }
 
             HandleAIDisabledState();
+            UpdateSprayBlockTimers();
             UpdateBloodTimers();
         }
 
@@ -215,6 +228,9 @@ namespace FNaS.Entities.Mold {
         }
 
         private void ResetAllMoldToClean() {
+            sprayBlockTimerByPatch.Clear();
+            bloodTimerByPatch.Clear();
+
             for (int i = 0; i < allPatches.Count; i++) {
                 MoldPatch patch = allPatches[i];
                 if (patch == null) continue;
@@ -227,6 +243,9 @@ namespace FNaS.Entities.Mold {
         }
 
         private void ResetToSourceOnlyState() {
+            sprayBlockTimerByPatch.Clear();
+            bloodTimerByPatch.Clear();
+
             for (int i = 0; i < allPatches.Count; i++) {
                 MoldPatch patch = allPatches[i];
                 if (patch == null) continue;
@@ -373,6 +392,58 @@ namespace FNaS.Entities.Mold {
                     if (!adj[edge.b].Contains(edge.a)) adj[edge.b].Add(edge.a);
                 }
             }
+        }
+
+        public void NotifyPatchSprayed(MoldPatch patch) {
+            if (patch == null) return;
+
+            sprayBlockTimerByPatch[patch] = spraySpreadBlockSeconds;
+            patch.NotifySprayContact();
+
+            if (verboseLogging) {
+                Debug.Log($"Spray block refreshed on patch: {patch.name}", this);
+            }
+        }
+
+        private void UpdateSprayBlockTimers() {
+            if (sprayBlockTimerByPatch.Count == 0) {
+                sprayBlockedPatchCount = 0;
+                return;
+            }
+
+            expiredSprayBlocksBuffer.Clear();
+            sprayBlockKeysBuffer.Clear();
+
+            foreach (var patch in sprayBlockTimerByPatch.Keys) {
+                sprayBlockKeysBuffer.Add(patch);
+            }
+
+            for (int i = 0; i < sprayBlockKeysBuffer.Count; i++) {
+                MoldPatch patch = sprayBlockKeysBuffer[i];
+                if (patch == null) {
+                    expiredSprayBlocksBuffer.Add(patch);
+                    continue;
+                }
+
+                float next = sprayBlockTimerByPatch[patch] - Time.deltaTime;
+                if (next <= 0f) {
+                    expiredSprayBlocksBuffer.Add(patch);
+                }
+                else {
+                    sprayBlockTimerByPatch[patch] = next;
+                }
+            }
+
+            for (int i = 0; i < expiredSprayBlocksBuffer.Count; i++) {
+                sprayBlockTimerByPatch.Remove(expiredSprayBlocksBuffer[i]);
+            }
+
+            sprayBlockedPatchCount = sprayBlockTimerByPatch.Count;
+        }
+
+        private bool IsPatchSprayBlocked(MoldPatch patch) {
+            if (patch == null) return false;
+            return sprayBlockTimerByPatch.TryGetValue(patch, out float timeRemaining) && timeRemaining > 0f;
         }
 
         private void TrySpreadFromSource(MoldPatch sourcePatch) {
@@ -539,9 +610,6 @@ namespace FNaS.Entities.Mold {
             return result;
         }
 
-        private readonly List<MoldPatch> frontierBuffer = new List<MoldPatch>();
-        private readonly HashSet<MoldPatch> frontierSet = new HashSet<MoldPatch>();
-
         private List<MoldPatch> GatherLegalFrontier(List<MoldPatch> connectedRegion) {
             frontierBuffer.Clear();
             frontierSet.Clear();
@@ -557,6 +625,7 @@ namespace FNaS.Entities.Mold {
                     if (next == null) continue;
                     if (IsSourcePatch(next)) continue;
                     if (next.SpreadState != MoldSpreadState.Clean) continue;
+                    if (IsPatchSprayBlocked(next)) continue;
 
                     if (frontierSet.Add(next)) {
                         frontierBuffer.Add(next);
@@ -566,8 +635,6 @@ namespace FNaS.Entities.Mold {
 
             return frontierBuffer;
         }
-
-        private readonly List<int> weightBuffer = new List<int>();
 
         private MoldPatch ChooseWeightedPatch(List<MoldPatch> candidates) {
             if (candidates == null || candidates.Count == 0) return null;
@@ -765,6 +832,7 @@ namespace FNaS.Entities.Mold {
             activePatchCount = 0;
             isolatedPatchCount = 0;
             bloodPatchCount = 0;
+            sprayBlockedPatchCount = 0;
 
             for (int i = 0; i < allPatches.Count; i++) {
                 MoldPatch p = allPatches[i];
@@ -781,6 +849,10 @@ namespace FNaS.Entities.Mold {
                 if (p.CorruptionPhase == MoldCorruptionPhase.Blood &&
                     p.SpreadState != MoldSpreadState.Clean) {
                     bloodPatchCount++;
+                }
+
+                if (IsPatchSprayBlocked(p)) {
+                    sprayBlockedPatchCount++;
                 }
             }
         }

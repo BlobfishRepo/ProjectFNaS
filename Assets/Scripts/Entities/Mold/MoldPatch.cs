@@ -25,6 +25,26 @@ namespace FNaS.Entities.Mold {
         public string fillProperty = "_Fill";
         public string bloodBlendProperty = "_BloodBlend";
 
+        [Header("Audio")]
+        public AudioSource oneShotSource;
+        public AudioSource ambienceSource;
+
+        [Space]
+        public AudioClip spreadClip;
+        public AudioClip sprayHitClip;
+        public AudioClip bloodTransitionClip;
+        public AudioClip ambienceClip;
+        public AudioClip bloodAmbienceClip;
+
+        [Space]
+        [Range(0f, 1f)] public float spreadVolume = 1f;
+        [Range(0f, 1f)] public float sprayHitVolume = 0.6f;
+        [Range(0f, 1f)] public float bloodTransitionVolume = 1f;
+        [Range(0f, 1f)] public float ambienceVolume = 0.25f;
+        [Range(0f, 1f)] public float bloodAmbienceVolume = 0.35f;
+
+        [Min(0.01f)] public float sprayHitCooldown = 0.2f;
+
         [Header("Debug Colors")]
         public bool useDebugColors = true;
         public Color cleanColor = new Color(0f, 0f, 0f, 0f);
@@ -39,6 +59,8 @@ namespace FNaS.Entities.Mold {
         private float baseLightIntensity;
         private Color baseLightColor;
         private bool cachedLightBase;
+
+        private float lastSprayHitTime = -999f;
 
         public string PatchId => patchId;
         public MoldSpreadState SpreadState => spreadState;
@@ -66,11 +88,37 @@ namespace FNaS.Entities.Mold {
                 cachedLightBase = true;
             }
 
+            EnsureAudioSources();
+
             ApplyGameplayEffects();
             ApplyVisualsImmediate();
+            RefreshAmbience();
+        }
+
+        private void EnsureAudioSources() {
+            if (oneShotSource == null) {
+                oneShotSource = gameObject.AddComponent<AudioSource>();
+                oneShotSource.playOnAwake = false;
+                oneShotSource.loop = false;
+                oneShotSource.spatialBlend = 1f;
+                oneShotSource.rolloffMode = AudioRolloffMode.Linear;
+                oneShotSource.minDistance = 0.5f;
+                oneShotSource.maxDistance = 8f;
+            }
+
+            if (ambienceSource == null) {
+                ambienceSource = gameObject.AddComponent<AudioSource>();
+                ambienceSource.playOnAwake = false;
+                ambienceSource.loop = true;
+                ambienceSource.spatialBlend = 1f;
+                ambienceSource.rolloffMode = AudioRolloffMode.Linear;
+                ambienceSource.minDistance = 0.75f;
+                ambienceSource.maxDistance = 10f;
+            }
         }
 
         public void SetSpreadState(MoldSpreadState newState) {
+            MoldSpreadState previousState = spreadState;
             spreadState = newState;
 
             switch (spreadState) {
@@ -85,9 +133,17 @@ namespace FNaS.Entities.Mold {
 
             ApplyGameplayEffects();
             ApplyVisualsImmediate();
+
+            if (previousState == MoldSpreadState.Clean &&
+                spreadState != MoldSpreadState.Clean) {
+                PlayOneShot(spreadClip, spreadVolume);
+            }
+
+            RefreshAmbience();
         }
 
         public void SetCorruptionPhase(MoldCorruptionPhase newPhase) {
+            MoldCorruptionPhase previousPhase = corruptionPhase;
             corruptionPhase = newPhase;
 
             ApplyGameplayEffects();
@@ -95,10 +151,16 @@ namespace FNaS.Entities.Mold {
 
             if (corruptionPhase == MoldCorruptionPhase.Blood && spreadState != MoldSpreadState.Clean) {
                 EnsureBloodDrips();
+
+                if (previousPhase != MoldCorruptionPhase.Blood) {
+                    PlayOneShot(bloodTransitionClip, bloodTransitionVolume);
+                }
             }
             else {
                 DisableBloodDrips();
             }
+
+            RefreshAmbience();
         }
 
         public void SetMarkedFill(float fill01) {
@@ -114,6 +176,19 @@ namespace FNaS.Entities.Mold {
             ApplyGameplayEffects();
             ApplyVisualsImmediate();
             DisableBloodDrips();
+            RefreshAmbience();
+        }
+
+        public void NotifySprayContact() {
+            if (!IsMoldPresent) return;
+            if (sprayHitClip == null) return;
+
+            if (Time.time < lastSprayHitTime + sprayHitCooldown) {
+                return;
+            }
+
+            lastSprayHitTime = Time.time;
+            PlayOneShot(sprayHitClip, sprayHitVolume);
         }
 
         private void ApplyGameplayEffects() {
@@ -206,6 +281,56 @@ namespace FNaS.Entities.Mold {
 
                 rend.SetPropertyBlock(mpb);
             }
+        }
+
+        private void RefreshAmbience() {
+            EnsureAudioSources();
+
+            if (!IsMoldPresent) {
+                if (ambienceSource.isPlaying) {
+                    ambienceSource.Stop();
+                }
+
+                ambienceSource.clip = null;
+                return;
+            }
+
+            AudioClip targetClip =
+                (corruptionPhase == MoldCorruptionPhase.Blood && bloodAmbienceClip != null)
+                ? bloodAmbienceClip
+                : ambienceClip;
+
+            if (targetClip == null) {
+                if (ambienceSource.isPlaying) {
+                    ambienceSource.Stop();
+                }
+
+                ambienceSource.clip = null;
+                return;
+            }
+
+            float targetVolume =
+                (corruptionPhase == MoldCorruptionPhase.Blood && bloodAmbienceClip != null)
+                ? bloodAmbienceVolume
+                : ambienceVolume;
+
+            bool clipChanged = ambienceSource.clip != targetClip;
+            ambienceSource.volume = targetVolume;
+
+            if (clipChanged) {
+                ambienceSource.Stop();
+                ambienceSource.clip = targetClip;
+            }
+
+            if (!ambienceSource.isPlaying) {
+                ambienceSource.Play();
+            }
+        }
+
+        private void PlayOneShot(AudioClip clip, float volume) {
+            if (clip == null) return;
+            EnsureAudioSources();
+            oneShotSource.PlayOneShot(clip, volume);
         }
 
         private void EnsureBloodDrips() {

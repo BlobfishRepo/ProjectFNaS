@@ -16,6 +16,13 @@ namespace FNaS.Entities.Mold {
         [Tooltip("Optional start point for the spray. Falls back to camera if null.")]
         public Transform sprayOrigin;
 
+        [Header("Particles")]
+        [Tooltip("Rotate the spray visuals so they aim toward the mouse ray.")]
+        public bool orientParticlesToMouse = true;
+
+        [Tooltip("Optional transform to rotate. If null, uses sprayParticles.transform.")]
+        public Transform particleAimTransform;
+
         [Header("Debug")]
         public bool verboseLogging = false;
 
@@ -71,9 +78,12 @@ namespace FNaS.Entities.Mold {
 
             StartSprayEffects();
 
-            // reuse buffers (NO allocations)
             validThisFrame.Clear();
             toRemoveBuffer.Clear();
+
+            if (Mouse.current == null) {
+                return;
+            }
 
             Ray screenRay = aimCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
 
@@ -83,18 +93,24 @@ namespace FNaS.Entities.Mold {
             Vector3 origin = sprayOrigin != null ? sprayOrigin.position : rayOrigin;
             Vector3 end = origin + rayDirection * range;
 
+            UpdateParticleAim(origin, rayDirection);
+
             var allPatches = MoldManager.Instance.AllPatches;
 
             for (int i = 0; i < allPatches.Count; i++) {
                 MoldPatch patch = allPatches[i];
-
                 if (patch == null) continue;
-                if (!MoldManager.Instance.CanPatchBeCleansed(patch)) continue;
 
                 Vector3 patchPos = patch.transform.position;
                 float dist = DistancePointToSegment(patchPos, origin, end);
 
                 if (dist > radius) continue;
+
+                MoldManager.Instance.NotifyPatchSprayed(patch);
+
+                if (!MoldManager.Instance.CanPatchBeCleansed(patch)) {
+                    continue;
+                }
 
                 validThisFrame.Add(patch);
 
@@ -120,7 +136,6 @@ namespace FNaS.Entities.Mold {
                 }
             }
 
-            // cleanup without allocations
             foreach (var kvp in cleanseTimers) {
                 if (!validThisFrame.Contains(kvp.Key)) {
                     toRemoveBuffer.Add(kvp.Key);
@@ -135,6 +150,19 @@ namespace FNaS.Entities.Mold {
                     Debug.Log($"Spray stopped affecting: {patch.name}", this);
                 }
             }
+        }
+
+        private void UpdateParticleAim(Vector3 origin, Vector3 direction) {
+            if (!orientParticlesToMouse) return;
+
+            Transform target = particleAimTransform != null
+                ? particleAimTransform
+                : (sprayParticles != null ? sprayParticles.transform : null);
+
+            if (target == null) return;
+
+            target.position = origin;
+            target.rotation = Quaternion.LookRotation(direction, Vector3.up);
         }
 
         private void OnSprayPressed(InputAction.CallbackContext ctx) {
@@ -187,26 +215,5 @@ namespace FNaS.Entities.Mold {
                 sprayLoopSource.Stop();
             }
         }
-
-#if UNITY_EDITOR
-private void OnDrawGizmosSelected() {
-    if (aimCamera == null) return;
-    if (Mouse.current == null) return;
-
-    Ray screenRay = aimCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
-
-    Vector3 origin = sprayOrigin != null ? sprayOrigin.position : screenRay.origin;
-    Vector3 direction = screenRay.direction.normalized;
-    Vector3 end = origin + direction * range;
-
-    Gizmos.color = Color.cyan;
-    Gizmos.DrawWireSphere(origin, radius);
-    Gizmos.DrawWireSphere(end, radius);
-    Gizmos.DrawLine(origin + Vector3.right * radius, end + Vector3.right * radius);
-    Gizmos.DrawLine(origin - Vector3.right * radius, end - Vector3.right * radius);
-    Gizmos.DrawLine(origin + Vector3.up * radius, end + Vector3.up * radius);
-    Gizmos.DrawLine(origin - Vector3.up * radius, end - Vector3.up * radius);
-}
-#endif
     }
 }

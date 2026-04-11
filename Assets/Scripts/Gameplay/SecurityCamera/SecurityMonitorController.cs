@@ -23,6 +23,8 @@ public class SecurityMonitorController : MonoBehaviour {
     public AudioSource uiSource;
     public AudioClip camSwitchClip;
 
+    public event Action<int> OnCameraSwitched;
+
     private int activeIndex = -1;
 
     public int ActiveIndex => activeIndex;
@@ -55,14 +57,14 @@ public class SecurityMonitorController : MonoBehaviour {
             }
         }
 
-        SetActiveCam(0, playSfx: false);
+        SetActiveCam(0, playSfx: false, notify: false);
     }
 
     public void ActivateCam(int index) {
-        SetActiveCam(index, playSfx: true);
+        SetActiveCam(index, playSfx: true, notify: true);
     }
 
-    private void SetActiveCam(int index, bool playSfx) {
+    private void SetActiveCam(int index, bool playSfx, bool notify) {
         if (cams == null || cams.Length == 0) return;
         if (index < 0 || index >= cams.Length) return;
         if (cams[index] == null || cams[index].cam == null) return;
@@ -84,5 +86,9 @@ public class SecurityMonitorController : MonoBehaviour {
         if (newAl != null) newAl.enabled = true;
 
         activeIndex = index;
+
+        if (notify) {
+            OnCameraSwitched?.Invoke(index);
+        }
     }
 }

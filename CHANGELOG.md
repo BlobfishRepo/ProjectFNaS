@@ -1,4 +1,15 @@
 # Changelog
+## April 11
+### Added
+- Mold spray now has particle effects.
+
+### Changed
+- Paper now requires using R to write and progress the percentage.
+  - Can write on either the Monitor or Paper views.
+
+### Fixed
+- Fixed mold patches being able to spread to locations that were currently being sprayed by the player.
+
 ## April 10
 ### Added
 - 3 new cameras added monitoring:
