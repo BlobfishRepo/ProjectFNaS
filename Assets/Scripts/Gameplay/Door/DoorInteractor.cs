@@ -1,3 +1,4 @@
+using FNaS.Gameplay;
 using FNaS.Settings;
 using FNaS.Systems;
 using UnityEngine;
@@ -13,12 +14,20 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
     [Header("Input")]
     public bool useLeftClick = true;
 
+    [Header("References")]
+    public PlayerWaypointController waypointMover;
+
     private PlayerInputActions input;
     private Door heldDoor;
 
     private void Awake() {
         input = new PlayerInputActions();
+
         if (cam == null) cam = Camera.main;
+
+        if (waypointMover == null) {
+            waypointMover = GetComponentInParent<PlayerWaypointController>();
+        }
     }
 
     public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
@@ -39,11 +48,22 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
         input.Player.Disable();
     }
 
+    private void Update() {
+        if (IsPlayerMoving()) {
+            ReleaseDoor();
+        }
+    }
+
     private void OnApplicationFocus(bool hasFocus) {
         if (!hasFocus) ReleaseDoor();
     }
 
     private void OnHoldStarted(InputAction.CallbackContext ctx) {
+        if (IsPlayerMoving()) {
+            ReleaseDoor();
+            return;
+        }
+
         TryAcquireDoorUnderCursor();
     }
 
@@ -53,6 +73,11 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
 
     private void TryAcquireDoorUnderCursor() {
         if (cam == null) return;
+
+        if (IsPlayerMoving()) {
+            ReleaseDoor();
+            return;
+        }
 
         Vector2 screenPos =
             Mouse.current != null ? Mouse.current.position.ReadValue() : (Vector2)Input.mousePosition;
@@ -71,6 +96,16 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
     }
 
     private void HoldDoor(Door d) {
+        if (d == null) {
+            ReleaseDoor();
+            return;
+        }
+
+        if (IsPlayerMoving()) {
+            ReleaseDoor();
+            return;
+        }
+
         if (heldDoor == d) return;
 
         ReleaseDoor();
@@ -83,5 +118,9 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
         if (heldDoor == null) return;
         heldDoor.SetManualHeld(false);
         heldDoor = null;
+    }
+
+    private bool IsPlayerMoving() {
+        return waypointMover != null && waypointMover.IsMoving;
     }
 }

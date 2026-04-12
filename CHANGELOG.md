@@ -2,13 +2,19 @@
 ## April 11
 ### Added
 - Mold spray now has particle effects.
+- Paper now supports custom text, and has a writing animation that fits text. Writing on paper fills out the paper progressively.
 
 ### Changed
 - Paper now requires using R to write and progress the percentage.
   - Can write on either the Monitor or Paper views.
+- Writing on paper now has audio.
+- Added a small loading screen to preload writing assets.
 
 ### Fixed
 - Fixed mold patches being able to spread to locations that were currently being sprayed by the player.
+
+### Issues
+- Writing on paper had framerate issues, which may or may not have been resolved.
 
 ## April 10
 ### Added

@@ -20,6 +20,7 @@ namespace FNaS.Systems {
 
         [Header("References")]
         public ViewController viewController;
+        public PlayerWaypointController waypointMover;
         public WinState winState;
         public LoseState loseState;
         public SecurityMonitorController securityMonitorController;
@@ -34,11 +35,6 @@ namespace FNaS.Systems {
         [Header("UI")]
         public TMP_Text percentText;
 
-        [Header("Writing Audio")]
-        public AudioSource writingLoopSource;
-        public AudioClip writingLoopClip;
-        [Range(0f, 1f)] public float writingLoopVolume = 0.8f;
-
         [Header("Debug")]
         public bool verboseLogging = false;
 
@@ -52,6 +48,14 @@ namespace FNaS.Systems {
 
         private void Awake() {
             input = new PlayerInputActions();
+
+            if (viewController == null) {
+                viewController = GetComponentInParent<ViewController>();
+            }
+
+            if (waypointMover == null) {
+                waypointMover = GetComponentInParent<PlayerWaypointController>();
+            }
         }
 
         private void OnEnable() {
@@ -78,18 +82,9 @@ namespace FNaS.Systems {
             if (securityMonitorController != null) {
                 securityMonitorController.OnCameraSwitched -= HandleMonitorCameraSwitched;
             }
-
-            StopWritingAudio();
         }
 
         private void Start() {
-            if (writingLoopSource != null) {
-                writingLoopSource.playOnAwake = false;
-                writingLoopSource.loop = true;
-                writingLoopSource.clip = writingLoopClip;
-                writingLoopSource.volume = writingLoopVolume;
-            }
-
             RefreshAllowedWriteViewFlag();
             UpdateText();
         }
@@ -102,9 +97,17 @@ namespace FNaS.Systems {
 
             RefreshAllowedWriteViewFlag();
 
+            if (writeState != WriteState.Idle && IsPlayerMoving()) {
+                if (verboseLogging) {
+                    Debug.Log("Paper writing stopped because waypoint movement started.", this);
+                }
+
+                StopWriting(resetPickupDelay: true);
+                return;
+            }
+
             switch (writeState) {
                 case WriteState.Idle:
-                    StopWritingAudio();
                     break;
 
                 case WriteState.PickupDelay:
@@ -126,6 +129,7 @@ namespace FNaS.Systems {
         private void OnInteractPressed(InputAction.CallbackContext ctx) {
             if (writeState != WriteState.Idle) return;
             if (!IsCurrentlyOnAllowedWriteView()) return;
+            if (IsPlayerMoving()) return;
 
             pickupTimer = 0f;
             writeState = WriteState.PickupDelay;
@@ -145,7 +149,6 @@ namespace FNaS.Systems {
 
             if (pickupTimer >= Mathf.Max(0.01f, pickupDelaySeconds)) {
                 writeState = WriteState.Writing;
-                StartWritingAudio();
 
                 if (verboseLogging) {
                     Debug.Log("Paper writing began.", this);
@@ -158,8 +161,6 @@ namespace FNaS.Systems {
                 StopWriting(resetPickupDelay: true);
                 return;
             }
-
-            StartWritingAudio();
 
             float denom = Mathf.Max(0.01f, secondsToWin);
             progress01 = Mathf.Clamp01(progress01 + Time.deltaTime / denom);
@@ -246,7 +247,13 @@ namespace FNaS.Systems {
         }
 
         private bool CanContinueWriting() {
-            return IsCurrentlyOnAllowedWriteView();
+            if (!IsCurrentlyOnAllowedWriteView()) return false;
+            if (IsPlayerMoving()) return false;
+            return true;
+        }
+
+        private bool IsPlayerMoving() {
+            return waypointMover != null && waypointMover.IsMoving;
         }
 
         private void StopWriting(bool resetPickupDelay) {
@@ -258,25 +265,6 @@ namespace FNaS.Systems {
 
             if (resetPickupDelay) {
                 pickupTimer = 0f;
-            }
-
-            StopWritingAudio();
-        }
-
-        private void StartWritingAudio() {
-            if (writingLoopSource == null || writingLoopClip == null) return;
-
-            writingLoopSource.clip = writingLoopClip;
-            writingLoopSource.volume = writingLoopVolume;
-
-            if (!writingLoopSource.isPlaying) {
-                writingLoopSource.Play();
-            }
-        }
-
-        private void StopWritingAudio() {
-            if (writingLoopSource != null && writingLoopSource.isPlaying) {
-                writingLoopSource.Stop();
             }
         }
 
