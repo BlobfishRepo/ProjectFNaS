@@ -13,12 +13,15 @@ namespace FNaS.UI.Settings {
 
         private readonly List<GameObject> spawnedObjects = new();
 
-        public void Rebuild(RuntimeGameSettings runtimeSettings, bool showDebugSettings) {
+        public void Rebuild(RuntimeGameSettings runtimeSettings, bool showDebugSettings, SettingScreen includedScreens) {
             Clear();
 
             SettingCategory? lastCategory = null;
 
             foreach (var def in SettingsSchema.Definitions) {
+                if (!SettingsSchema.ShouldShowOnScreen(def, includedScreens))
+                    continue;
+
                 if (def.debugOnly && !showDebugSettings)
                     continue;
 

@@ -2,9 +2,10 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.InputSystem;
 using FNaS.Gameplay;
+using FNaS.Settings;
 
 namespace FNaS.Systems {
-    public class PaperWinProgress : MonoBehaviour {
+    public class PaperWinProgress : MonoBehaviour, IRuntimeSettingsConsumer {
         private enum WriteState {
             Idle,
             PickupDelay,
@@ -56,6 +57,14 @@ namespace FNaS.Systems {
             if (waypointMover == null) {
                 waypointMover = GetComponentInParent<PlayerWaypointController>();
             }
+
+            if (winState == null) {
+                winState = FindFirstObjectByType<WinState>();
+            }
+
+            if (loseState == null) {
+                loseState = FindFirstObjectByType<LoseState>();
+            }
         }
 
         private void OnEnable() {
@@ -89,8 +98,13 @@ namespace FNaS.Systems {
             UpdateText();
         }
 
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) return;
+            secondsToWin = Mathf.Max(0.01f, settings.GetFloat("paper.secondsToWin"));
+        }
+
         private void Update() {
-            if (HasEnded()) {
+            if (ShouldBlockInput()) {
                 StopWriting(resetPickupDelay: true);
                 return;
             }
@@ -120,13 +134,8 @@ namespace FNaS.Systems {
             }
         }
 
-        private bool HasEnded() {
-            if (winState != null && winState.hasWon) return true;
-            if (loseState != null && loseState.hasLost) return true;
-            return false;
-        }
-
         private void OnInteractPressed(InputAction.CallbackContext ctx) {
+            if (ShouldBlockInput()) return;
             if (writeState != WriteState.Idle) return;
             if (!IsCurrentlyOnAllowedWriteView()) return;
             if (IsPlayerMoving()) return;
@@ -145,7 +154,7 @@ namespace FNaS.Systems {
                 return;
             }
 
-            pickupTimer += Time.deltaTime;
+            pickupTimer += Time.unscaledDeltaTime;
 
             if (pickupTimer >= Mathf.Max(0.01f, pickupDelaySeconds)) {
                 writeState = WriteState.Writing;
@@ -163,7 +172,7 @@ namespace FNaS.Systems {
             }
 
             float denom = Mathf.Max(0.01f, secondsToWin);
-            progress01 = Mathf.Clamp01(progress01 + Time.deltaTime / denom);
+            progress01 = Mathf.Clamp01(progress01 + Time.unscaledDeltaTime / denom);
             UpdateText();
 
             if (progress01 >= 1f) {
@@ -247,6 +256,7 @@ namespace FNaS.Systems {
         }
 
         private bool CanContinueWriting() {
+            if (ShouldBlockInput()) return false;
             if (!IsCurrentlyOnAllowedWriteView()) return false;
             if (IsPlayerMoving()) return false;
             return true;
@@ -254,6 +264,12 @@ namespace FNaS.Systems {
 
         private bool IsPlayerMoving() {
             return waypointMover != null && waypointMover.IsMoving;
+        }
+
+        private bool ShouldBlockInput() {
+            if (loseState != null && loseState.hasLost) return true;
+            if (winState != null && winState.hasWon) return true;
+            return false;
         }
 
         private void StopWriting(bool resetPickupDelay) {

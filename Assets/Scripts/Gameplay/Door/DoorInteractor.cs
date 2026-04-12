@@ -16,6 +16,8 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
 
     [Header("References")]
     public PlayerWaypointController waypointMover;
+    public LoseState loseState;
+    public WinState winState;
 
     private PlayerInputActions input;
     private Door heldDoor;
@@ -27,6 +29,14 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
 
         if (waypointMover == null) {
             waypointMover = GetComponentInParent<PlayerWaypointController>();
+        }
+
+        if (loseState == null) {
+            loseState = FindFirstObjectByType<LoseState>();
+        }
+
+        if (winState == null) {
+            winState = FindFirstObjectByType<WinState>();
         }
     }
 
@@ -49,7 +59,7 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
     }
 
     private void Update() {
-        if (IsPlayerMoving()) {
+        if (ShouldBlockInput() || IsPlayerMoving()) {
             ReleaseDoor();
         }
     }
@@ -59,7 +69,7 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
     }
 
     private void OnHoldStarted(InputAction.CallbackContext ctx) {
-        if (IsPlayerMoving()) {
+        if (ShouldBlockInput() || IsPlayerMoving()) {
             ReleaseDoor();
             return;
         }
@@ -74,7 +84,7 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
     private void TryAcquireDoorUnderCursor() {
         if (cam == null) return;
 
-        if (IsPlayerMoving()) {
+        if (ShouldBlockInput() || IsPlayerMoving()) {
             ReleaseDoor();
             return;
         }
@@ -101,7 +111,7 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
             return;
         }
 
-        if (IsPlayerMoving()) {
+        if (ShouldBlockInput() || IsPlayerMoving()) {
             ReleaseDoor();
             return;
         }
@@ -122,5 +132,11 @@ public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
 
     private bool IsPlayerMoving() {
         return waypointMover != null && waypointMover.IsMoving;
+    }
+
+    private bool ShouldBlockInput() {
+        if (loseState != null && loseState.hasLost) return true;
+        if (winState != null && winState.hasWon) return true;
+        return false;
     }
 }

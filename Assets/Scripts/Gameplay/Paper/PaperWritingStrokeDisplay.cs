@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 using FNaS.Gameplay;
+using FNaS.Settings;
 
 namespace FNaS.Systems {
-    public class PaperWritingStrokeDisplay : MonoBehaviour {
+    public class PaperWritingStrokeDisplay : MonoBehaviour, IRuntimeSettingsConsumer {
         [Serializable]
         private class DrawSegment {
             public Vector2 pageA;
@@ -152,6 +153,17 @@ APARTMENT";
         private void OnDisable() {
             if (writingAudioSource != null && writingAudioSource.isPlaying) {
                 writingAudioSource.Stop();
+            }
+        }
+
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) return;
+
+            glyphScale = settings.GetFloat("paper.glyphScale");
+            textToWrite = PaperTextPresets.ResolveText(settings.GetInt("paper.textPreset"));
+
+            if (Application.isPlaying) {
+                Rebuild();
             }
         }
 

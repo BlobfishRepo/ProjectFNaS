@@ -14,31 +14,47 @@ namespace FNaS.Systems {
         [Header("Timing")]
         public int framesBeforePreload = 1;
         public int framesAfterPreload = 1;
-        public float fadeOutDuration = 0.15f;
 
         [Header("Debug")]
         public bool verboseLogging = false;
 
+        public bool IsFinished { get; private set; }
+
         private IEnumerator Start() {
+            IsFinished = false;
+
             SetBlackImmediate();
             SetBehavioursEnabled(false);
+
+            yield return StartCoroutine(PrewarmRoutine());
+
+            SetBehavioursEnabled(true);
+            IsFinished = true;
+        }
+
+        private IEnumerator PrewarmRoutine() {
+            if (verboseLogging) {
+                Debug.Log("GameplayPrewarmLoader: preload start", this);
+            }
 
             for (int i = 0; i < Mathf.Max(0, framesBeforePreload); i++) {
                 yield return null;
             }
 
-            if (verboseLogging) {
-                Debug.Log("GameplayPrewarmLoader: preload begin", this);
-            }
-
             if (glyphLibrary != null) {
                 glyphLibrary.Preload();
+            }
+            else if (verboseLogging) {
+                Debug.LogWarning("GameplayPrewarmLoader: glyphLibrary is null.", this);
             }
 
             yield return null;
 
             if (paper != null) {
                 paper.Rebuild();
+            }
+            else if (verboseLogging) {
+                Debug.LogWarning("GameplayPrewarmLoader: paper is null.", this);
             }
 
             for (int i = 0; i < Mathf.Max(0, framesAfterPreload); i++) {
@@ -47,12 +63,6 @@ namespace FNaS.Systems {
 
             if (verboseLogging) {
                 Debug.Log("GameplayPrewarmLoader: preload end", this);
-            }
-
-            SetBehavioursEnabled(true);
-
-            if (blackFadeGroup != null) {
-                yield return FadeCanvasGroup(blackFadeGroup, 1f, 0f, fadeOutDuration);
             }
         }
 
@@ -72,28 +82,6 @@ namespace FNaS.Systems {
                     disableDuringPrewarm[i].enabled = enabled;
                 }
             }
-        }
-
-        private IEnumerator FadeCanvasGroup(CanvasGroup group, float from, float to, float duration) {
-            if (group == null) yield break;
-
-            group.alpha = from;
-
-            if (duration <= 0f) {
-                group.alpha = to;
-                group.blocksRaycasts = to > 0.001f;
-                yield break;
-            }
-
-            float t = 0f;
-            while (t < duration) {
-                t += Time.deltaTime;
-                group.alpha = Mathf.Lerp(from, to, t / duration);
-                yield return null;
-            }
-
-            group.alpha = to;
-            group.blocksRaycasts = to > 0.001f;
         }
     }
 }

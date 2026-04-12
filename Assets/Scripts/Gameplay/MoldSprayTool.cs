@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using FNaS.Systems;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -8,6 +9,10 @@ namespace FNaS.Entities.Mold {
         public Camera aimCamera;
         public ParticleSystem sprayParticles;
         public AudioSource sprayLoopSource;
+
+        [Header("Game State")]
+        public LoseState loseState;
+        public WinState winState;
 
         [Header("Spray")]
         [Min(0.1f)] public float range = 10f;
@@ -31,11 +36,19 @@ namespace FNaS.Entities.Mold {
 
         private PlayerInputActions input;
         private readonly Dictionary<MoldPatch, float> cleanseTimers = new();
-        private readonly HashSet<MoldPatch> validThisFrame = new HashSet<MoldPatch>();
-        private readonly List<MoldPatch> toRemoveBuffer = new List<MoldPatch>();
+        private readonly HashSet<MoldPatch> validThisFrame = new();
+        private readonly List<MoldPatch> toRemoveBuffer = new();
 
         private void Awake() {
             input = new PlayerInputActions();
+
+            if (loseState == null) {
+                loseState = FindFirstObjectByType<LoseState>();
+            }
+
+            if (winState == null) {
+                winState = FindFirstObjectByType<WinState>();
+            }
         }
 
         private void OnEnable() {
@@ -64,6 +77,11 @@ namespace FNaS.Entities.Mold {
         }
 
         private void Update() {
+            if (ShouldBlockInput()) {
+                ForceOff();
+                return;
+            }
+
             if (aimCamera == null || MoldManager.Instance == null) {
                 cleanseTimers.Clear();
                 StopSprayEffects();
@@ -166,6 +184,11 @@ namespace FNaS.Entities.Mold {
         }
 
         private void OnSprayPressed(InputAction.CallbackContext ctx) {
+            if (ShouldBlockInput()) {
+                ForceOff();
+                return;
+            }
+
             isSprayToggledOn = !isSprayToggledOn;
 
             if (verboseLogging) {
@@ -214,6 +237,18 @@ namespace FNaS.Entities.Mold {
             if (sprayLoopSource != null && sprayLoopSource.isPlaying) {
                 sprayLoopSource.Stop();
             }
+        }
+
+        private void ForceOff() {
+            isSprayToggledOn = false;
+            cleanseTimers.Clear();
+            StopSprayEffects();
+        }
+
+        private bool ShouldBlockInput() {
+            if (loseState != null && loseState.hasLost) return true;
+            if (winState != null && winState.hasWon) return true;
+            return false;
         }
     }
 }

@@ -1,4 +1,21 @@
 # Changelog
+## April 12
+### Added
+- Added Nights 1-5 with different presents, and with save/load for the most recent night.
+- Can use Escape to return to the intro menu from gameplay.
+
+### Changed
+- Added paper settings to settings page.
+- Settings page no longer includes every possible setting (all settings can still be edited in the JSON file if desired).
+
+### Removed
+- Removed paper percentage display in top-right corner.
+
+### Fixed
+- Fixed issues with mold spray, flashlight, and door interact working after winning/losing the game.
+- Fixed door interact working even if you move away from the location.
+- FPS drops related to the paper writing should now be stable.
+
 ## April 11
 ### Added
 - Mold spray now has particle effects.
