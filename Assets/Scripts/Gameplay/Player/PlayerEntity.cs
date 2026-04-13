@@ -59,7 +59,7 @@ namespace FNaS.Gameplay {
         private PlayerMovementBase ResolveMovementFromSettings() {
             var settings = RuntimeGameSettings.Instance;
             PlayerMovementMode mode = settings != null
-                ? settings.playerMovementMode
+                ? settings.GetPlayerMovementMode()
                 : PlayerMovementMode.NodeBased;
 
             return mode switch {

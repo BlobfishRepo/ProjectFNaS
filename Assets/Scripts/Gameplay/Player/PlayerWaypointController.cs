@@ -1,14 +1,17 @@
 using System.Collections;
 using UnityEngine;
 using FNaS.MasterNodes;
+using FNaS.Entities.Stalker;
 using FNaS.Systems;
+using FNaS.Settings;
 
 namespace FNaS.Gameplay {
-    public class PlayerWaypointController : PlayerMovementBase {
+    public class PlayerWaypointController : PlayerMovementBase, IRuntimeSettingsConsumer {
         [Header("References")]
         public Transform rigTransform;
         public Transform viewPivot;
         public Waypoint startingWaypoint;
+        public PlayerSlowZoneTracker slowZoneTracker;
 
         [Header("Systems")]
         public BlockerRegistry blockerRegistry;
@@ -17,12 +20,31 @@ namespace FNaS.Gameplay {
         [Header("Movement")]
         public float moveSpeed = 6.0f;
 
+        [Header("View Bob")]
+        [Tooltip("Enable subtle bobbing while moving between waypoints.")]
+        public bool enableMoveBob = true;
+
+        [Tooltip("Vertical bob height in local units.")]
+        public float bobHeight = 0.035f;
+
+        [Tooltip("Side-to-side sway in local units.")]
+        public float bobSideAmount = 0.015f;
+
+        [Tooltip("How many bob cycles happen during one movement transition.")]
+        public float bobCyclesPerMove = 1.5f;
+
+        [Tooltip("How quickly the viewPivot returns to neutral after movement.")]
+        public float bobReturnSpeed = 14f;
+
         [Header("State (read-only)")]
         public Waypoint CurrentWaypoint;
 
         [Header("Audio")]
         public AudioSource sfxSource;
         public AudioClip footstepClip;
+
+        [Header("Stalker")]
+        [SerializeField] private StalkerJumpscareController stalkerJumpscare;
 
         [SerializeField] private MasterNode currentMasterNode;
         public override MasterNode CurrentMasterNode => currentMasterNode;
@@ -32,6 +54,15 @@ namespace FNaS.Gameplay {
 
         public override Transform RigTransform => rigTransform;
         public override Transform ViewTransform => viewPivot != null ? viewPivot : transform;
+        private Coroutine activeMoveRoutine;
+
+        private Vector3 baseViewPivotLocalPos;
+        private bool cachedBaseViewPivotLocalPos;
+
+        private bool movementPaused;
+        private bool footstepsWerePlayingBeforePause;
+
+        private readonly System.Collections.Generic.Dictionary<Door, int> doorTraversalTokens = new System.Collections.Generic.Dictionary<Door, int>();
 
         public override void Initialize(PlayerEntity player, PlayerInputController input) {
             if (startingWaypoint == null) {
@@ -40,38 +71,66 @@ namespace FNaS.Gameplay {
                 return;
             }
 
+            CacheBaseViewPivotLocalPos();
             SetCurrentWaypointInstant(startingWaypoint);
         }
 
         private void Start() {
+            CacheBaseViewPivotLocalPos();
+
             if (CurrentWaypoint == null) {
                 Initialize(null, null);
             }
         }
 
-        public void BeginTransition(WaypointTransition tr) {
-            if (isMoving) return;
-            if (tr == null || tr.target == null) return;
-            if (loseState != null && loseState.hasLost) return;
+        private void Update() {
+            if (!isMoving) {
+                RestoreViewPivotBob();
+            }
+        }
+
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) {
+                Debug.LogWarning("PlayerWaypointController: RuntimeGameSettings not found. Using inspector moveSpeed.");
+                return;
+            }
+
+            moveSpeed = settings.GetFloat("player.moveSpeed");
+        }
+
+        public bool BeginTransition(WaypointTransition tr) {
+            if (isMoving) return false;
+            if (tr == null || tr.target == null) return false;
+            if (loseState != null && loseState.hasLost) return false;
 
             MasterNode fromMaster = ResolveMasterNode(CurrentWaypoint);
             MasterNode toMaster = ResolveMasterNode(tr.target);
 
             if (tr.tag == TransitionTag.Forward && blockerRegistry != null && fromMaster != null) {
                 if (blockerRegistry.IsForwardExitBlockedAt(fromMaster)) {
-                    loseState?.TriggerLose("Tried to move past a blocking entity.");
-                    return;
+                    if (stalkerJumpscare != null) {
+                        stalkerJumpscare.PlayJumpscare("Tried to move past a blocking entity.");
+                    }
+                    else {
+                        loseState?.TriggerLose("Tried to move past a blocking entity.");
+                    }
+                    return false;
                 }
             }
 
-            StartCoroutine(MoveAlongTransition(tr, toMaster));
+            activeMoveRoutine = StartCoroutine(MoveAlongTransition(tr, toMaster));
+            return true;
         }
 
         private IEnumerator MoveAlongTransition(WaypointTransition tr, MasterNode toMaster) {
             isMoving = true;
+            CacheBaseViewPivotLocalPos();
 
             Door transitionDoor = tr.doorToUse;
+            int transitionDoorToken = 0;
+
             if (transitionDoor != null) {
+                transitionDoorToken = BumpDoorTraversalToken(transitionDoor);
                 transitionDoor.SetTraversalOpen(true);
             }
 
@@ -163,16 +222,20 @@ namespace FNaS.Gameplay {
 
                 if (sfxSource != null) sfxSource.Stop();
                 isMoving = false;
+                RestoreViewPivotBobImmediate();
 
                 if (transitionDoor != null) {
-                    yield return new WaitForSeconds(tr.doorCloseDelay);
-                    transitionDoor.SetTraversalOpen(false);
+                    StartCoroutine(CloseTraversalDoorAfterDelay(
+                        transitionDoor,
+                        tr.doorCloseDelay,
+                        transitionDoorToken
+                    ));
                 }
 
                 yield break;
             }
 
-            float speed = Mathf.Max(0.01f, moveSpeed);
+            float baseSpeed = Mathf.Max(0.01f, moveSpeed);
 
             int nextTurnIndex = 0;
             Quaternion turnFrom = startYaw;
@@ -196,12 +259,33 @@ namespace FNaS.Gameplay {
                 distAtPoint[i] = distAtPoint[i - 1] + segLen[i - 1];
             }
 
-            float AnticipationDist() => speed * Mathf.Max(0f, turnAnticipationSeconds);
+            float CurrentSpeed() {
+                float s = baseSpeed;
+
+                if (slowZoneTracker != null) {
+                    s *= slowZoneTracker.Multiplier;
+                }
+
+                return s;
+            }
+
+            float AnticipationDist() => CurrentSpeed() * Mathf.Max(0f, turnAnticipationSeconds);
 
             float traveled = 0f;
 
             while (traveled < totalLen) {
-                traveled += speed * Time.deltaTime;
+                if (movementPaused) {
+                    yield return null;
+                    continue;
+                }
+
+                float speed = baseSpeed;
+
+                if (slowZoneTracker != null) {
+                    speed *= slowZoneTracker.Multiplier;
+                }
+
+                traveled += CurrentSpeed() * Time.deltaTime;
                 traveled = Mathf.Min(traveled, totalLen);
 
                 int seg = 0;
@@ -251,6 +335,8 @@ namespace FNaS.Gameplay {
                         viewPivot.rotation = Quaternion.Slerp(turnFrom, turnTo, a);
                         if (a >= 1f) turningActive = false;
                     }
+
+                    ApplyMoveBob(traveled / totalLen);
                 }
 
                 yield return null;
@@ -262,11 +348,54 @@ namespace FNaS.Gameplay {
 
             if (sfxSource != null) sfxSource.Stop();
             isMoving = false;
+            RestoreViewPivotBobImmediate();
 
             if (transitionDoor != null) {
-                yield return new WaitForSeconds(tr.doorCloseDelay);
-                transitionDoor.SetTraversalOpen(false);
+                StartCoroutine(CloseTraversalDoorAfterDelay(
+                    transitionDoor,
+                    tr.doorCloseDelay,
+                    transitionDoorToken
+                ));
             }
+
+            activeMoveRoutine = null;
+        }
+
+        private void ApplyMoveBob(float normalizedMoveT) {
+            if (!enableMoveBob || viewPivot == null) return;
+            CacheBaseViewPivotLocalPos();
+
+            float t = Mathf.Clamp01(normalizedMoveT);
+
+            // Zero bob at start/end, strongest in the middle.
+            float envelope = Mathf.Sin(t * Mathf.PI);
+
+            float phase = t * Mathf.PI * 2f * Mathf.Max(0.01f, bobCyclesPerMove);
+
+            float vertical = Mathf.Sin(phase) * bobHeight * envelope;
+            float side = Mathf.Sin(phase * 0.5f) * bobSideAmount * envelope;
+
+            viewPivot.localPosition = baseViewPivotLocalPos + new Vector3(side, vertical, 0f);
+        }
+
+        private void RestoreViewPivotBob() {
+            if (viewPivot == null) return;
+            CacheBaseViewPivotLocalPos();
+
+            float k = 1f - Mathf.Exp(-bobReturnSpeed * Time.deltaTime);
+            viewPivot.localPosition = Vector3.Lerp(viewPivot.localPosition, baseViewPivotLocalPos, k);
+        }
+
+        private void RestoreViewPivotBobImmediate() {
+            if (viewPivot == null) return;
+            CacheBaseViewPivotLocalPos();
+            viewPivot.localPosition = baseViewPivotLocalPos;
+        }
+
+        private void CacheBaseViewPivotLocalPos() {
+            if (viewPivot == null || cachedBaseViewPivotLocalPos) return;
+            baseViewPivotLocalPos = viewPivot.localPosition;
+            cachedBaseViewPivotLocalPos = true;
         }
 
         private void SetCurrentWaypointInstant(Waypoint waypoint) {
@@ -280,6 +409,72 @@ namespace FNaS.Gameplay {
 
         private MasterNode ResolveMasterNode(Waypoint waypoint) {
             return waypoint != null ? waypoint.masterNode : null;
+        }
+
+        public void CancelActiveMovementImmediate() {
+            if (activeMoveRoutine != null) {
+                StopCoroutine(activeMoveRoutine);
+                activeMoveRoutine = null;
+            }
+
+            if (sfxSource != null) {
+                sfxSource.Stop();
+            }
+
+            movementPaused = false;
+            footstepsWerePlayingBeforePause = false;
+            isMoving = false;
+            RestoreViewPivotBobImmediate();
+        }
+
+        public void PauseActiveMovement() {
+            movementPaused = true;
+
+            if (sfxSource != null) {
+                footstepsWerePlayingBeforePause = sfxSource.isPlaying;
+                sfxSource.Pause();
+            }
+        }
+
+        public void ResumeActiveMovement() {
+            movementPaused = false;
+
+            if (sfxSource != null && footstepsWerePlayingBeforePause) {
+                sfxSource.UnPause();
+            }
+
+            footstepsWerePlayingBeforePause = false;
+        }
+
+        private int BumpDoorTraversalToken(Door door) {
+            if (door == null) return 0;
+
+            int next = 1;
+            if (doorTraversalTokens.TryGetValue(door, out int current)) {
+                next = current + 1;
+            }
+
+            doorTraversalTokens[door] = next;
+            return next;
+        }
+
+        private bool IsLatestDoorTraversalToken(Door door, int token) {
+            if (door == null) return false;
+            return doorTraversalTokens.TryGetValue(door, out int current) && current == token;
+        }
+
+        private IEnumerator CloseTraversalDoorAfterDelay(Door door, float delay, int token) {
+            if (door == null) yield break;
+
+            if (delay > 0f) {
+                yield return new WaitForSeconds(delay);
+            }
+
+            if (!IsLatestDoorTraversalToken(door, token)) {
+                yield break;
+            }
+
+            door.SetTraversalOpen(false);
         }
     }
 }

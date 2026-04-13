@@ -136,6 +136,24 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Spray"",
+                    ""type"": ""Button"",
+                    ""id"": ""835d3692-ea78-419f-bb14-6a989b6ca8d5"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""ExitToMenu"",
+                    ""type"": ""Button"",
+                    ""id"": ""52af9b4a-a514-4093-b540-7f3354fd0fd1"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -237,6 +255,28 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
                     ""action"": ""ToggleDebug"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""2042e90a-1c02-462c-9a5c-67bdeba1db64"",
+                    ""path"": ""<Keyboard>/e"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Spray"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""6cd64f73-76d6-4b3e-a929-309f225e5222"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": ""Hold(duration=1.5)"",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""ExitToMenu"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         }
@@ -250,6 +290,8 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         m_Player_Flashlight = m_Player.FindAction("Flashlight", throwIfNotFound: true);
         m_Player_Reset = m_Player.FindAction("Reset", throwIfNotFound: true);
         m_Player_ToggleDebug = m_Player.FindAction("ToggleDebug", throwIfNotFound: true);
+        m_Player_Spray = m_Player.FindAction("Spray", throwIfNotFound: true);
+        m_Player_ExitToMenu = m_Player.FindAction("ExitToMenu", throwIfNotFound: true);
     }
 
     ~@PlayerInputActions()
@@ -335,6 +377,8 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Flashlight;
     private readonly InputAction m_Player_Reset;
     private readonly InputAction m_Player_ToggleDebug;
+    private readonly InputAction m_Player_Spray;
+    private readonly InputAction m_Player_ExitToMenu;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -366,6 +410,14 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/ToggleDebug".
         /// </summary>
         public InputAction @ToggleDebug => m_Wrapper.m_Player_ToggleDebug;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/Spray".
+        /// </summary>
+        public InputAction @Spray => m_Wrapper.m_Player_Spray;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/ExitToMenu".
+        /// </summary>
+        public InputAction @ExitToMenu => m_Wrapper.m_Player_ExitToMenu;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -407,6 +459,12 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @ToggleDebug.started += instance.OnToggleDebug;
             @ToggleDebug.performed += instance.OnToggleDebug;
             @ToggleDebug.canceled += instance.OnToggleDebug;
+            @Spray.started += instance.OnSpray;
+            @Spray.performed += instance.OnSpray;
+            @Spray.canceled += instance.OnSpray;
+            @ExitToMenu.started += instance.OnExitToMenu;
+            @ExitToMenu.performed += instance.OnExitToMenu;
+            @ExitToMenu.canceled += instance.OnExitToMenu;
         }
 
         /// <summary>
@@ -433,6 +491,12 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
             @ToggleDebug.started -= instance.OnToggleDebug;
             @ToggleDebug.performed -= instance.OnToggleDebug;
             @ToggleDebug.canceled -= instance.OnToggleDebug;
+            @Spray.started -= instance.OnSpray;
+            @Spray.performed -= instance.OnSpray;
+            @Spray.canceled -= instance.OnSpray;
+            @ExitToMenu.started -= instance.OnExitToMenu;
+            @ExitToMenu.performed -= instance.OnExitToMenu;
+            @ExitToMenu.canceled -= instance.OnExitToMenu;
         }
 
         /// <summary>
@@ -508,5 +572,19 @@ public partial class @PlayerInputActions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnToggleDebug(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "Spray" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnSpray(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "ExitToMenu" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnExitToMenu(InputAction.CallbackContext context);
     }
 }

@@ -89,4 +89,22 @@ public class Door : MonoBehaviour {
             RefreshWantedState();
         }
     }
+
+    public float GetOpenFraction01() {
+        if (hinge == null) return isOpen ? 1f : 0f;
+
+        float currentYaw = Mathf.Abs(Mathf.DeltaAngle(
+            closedWorld.eulerAngles.y,
+            hinge.rotation.eulerAngles.y
+        ));
+
+        float maxYaw = Mathf.Abs(openYaw);
+        if (maxYaw <= 0.001f) return isOpen ? 1f : 0f;
+
+        return Mathf.Clamp01(currentYaw / maxYaw);
+    }
+
+    public bool IsOpenEnough(float threshold01 = 0.3f) {
+        return GetOpenFraction01() >= Mathf.Clamp01(threshold01);
+    }
 }

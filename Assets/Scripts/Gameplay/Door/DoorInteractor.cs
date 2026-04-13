@@ -1,7 +1,10 @@
+using FNaS.Gameplay;
+using FNaS.Settings;
+using FNaS.Systems;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class DoorInteractor : MonoBehaviour {
+public class DoorInteractor : MonoBehaviour, IRuntimeSettingsConsumer {
     [Header("Raycast")]
     public Camera cam;
     public float maxDistance = 6f;
@@ -11,12 +14,35 @@ public class DoorInteractor : MonoBehaviour {
     [Header("Input")]
     public bool useLeftClick = true;
 
+    [Header("References")]
+    public PlayerWaypointController waypointMover;
+    public LoseState loseState;
+    public WinState winState;
+
     private PlayerInputActions input;
     private Door heldDoor;
 
     private void Awake() {
         input = new PlayerInputActions();
+
         if (cam == null) cam = Camera.main;
+
+        if (waypointMover == null) {
+            waypointMover = GetComponentInParent<PlayerWaypointController>();
+        }
+
+        if (loseState == null) {
+            loseState = FindFirstObjectByType<LoseState>();
+        }
+
+        if (winState == null) {
+            winState = FindFirstObjectByType<WinState>();
+        }
+    }
+
+    public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+        if (settings == null) return;
+        maxDistance = settings.GetFloat("door.maxDistance");
     }
 
     private void OnEnable() {
@@ -32,11 +58,22 @@ public class DoorInteractor : MonoBehaviour {
         input.Player.Disable();
     }
 
+    private void Update() {
+        if (ShouldBlockInput() || IsPlayerMoving()) {
+            ReleaseDoor();
+        }
+    }
+
     private void OnApplicationFocus(bool hasFocus) {
         if (!hasFocus) ReleaseDoor();
     }
 
     private void OnHoldStarted(InputAction.CallbackContext ctx) {
+        if (ShouldBlockInput() || IsPlayerMoving()) {
+            ReleaseDoor();
+            return;
+        }
+
         TryAcquireDoorUnderCursor();
     }
 
@@ -46,6 +83,11 @@ public class DoorInteractor : MonoBehaviour {
 
     private void TryAcquireDoorUnderCursor() {
         if (cam == null) return;
+
+        if (ShouldBlockInput() || IsPlayerMoving()) {
+            ReleaseDoor();
+            return;
+        }
 
         Vector2 screenPos =
             Mouse.current != null ? Mouse.current.position.ReadValue() : (Vector2)Input.mousePosition;
@@ -64,6 +106,16 @@ public class DoorInteractor : MonoBehaviour {
     }
 
     private void HoldDoor(Door d) {
+        if (d == null) {
+            ReleaseDoor();
+            return;
+        }
+
+        if (ShouldBlockInput() || IsPlayerMoving()) {
+            ReleaseDoor();
+            return;
+        }
+
         if (heldDoor == d) return;
 
         ReleaseDoor();
@@ -76,5 +128,15 @@ public class DoorInteractor : MonoBehaviour {
         if (heldDoor == null) return;
         heldDoor.SetManualHeld(false);
         heldDoor = null;
+    }
+
+    private bool IsPlayerMoving() {
+        return waypointMover != null && waypointMover.IsMoving;
+    }
+
+    private bool ShouldBlockInput() {
+        if (loseState != null && loseState.hasLost) return true;
+        if (winState != null && winState.hasWon) return true;
+        return false;
     }
 }

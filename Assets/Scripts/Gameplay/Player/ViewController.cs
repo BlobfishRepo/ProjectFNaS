@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using FNaS.Entities.Stalker;
+using FNaS.Systems;
 
 namespace FNaS.Gameplay {
     public class ViewController : MonoBehaviour {
@@ -27,6 +29,9 @@ namespace FNaS.Gameplay {
         [SerializeField] private Waypoint currentWaypoint;
         [SerializeField] private View currentView;
         [SerializeField] private Direction? activeMoveDir;
+
+        [SerializeField] private LoseState loseState;
+        [SerializeField] private StalkerJumpscareController stalkerJumpscare;
 
         public Waypoint CurrentWaypoint => currentWaypoint;
         public View CurrentView => currentView;
@@ -70,6 +75,8 @@ namespace FNaS.Gameplay {
         private void Update() {
             if (mover == null || mover.rigTransform == null || mover.viewPivot == null) return;
             if (mover.IsMoving) return;
+            if (loseState != null && loseState.hasLost) return;
+            if (stalkerJumpscare != null && stalkerJumpscare.IsPlaying) return;
 
             SyncWaypointFromMover();
             UpdateEdgeSwitching();
@@ -237,7 +244,12 @@ namespace FNaS.Gameplay {
 
             if (currentView != null) {
                 var overrideMove = currentView.GetOverride(dir);
-                if (overrideMove.enabled && overrideMove.targetWaypoint != null) {
+
+                if (overrideMove.enabled) {
+                    if (overrideMove.targetWaypoint == null) {
+                        return;
+                    }
+
                     transition = waypoint.GetTransitionTo(overrideMove.targetWaypoint);
                 }
             }
@@ -255,7 +267,11 @@ namespace FNaS.Gameplay {
         private IEnumerator MoveAndApplyEntry(WaypointTransition transition) {
             Waypoint fromWaypoint = mover.CurrentWaypoint;
 
-            mover.BeginTransition(transition);
+            bool started = mover.BeginTransition(transition);
+            if (!started) {
+                activeMoveDir = null;
+                yield break;
+            }
 
             while (mover.IsMoving) {
                 yield return null;

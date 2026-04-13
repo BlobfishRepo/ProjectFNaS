@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using FNaS.Settings;
 
 namespace FNaS.Systems {
-    public class FlashlightTool : MonoBehaviour {
-
+    public class FlashlightTool : MonoBehaviour, IRuntimeSettingsConsumer {
         [Header("Battery")]
         public float maxBatterySeconds = 30f;
 
@@ -59,6 +59,10 @@ namespace FNaS.Systems {
         [Tooltip("Used only if flashlightLight is null or not a Spot light.")]
         [Range(1f, 180f)] public float fallbackSpotAngle = 35f;
 
+        [Header("Game State")]
+        public LoseState loseState;
+        public WinState winState;
+
         public bool isOn { get; private set; }
 
         private float batteryRemaining;
@@ -67,8 +71,21 @@ namespace FNaS.Systems {
         private float flickerTimer;
         private float offTimer;
 
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) return;
+            ApplyMaxBatterySeconds(settings.GetFloat("flashlight.maxBatterySeconds"));
+        }
+
         private void Awake() {
             input = new PlayerInputActions();
+
+            if (loseState == null) {
+                loseState = FindFirstObjectByType<LoseState>();
+            }
+
+            if (winState == null) {
+                winState = FindFirstObjectByType<WinState>();
+            }
         }
 
         private void OnEnable() {
@@ -92,10 +109,14 @@ namespace FNaS.Systems {
             if (aimCamera == null) aimCamera = Camera.main;
 
             ApplyIndicator(forceOff: false);
-            Debug.Log("Flashlight battery seconds: " + maxBatterySeconds);
         }
 
         private void Update() {
+            if (ShouldBlockInput()) {
+                ForceOff();
+                return;
+            }
+
             if (!isOn) {
                 offTimer = 0f;
                 flickerTimer = 0f;
@@ -107,15 +128,35 @@ namespace FNaS.Systems {
             UpdateLowBatteryFlicker();
         }
 
-        private void OnFlashlightPressed(InputAction.CallbackContext ctx) => Toggle();
+        private void OnFlashlightPressed(InputAction.CallbackContext ctx) {
+            if (ShouldBlockInput()) {
+                ForceOff();
+                return;
+            }
+
+            Toggle();
+        }
 
         public void Toggle() {
+            if (ShouldBlockInput()) {
+                ForceOff();
+                return;
+            }
+
             if (batteryRemaining <= 0f) return;
 
-            if (uiSource != null && lightSwitchClip != null)
+            if (uiSource != null && lightSwitchClip != null) {
                 uiSource.PlayOneShot(lightSwitchClip);
+            }
 
             isOn = !isOn;
+            ApplyIndicator(forceOff: false);
+        }
+
+        public void ForceOff() {
+            isOn = false;
+            offTimer = 0f;
+            flickerTimer = 0f;
             ApplyIndicator(forceOff: false);
         }
 
@@ -153,7 +194,6 @@ namespace FNaS.Systems {
                 desiredForward = dir.normalized;
             }
             else {
-                // Face the player's forward (camera forward is usually best)
                 desiredForward = (aimCamera != null) ? aimCamera.transform.forward : beamOrigin.forward;
             }
 
@@ -205,21 +245,16 @@ namespace FNaS.Systems {
             }
         }
 
-        // ---------------- Cone-only "LOS" ----------------
-        // No raycast, no occlusion. Just: flashlight on + target within range + within cone.
-
         public bool IsIlluminating(Transform targetRoot) {
             if (!isOn) return false;
             if (batteryRemaining <= 0f) return false;
             if (targetRoot == null) return false;
+            if (ShouldBlockInput()) return false;
 
-            // Origin
             Transform originT = beamOrigin != null ? beamOrigin
                 : (flashlightLight != null ? flashlightLight.transform : transform);
 
             Vector3 origin = originT.position;
-
-            // Forward (based on your AimMode)
             Vector3 forward = originT.forward;
 
             if (aimMode == AimMode.CursorRay) {
@@ -228,22 +263,19 @@ namespace FNaS.Systems {
                     Vector2 mouse = Mouse.current != null ? Mouse.current.position.ReadValue() : (Vector2)Input.mousePosition;
                     Ray r = cam.ScreenPointToRay(mouse);
 
-                    // Aim toward whatever the cursor ray hits, else aim straight along the ray.
                     if (Physics.Raycast(r, out RaycastHit hit, cursorAimMaxDistance, occlusionMask, occlusionTriggerInteraction)) {
                         Vector3 toHit = hit.point - origin;
-                        toHit.y = 0f; // optional: remove if you want vertical aiming
+                        toHit.y = 0f;
                         if (toHit.sqrMagnitude > 0.0001f) forward = toHit.normalized;
                     }
                     else {
                         Vector3 dir = r.direction;
-                        dir.y = 0f; // optional
+                        dir.y = 0f;
                         if (dir.sqrMagnitude > 0.0001f) forward = dir.normalized;
                     }
                 }
             }
-            // else FacePlayerForward uses beamOrigin.forward already
 
-            // Target point (collider center if possible)
             Vector3 targetPoint = targetRoot.position;
             Collider targetCol = targetRoot.GetComponentInChildren<Collider>();
             if (targetCol != null) targetPoint = targetCol.bounds.center;
@@ -252,7 +284,6 @@ namespace FNaS.Systems {
             float dist = toTarget.magnitude;
             if (dist < 0.0001f) return true;
 
-            // Range/angle (use real spotlight if available, else fallback)
             float maxDist = fallbackRange;
             float halfAngle = fallbackSpotAngle * 0.5f;
 
@@ -264,15 +295,12 @@ namespace FNaS.Systems {
             if (dist > maxDist) return false;
 
             Vector3 dirToTarget = toTarget / dist;
-
             float angle = Vector3.Angle(forward, dirToTarget);
             if (angle > halfAngle) return false;
 
-            // Occlusion: first hit must be the target (or its child)
             if (useOcclusion) {
                 if (Physics.Raycast(origin, dirToTarget, out RaycastHit hit2, dist, occlusionMask, occlusionTriggerInteraction)) {
                     Debug.DrawLine(origin, hit2.point, Color.red, 0f);
-
                     return hit2.transform == targetRoot || hit2.transform.IsChildOf(targetRoot);
                 }
             }
@@ -293,6 +321,24 @@ namespace FNaS.Systems {
         public void ApplyMaxBatterySeconds(float value) {
             maxBatterySeconds = value;
             batteryRemaining = value;
+        }
+
+        public void DrainPercent(float percent) {
+            percent = Mathf.Clamp01(percent);
+            float drain = maxBatterySeconds * percent;
+            batteryRemaining = Mathf.Max(0f, batteryRemaining - drain);
+
+            if (batteryRemaining <= 0f) {
+                batteryRemaining = 0f;
+                isOn = false;
+                ApplyIndicator(forceOff: false);
+            }
+        }
+
+        private bool ShouldBlockInput() {
+            if (loseState != null && loseState.hasLost) return true;
+            if (winState != null && winState.hasWon) return true;
+            return false;
         }
     }
 }

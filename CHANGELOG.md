@@ -1,4 +1,155 @@
 # Changelog
+## April 12
+### Added
+- Added Nights 1-5 with different presents, and with save/load for the most recent night.
+- Can use Escape to return to the intro menu from gameplay.
+- Added backpack model to Mimic and a separate jumpscare model while animations are WIP.
+
+### Changed
+- Added paper settings to settings page.
+- Settings page no longer includes every possible setting (all settings can still be edited in the JSON file if desired).
+- Lost Girl and Mold have some audio cues.
+
+### Removed
+- Removed paper percentage display in top-right corner.
+
+### Fixed
+- Fixed issues with mold spray, flashlight, and door interact working after winning/losing the game.
+- Fixed door interact working even if you move away from the location.
+- FPS drops related to the paper writing should now be stable.
+
+### Issues
+- Possible performance issues with Mimic.
+
+## April 11
+### Added
+- Mold spray now has particle effects.
+- Paper now supports custom text, and has a writing animation that fits text. Writing on paper fills out the paper progressively.
+
+### Changed
+- Paper now requires using R to write and progress the percentage.
+  - Can write on either the Monitor or Paper views.
+- Writing on paper now has audio.
+- Added a small loading screen to preload writing assets.
+
+### Fixed
+- Fixed mold patches being able to spread to locations that were currently being sprayed by the player.
+
+### Issues
+- Writing on paper had framerate issues, which may or may not have been resolved.
+
+## April 10
+### Added
+- 3 new cameras added monitoring:
+  - Pantry
+  - Living room
+  - Dining room
+- Added Navmesh pathfinding to Lost Girl.
+
+### Changed
+- Movement nodes and views expanded to allow movement through:
+  - Hallway
+  - Living room
+  - TV area
+  - Dining room
+  - Kitchen
+- Security monitor updated to account for new cameras.
+- Adjusted position of some cameras, mold patches, mimic spawns, and Lost Girl glasses to account for new layout.
+- Adjusted light in several rooms.
+- Lost Girl AI changed:
+  - Chase state now using navmesh pathfinding.
+  - Stalling/pushback now based on LOS or viewing on camera, not flashlight.
+
+### Fixed
+- Increased radius of mold spray to make it easier to target mold clumps.
+
+## April 9
+### Added
+- Apartment model now has added rooms:
+  - Pantry
+  - Hallway
+  - Living room
+  - Kitchen
+
+## April 7
+### Changed
+- Added Camera-only lights, improving visibility.
+
+### Fixed
+- Fixed a bug with the movement compass not displaying the correct possible moves in an override situation.
+- Fixed empty overrides not properly preventing movement.
+
+## April 5
+### Added
+- Mold AI added to settings page.
+- Blood mode for Mold properly added.
+
+### Changed
+- Apartment lighting changed to mixed lighting for significantly improved framerate.
+- Monitor static noise changed to a shader to reduce load on CPU.
+- Slight tweaks to lighting and global volume settings.
+
+### Issues
+- Debug settings go off the page.
+- Security Cameras are basically unreadable.
+
+## April 4
+### Added
+- Mold backend first-pass implementation added. The Mold will spread from sources, hindering movement, camera visibility, and light visibility to relevant regions.
+- Added a new waypoint node close at the left-side of the hallway.
+- Added a Mold Spray (set to E) to revert status of a patch of mold.
+
+### Issues
+- Significant issues with framerate are present.
+
+## April 2
+### Added
+- There is now subtle view bobbing when the player moves.
+
+### Changed
+- Movement now paused during Mimic jumpscare.
+
+### Fixed
+- Fixed a bug where moving between doors rapidly led to odd camera behavior.
+- Made it harder for the door to close on the player while moving between door-waypoints.
+
+## April 1
+### Added
+- Mimic added. The mimic spawns at various locations around the apartment, and needs to be shined with the flashlight or else the player will be jumpscared. Jumpscares from the mimic only take battery away, instead of a full game-over.
+- Settings now incorporate the mimic.
+
+### Fixed
+- Stalker now properly looks toward the Player/Cameras.
+
+## March 30
+### Added
+- Added a "Reset to Default" button to restore default settings.
+- Slider rows have a value input field.
+
+### Changed
+- Settings now works on a JSON save/load system.
+- Settings can be loaded from either the Settings or Gameplay scenes.
+- Settings UI made data-driven to simplify adding new settings.
+
+## March 29
+### Added
+- Added jumpscare logic and jumpscare animation to Stalker.
+- Updated Stalker model (still WIP).
+
+### Note
+- Settings are undergoing an overhaul, so they are unlikely to work properly.
+
+## March 20
+### Added
+- Lost Girl added. She can spawn in glass-based objects (TV, windows), and after progressing a certain number of stages lunges at the player.
+- Added flashlight stun mechanic to both Stalker and Lost Girl.
+
+### Changed
+- Backend: Stalker and Lost Girl movement systems unified.
+
+### Fixed
+- Stalker could jumpscare after being reset using the flashlight if the player tries to walk past too soon.
+
 ## March 8
 ### Added
 - Functionality added to settings menu, and additional settings relating to Stalker behavior and flashlight duration added
