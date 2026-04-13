@@ -64,6 +64,9 @@ namespace FNaS.Entities.Mimic {
         [Tooltip("All child Mimic models. Only one is enabled at a time.")]
         public GameObject[] allMimicVariants;
 
+        [Tooltip("Dedicated variant used only during the punish / jumpscare.")]
+        public GameObject jumpscareVariant;
+
         [Header("Jumpscare Render")]
         [Tooltip("Usually this Mimic object, or a child visual root if you have one.")]
         public GameObject mimicVisualRoot;
@@ -227,8 +230,7 @@ namespace FNaS.Entities.Mimic {
             transform.position = choice.anchor.position;
             transform.rotation = choice.anchor.rotation;
 
-            HideAllVariants();
-            choice.variant.SetActive(true);
+            ShowOnlyVariant(choice.variant);
 
             currentAnchor = choice.anchor;
             currentVariant = choice.variant;
@@ -281,6 +283,11 @@ namespace FNaS.Entities.Mimic {
 
         private void Banish() {
             PlayOneShot(banishClip, banishVolume);
+
+            // Match the stalker-style flashlight feedback:
+            // pulse the player-facing screen fader when the Mimic is successfully shined away.
+            screenFader?.Pulse();
+
             HideAllVariants();
 
             currentAnchor = null;
@@ -311,6 +318,7 @@ namespace FNaS.Entities.Mimic {
             if (playerMovement != null) {
                 playerMovement.PauseActiveMovement();
             }
+
             phase = Phase.Punishing;
 
             if (punishAnchor != null) {
@@ -318,19 +326,18 @@ namespace FNaS.Entities.Mimic {
                 transform.rotation = punishAnchor.rotation;
             }
 
-            if (currentVariant == null) {
+            GameObject punishVisual = jumpscareVariant != null ? jumpscareVariant : currentVariant;
+
+            if (punishVisual == null && allMimicVariants != null) {
                 foreach (var go in allMimicVariants) {
                     if (go != null) {
-                        currentVariant = go;
+                        punishVisual = go;
                         break;
                     }
                 }
             }
 
-            HideAllVariants();
-            if (currentVariant != null) {
-                currentVariant.SetActive(true);
-            }
+            ShowOnlyVariant(punishVisual);
 
             if (mimicVisualRoot != null && jumpscareLayer != -1) {
                 SetLayerRecursively(mimicVisualRoot, jumpscareLayer);
@@ -388,6 +395,7 @@ namespace FNaS.Entities.Mimic {
             if (playerMovement != null) {
                 playerMovement.ResumeActiveMovement();
             }
+
             punishCoroutine = null;
 
             if (verboseLogging) {
@@ -498,6 +506,14 @@ namespace FNaS.Entities.Mimic {
                 if (go != null) {
                     go.SetActive(false);
                 }
+            }
+        }
+
+        private void ShowOnlyVariant(GameObject target) {
+            HideAllVariants();
+
+            if (target != null) {
+                target.SetActive(true);
             }
         }
 
