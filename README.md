@@ -2,103 +2,147 @@
 
 A first-person, node-based survival horror experience inspired by classic Five Nights at Freddy’s–style gameplay.
 
-**Build:**  
-A link to the playable build is provided in the report. You may also open this project in Unity and build it yourself.
+---
+
+## 🎮 Controls
+
+- **W / A / S / D** — Move between rooms  
+- **Mouse (screen edges)** — Change view  
+- **F** — Toggle flashlight  
+- **R** — Interact (doors, paper)  
+- **E** — Use mold spray  
+- **ESC (hold)** — Return to menu  
 
 ---
 
-# ⚠ Important — How to Play
+## 🖱 View System
 
-## 🎮 Movement
+Your view is **node-based**, not free-look.
 
-Use **W / A / S / D** to move between rooms.
-
-A **movement compass** appears in the bottom-left corner showing which directions are currently available.
+- Move your mouse toward the **edges of the screen** to switch views  
+- A **subtle white line** indicates a valid direction  
+- Some areas allow looking:
+  - left / right  
+  - up / down  
 
 ---
 
-## 🖱 View Controls
+## 🎯 Objective
 
-Move your mouse toward the edges of the screen to shift your view.
+Progress the night by interacting with the **paper below the desk monitor**.
 
-A subtle **white line at the edge of the screen** indicates that your view can move in that direction.
+- Hold **R** while looking at the paper to write  
+- Writing progresses the night toward completion  
+- You must balance **progress vs survival**
 
-Some locations allow looking **left, right, up, or down**.
+---
+
+## 👁 Core Gameplay Loop
+
+To survive, you must:
+- Check **security cameras** for threats  
+- Manage **flashlight battery**  
+- React to **entity behaviors**  
+- Progress the night by **writing on paper when safe**  
+
+---
+
+# 🧱 Entities
+
+Each entity behaves differently and requires a unique response.
+
+---
+
+## 🧍 Stalker
+
+**Behavior:**
+- Moves through the apartment toward you over time  
+- Blocks movement paths as it approaches  
+- Can wait at your door to trigger a loss  
+
+**How to survive:**
+- Track it using **cameras**  
+- If it gets close, use the **flashlight** to push it back  
+- Do NOT try to move through it  
+
+---
+
+## 👻 Lost Girl
+
+**Behavior:**
+- Appears in glass objects (TV, windows)  
+- After enough buildup, exits and **chases you**  
+
+**How to survive:**
+- **Trigger her to come out early**  
+- Move to the **opposite side of a door**  
+- Force her to run into the door to stop her  
+
+---
+
+## 🎒 Mimic
+
+**Behavior:**
+- Disguises itself as an object in the apartment  
+- Spawns in random locations  
+- Will jumpscare you if ignored  
+
+**How to survive:**
+- Use **cameras** to locate it quickly  
+- Shine the **flashlight** on it to banish it  
+- Failure results in a **battery-draining jumpscare**  
+
+---
+
+## 🦠 Mold
+
+**Behavior:**
+- Spreads from a source over time  
+- Affects visibility and movement  
+
+**How to survive:**
+- Use **spray (E)** to remove mold  
+- Prioritize areas that block your movement or vision  
 
 ---
 
 ## 🔦 Flashlight
 
-Press **F** to toggle the flashlight.
+- Primary defensive tool  
+- Limited battery  
+- Flickers when low  
 
-- The flashlight has a **limited battery**.
-- When the battery becomes low, the light will begin to **flicker**.
-- The flashlight is your **primary defense against the Stalker**, so use it carefully.
+Used for:
+- Pushing back the **Stalker**  
+- Banishing the **Mimic**  
 
 ---
 
 ## 🚪 Doors
 
-Press **R** to interact with doors in your current room.
+- Press **R** to interact  
+- Used to block or control movement paths  
+- Critical for dealing with the **Lost Girl**
 
 ---
 
-# 🎯 Objective
+## ⚙ Settings
 
-Your main objective is the **paper below the desk monitor**.
-
-Looking down at the paper increases your **completion percentage** (shown in the top-right corner).
-
-Reach **100% completion** to win.
-
-However, focusing only on progress is dangerous — you must also monitor the environment and avoid the Stalker.
-
----
-
-# 👁 Surviving the Stalker
-
-- Use the **security cameras** to track the Stalker’s location.
-- If the Stalker enters your room and becomes visible, use the **flashlight** to scare it away.
-- If you attempt to move past the Stalker, you will **lose immediately**.
-- If the Stalker reaches your door and remains there too long, you will also **lose**.
-
-Stay alert. Manage your flashlight battery. Don’t tunnel vision the paper.
+Adjustable before starting:
+- Player movement speed  
+- Door interaction distance  
+- AI difficulty values  
+- Flashlight battery duration  
+- Additional behavior toggles  
 
 ---
 
-# ⚙ Settings
+## ❗ Tips
 
-Before starting the game, several settings can be adjusted.
-
-### Player Movement Speed
-Controls how quickly the player moves between rooms.
-
-### Door Interaction Distance
-Adjusts how close the player must be to interact with doors.
-
-### Stalker AI Level
-Controls how aggressive the Stalker’s behavior is.
-
-### Stalker Move Opportunity Interval
-Determines how frequently the Stalker attempts to move.
-
-### Flashlight Battery Duration
-Sets how long the flashlight battery lasts before being depleted.
-
-### Stalker Behavior Options
-
-- **Freeze on Camera** — The Stalker stops moving while visible on a camera.
-- **Freeze in Person** — The Stalker stops moving while directly seen by the player.
-- **Allow Sharing Player Room** — Allows the Stalker to enter the player’s current room.
-
----
-
-# ❓ Tips
-
-- The **movement compass** shows which directions are currently available.
-- The **white edge indicator** shows when your view can shift.
-- Progress only increases while **looking at the paper view**.
-- Ignoring the cameras makes the game significantly harder.
+- Don’t focus only on the paper — **check cameras frequently**  
+- Flashlight usage is critical — **don’t waste battery**  
+- Learn each entity’s behavior — **they require different strategies**  
+- Positioning matters — doors and movement paths are key to survival  
 
 ---
 

@@ -10,23 +10,23 @@ namespace FNaS.Systems {
 
             switch (nightNumber) {
                 case 1:
-                    settings.SetInt("stalker.ai", 20);
+                    settings.SetInt("stalker.ai", 4);
                     settings.SetInt("lostGirl.ai", 0);
                     settings.SetInt("mimic.ai", 0);
                     settings.SetInt("mold.ai", 0);
 
-                    settings.SetFloat("paper.secondsToWin", 1f);
+                    settings.SetFloat("paper.secondsToWin", 30f);
                     settings.SetFloat("paper.glyphScale", 0.40f);
                     settings.SetInt("paper.textPreset", 0);
                     break;
 
                 case 2:
-                    settings.SetInt("stalker.ai", 4);
+                    settings.SetInt("stalker.ai", 6);
                     settings.SetInt("lostGirl.ai", 0);
                     settings.SetInt("mimic.ai", 0);
                     settings.SetInt("mold.ai", 2);
 
-                    settings.SetFloat("paper.secondsToWin", 1f);
+                    settings.SetFloat("paper.secondsToWin", 40f);
                     settings.SetFloat("paper.glyphScale", 0.40f);
                     settings.SetInt("paper.textPreset", 1);
                     break;
@@ -37,7 +37,7 @@ namespace FNaS.Systems {
                     settings.SetInt("mimic.ai", 2);
                     settings.SetInt("mold.ai", 4);
 
-                    settings.SetFloat("paper.secondsToWin", 1f);
+                    settings.SetFloat("paper.secondsToWin", 50f);
                     settings.SetFloat("paper.glyphScale", 0.40f);
                     settings.SetInt("paper.textPreset", 2);
                     break;
@@ -48,7 +48,7 @@ namespace FNaS.Systems {
                     settings.SetInt("mimic.ai", 6);
                     settings.SetInt("mold.ai", 8);
 
-                    settings.SetFloat("paper.secondsToWin", 1f);
+                    settings.SetFloat("paper.secondsToWin", 60f);
                     settings.SetFloat("paper.glyphScale", 0.40f);
                     settings.SetInt("paper.textPreset", 3);
                     break;
@@ -59,7 +59,7 @@ namespace FNaS.Systems {
                     settings.SetInt("mimic.ai", 10);
                     settings.SetInt("mold.ai", 12);
 
-                    settings.SetFloat("paper.secondsToWin", 1f);
+                    settings.SetFloat("paper.secondsToWin", 80f);
                     settings.SetFloat("paper.glyphScale", 0.40f);
                     settings.SetInt("paper.textPreset", 4);
                     break;
