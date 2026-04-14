@@ -99,6 +99,8 @@ APARTMENT";
         public float speedForMaxPitch = 0.8f;
         [Tooltip("How quickly pitch responds to speed changes.")]
         public float audioSmoothing = 10f;
+        [Tooltip("If enabled, stopping writing pauses the loop so it resumes from the same playback position next time.")]
+        public bool resumeWritingAudioFromLastPosition = true;
 
         [Header("Runtime (read-only)")]
         [SerializeField] private int builtStrokeCount;
@@ -151,9 +153,7 @@ APARTMENT";
         }
 
         private void OnDisable() {
-            if (writingAudioSource != null && writingAudioSource.isPlaying) {
-                writingAudioSource.Stop();
-            }
+            StopWritingAudio(resetPlaybackPosition: true);
         }
 
         public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
@@ -161,6 +161,7 @@ APARTMENT";
 
             glyphScale = settings.GetFloat("paper.glyphScale");
             textToWrite = PaperTextPresets.ResolveText(settings.GetInt("paper.textPreset"));
+            resumeWritingAudioFromLastPosition = settings.GetBool("paper.resumeWritingAudioFromLastPosition");
 
             if (Application.isPlaying) {
                 Rebuild();
@@ -722,6 +723,28 @@ APARTMENT";
             penTip.rotation = penInitialRotation;
         }
 
+        private void StopWritingAudio(bool resetPlaybackPosition) {
+            if (writingAudioSource == null) return;
+
+            if (resumeWritingAudioFromLastPosition && !resetPlaybackPosition) {
+                if (writingAudioSource.isPlaying) {
+                    writingAudioSource.Pause();
+                }
+            }
+            else {
+                if (writingAudioSource.isPlaying) {
+                    writingAudioSource.Stop();
+                }
+
+                if (writingAudioSource.clip != null) {
+                    writingAudioSource.time = 0f;
+                }
+            }
+
+            hasLastPenAudioPosition = false;
+            currentPenSpeed = 0f;
+        }
+
         private void UpdateWritingAudio() {
             if (writingAudioSource == null || writingLoopClip == null) return;
 
@@ -732,7 +755,7 @@ APARTMENT";
 
             if (!shouldPlay) {
                 if (writingAudioSource.isPlaying) {
-                    writingAudioSource.Stop();
+                    writingAudioSource.Pause();
                 }
 
                 hasLastPenAudioPosition = false;
@@ -741,10 +764,20 @@ APARTMENT";
                 return;
             }
 
+            writingAudioSource.clip = writingLoopClip;
+            writingAudioSource.loop = true;
+            writingAudioSource.volume = writingVolume;
+
             if (!writingAudioSource.isPlaying) {
                 writingAudioSource.clip = writingLoopClip;
                 writingAudioSource.volume = writingVolume;
-                writingAudioSource.Play();
+
+                if (writingAudioSource.time > 0f) {
+                    writingAudioSource.UnPause();
+                }
+                else {
+                    writingAudioSource.Play();
+                }
             }
 
             Vector3 currentPos = penTip.position;

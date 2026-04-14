@@ -1,4 +1,16 @@
 # Changelog
+# April 13
+### Added
+- Added a Jumpscare animation to the Mimic.
+
+### Changed
+- Improved performance of Mimic model.
+- Camera now only renders when in view of the player.
+- Made Mimic sound based on relative location.
+
+### Issues
+- Paper is laggy again.
+
 ## April 12
 ### Added
 - Added Nights 1-5 with different presents, and with save/load for the most recent night.
