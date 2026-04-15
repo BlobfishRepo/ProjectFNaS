@@ -1,4 +1,14 @@
 # Changelog
+# April 14
+### Added
+- Certain views now support moving camera freely within a bounding box.
+
+### Changed
+- Improved performance of writing on paper.
+- Updated apartment minimap on camera to match new apartment layout.
+- Updated button stylings on camera minimap.
+- Moved Move Compass to bottom-right corner and made unavailable movement options brighter.
+
 # April 13
 ### Added
 - Added a Jumpscare animation to the Mimic.

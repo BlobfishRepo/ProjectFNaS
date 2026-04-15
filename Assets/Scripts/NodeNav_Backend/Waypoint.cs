@@ -6,23 +6,11 @@ using FNaS.MasterNodes;
 
 public class Waypoint : MonoBehaviour {
 
-    // --------------------------------------------------
-    // Master Node Link (canonical location)
-    // --------------------------------------------------
-
     [Header("Master Node Link")]
     public MasterNode masterNode;
 
-    // --------------------------------------------------
-    // Views
-    // --------------------------------------------------
-
     [Header("Views")]
     public View defaultView;
-
-    // --------------------------------------------------
-    // Directed Transitions
-    // --------------------------------------------------
 
     [Header("Directed Transitions (per key)")]
     public WaypointTransition[] transitions;
@@ -46,11 +34,7 @@ public class Waypoint : MonoBehaviour {
         return null;
     }
 
-    // --------------------------------------------------
-    // Entry View Rules
-    // --------------------------------------------------
-
-    [Header("Entry View Rules")]
+    [Header("Entry View Rules (legacy fallback / optional special-cases)")]
     public EntryRule[] entryRules;
 
     [System.Serializable]
@@ -59,7 +43,11 @@ public class Waypoint : MonoBehaviour {
         public View startView;
     }
 
-    public View GetEntryView(Waypoint fromWaypoint) {
+    public View[] GetViews() {
+        return GetComponentsInChildren<View>(includeInactive: false);
+    }
+
+    public View GetEntryRuleView(Waypoint fromWaypoint) {
         if (fromWaypoint != null && entryRules != null) {
             for (int i = 0; i < entryRules.Length; i++) {
                 var r = entryRules[i];
@@ -67,6 +55,13 @@ public class Waypoint : MonoBehaviour {
                     return r.startView;
             }
         }
+
+        return null;
+    }
+
+    public View GetFallbackView(Waypoint fromWaypoint) {
+        View byRule = GetEntryRuleView(fromWaypoint);
+        if (byRule != null) return byRule;
 
         return defaultView != null
             ? defaultView

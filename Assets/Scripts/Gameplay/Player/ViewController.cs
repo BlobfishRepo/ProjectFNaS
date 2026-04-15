@@ -12,11 +12,22 @@ namespace FNaS.Gameplay {
         [SerializeField] private PlayerWaypointController mover;
         [SerializeField] private PlayerInputController inputController;
 
+        [Header("Look Input")]
+        [SerializeField] private float mouseYawSensitivity = 0.12f;
+        [SerializeField] private float mousePitchSensitivity = 0.12f;
+
+        [Tooltip("If true, mouse look only works while holding left click.")]
+        [SerializeField] private bool requireLeftClickToPan = true;
+
         [Header("Edge Detection")]
         [SerializeField] private float edgePixels = 60f;
-        [SerializeField] private float dwellTime = 0.08f;
         [SerializeField] private float switchCooldown = 0.20f;
         [SerializeField] private bool preferHorizontalInCorners = true;
+
+        [Header("Edge Switching")]
+        [SerializeField] private float edgeLockoutAfterViewChange = 0.50f;
+
+        private float edgeLockoutTimer;
 
         [Header("Rotation Feel")]
         [SerializeField] private float rotateSpeed = 14f;
@@ -24,6 +35,9 @@ namespace FNaS.Gameplay {
 
         [Header("Rig Offset")]
         [SerializeField] private float offsetLerpSpeed = 14f;
+
+        [Header("Look Delay")]
+        [SerializeField] private float verticalLookDelayOnViewEnter = 0.20f;
 
         [Header("Runtime (read-only)")]
         [SerializeField] private Waypoint currentWaypoint;
@@ -41,9 +55,8 @@ namespace FNaS.Gameplay {
 
         private readonly Stack<View> history = new();
 
-        private float dwellTimer;
         private float cooldownTimer;
-        private EdgeDir? pendingEdge;
+        private float verticalLookDelayTimer;
 
         private float targetYaw;
         private float targetPitch;
@@ -69,7 +82,9 @@ namespace FNaS.Gameplay {
                 yield return null;
             }
 
-            EnterWaypoint(mover.CurrentWaypoint, fromWaypoint: null);
+            float incomingYaw = GetCurrentCameraYaw();
+            float incomingPitch = GetCurrentCameraPitch();
+            EnterWaypoint(mover.CurrentWaypoint, fromWaypoint: null, incomingYaw, incomingPitch);
         }
 
         private void Update() {
@@ -79,6 +94,7 @@ namespace FNaS.Gameplay {
             if (stalkerJumpscare != null && stalkerJumpscare.IsPlaying) return;
 
             SyncWaypointFromMover();
+            UpdateLookInput();
             UpdateEdgeSwitching();
             UpdateNodeMovementInput();
             UpdateViewRotation();
@@ -87,34 +103,67 @@ namespace FNaS.Gameplay {
 
         private void SyncWaypointFromMover() {
             if (mover.CurrentWaypoint != null && mover.CurrentWaypoint != currentWaypoint) {
-                EnterWaypoint(mover.CurrentWaypoint, fromWaypoint: null);
+                float incomingYaw = GetCurrentCameraYaw();
+                float incomingPitch = GetCurrentCameraPitch();
+                EnterWaypoint(mover.CurrentWaypoint, fromWaypoint: null, incomingYaw, incomingPitch);
             }
+        }
+
+        private void UpdateLookInput() {
+            if (currentView == null || inputController == null) return;
+
+            if (verticalLookDelayTimer > 0f) {
+                verticalLookDelayTimer -= Time.deltaTime;
+            }
+
+            bool canPan = !requireLeftClickToPan
+                || (Mouse.current != null && Mouse.current.leftButton.isPressed);
+
+            if (!canPan) return;
+
+            Vector2 look = inputController.LookDelta;
+            if (look.sqrMagnitude <= 0.000001f) return;
+
+            targetYaw += look.x * mouseYawSensitivity;
+
+            if (verticalLookDelayTimer <= 0f) {
+                targetPitch -= look.y * mousePitchSensitivity;
+            }
+
+            ClampTargetAnglesToCurrentView();
         }
 
         private void UpdateEdgeSwitching() {
             cooldownTimer -= Time.deltaTime;
 
-            if (currentView == null) return;
-
-            EdgeDir? edge = GetEdgeDir();
-
-            if (!edge.HasValue) {
-                pendingEdge = null;
-                dwellTimer = 0f;
+            if (cooldownTimer > 0f || currentView == null) {
                 return;
             }
 
-            if (pendingEdge != edge.Value) {
-                pendingEdge = edge.Value;
-                dwellTimer = 0f;
+            EdgeDir? edge = GetEdgeDir();
+
+            if (edgeLockoutTimer > 0f) {
+                if (!edge.HasValue) {
+                    edgeLockoutTimer = 0f;
+                }
+                else {
+                    edgeLockoutTimer -= Time.deltaTime;
+                    if (edgeLockoutTimer > 0f) {
+                        return;
+                    }
+                }
             }
 
-            dwellTimer += Time.deltaTime;
-
-            if (dwellTimer >= dwellTime) {
-                TryEdge(edge.Value);
-                dwellTimer = 0f;
+            if (!edge.HasValue) {
+                return;
             }
+
+            View.EdgeLink link = currentView.GetEdge(edge.Value);
+            if (link.action == View.LinkAction.None) {
+                return;
+            }
+
+            TryEdge(edge.Value);
         }
 
         private void UpdateNodeMovementInput() {
@@ -146,12 +195,10 @@ namespace FNaS.Gameplay {
             );
         }
 
-        public void EnterWaypoint(Waypoint waypoint, Waypoint fromWaypoint) {
+        public void EnterWaypoint(Waypoint waypoint, Waypoint fromWaypoint, float incomingYaw, float incomingPitch) {
             currentWaypoint = waypoint;
 
             history.Clear();
-            pendingEdge = null;
-            dwellTimer = 0f;
             cooldownTimer = 0f;
             activeMoveDir = null;
 
@@ -167,11 +214,16 @@ namespace FNaS.Gameplay {
                 hasWaypointBaseRigPos = false;
             }
 
-            View startView = waypoint != null ? waypoint.GetEntryView(fromWaypoint) : null;
-            SetView(startView, pushHistory: false, snap: snapOnEnter);
+            View startView = FindBestEntryView(waypoint, fromWaypoint, incomingYaw, incomingPitch);
+            bool preserveAngles = startView != null && startView.ContainsAngles(GetViewOrigin(), incomingYaw, incomingPitch);
+
+            targetYaw = incomingYaw;
+            targetPitch = incomingPitch;
+
+            SetView(startView, pushHistory: false, snap: snapOnEnter, preserveAngles: preserveAngles);
         }
 
-        private void SetView(View view, bool pushHistory, bool snap) {
+        private void SetView(View view, bool pushHistory, bool snap, bool preserveAngles) {
             if (view == null || mover == null || mover.viewPivot == null) return;
 
             if (pushHistory && currentView != null) {
@@ -179,10 +231,19 @@ namespace FNaS.Gameplay {
             }
 
             currentView = view;
+            verticalLookDelayTimer = verticalLookDelayOnViewEnter;
+            edgeLockoutTimer = edgeLockoutAfterViewChange;
+
             ApplyViewOffset(view);
 
-            targetYaw = ComputeYawForView(view);
-            targetPitch = view.pitchDegrees;
+            Vector3 origin = GetViewOrigin();
+
+            if (!preserveAngles) {
+                targetYaw = view.GetCenterYaw(origin);
+                targetPitch = view.GetCenterPitch();
+            }
+
+            view.ClampAngles(origin, ref targetYaw, ref targetPitch);
 
             if (snap) {
                 mover.viewPivot.rotation = Quaternion.Euler(targetPitch, targetYaw, 0f);
@@ -191,28 +252,63 @@ namespace FNaS.Gameplay {
             OnEnteredWaypointOrView?.Invoke();
         }
 
-        private float ComputeYawForView(View view) {
-            Vector3 origin = hasWaypointBaseRigPos
-                ? waypointBaseRigPos
-                : (mover.rigTransform != null ? mover.rigTransform.position : mover.transform.position);
+        private View FindBestEntryView(Waypoint waypoint, Waypoint fromWaypoint, float incomingYaw, float incomingPitch) {
+            if (waypoint == null) return null;
 
-            if (view.lookTarget != null) {
-                Vector3 toTarget = view.lookTarget.position - origin;
-                toTarget.y = 0f;
+            // 1. Explicit default view takes priority.
+            if (waypoint.defaultView != null) {
+                return waypoint.defaultView;
+            }
 
-                if (toTarget.sqrMagnitude > 0.0001f) {
-                    return Quaternion.LookRotation(toTarget.normalized, Vector3.up).eulerAngles.y;
+            // 2. Legacy entry-rule fallback can still take priority over nearest-angle if desired.
+            View ruleView = waypoint.GetEntryRuleView(fromWaypoint);
+            if (ruleView != null) {
+                return ruleView;
+            }
+
+            // 3. Otherwise use nearest-angle selection.
+            View[] views = waypoint.GetViews();
+            Vector3 origin = GetViewOrigin();
+
+            View bestContaining = null;
+            float bestContainingScore = float.PositiveInfinity;
+
+            View bestClamped = null;
+            float bestClampedScore = float.PositiveInfinity;
+
+            if (views != null) {
+                for (int i = 0; i < views.Length; i++) {
+                    View v = views[i];
+                    if (v == null) continue;
+
+                    bool contains = v.ContainsAngles(origin, incomingYaw, incomingPitch);
+                    if (contains) {
+                        float score = v.GetCenterDistanceScore(origin, incomingYaw, incomingPitch, pitchWeight: 1.35f);
+                        if (score < bestContainingScore) {
+                            bestContaining = v;
+                            bestContainingScore = score;
+                        }
+                    }
+                    else {
+                        float score = v.GetClampDistanceScore(origin, incomingYaw, incomingPitch, pitchWeight: 1.35f);
+                        if (score < bestClampedScore) {
+                            bestClamped = v;
+                            bestClampedScore = score;
+                        }
+                    }
                 }
             }
 
-            Vector3 forward = view.transform.forward;
-            forward.y = 0f;
+            if (bestContaining != null) return bestContaining;
+            if (bestClamped != null) return bestClamped;
 
-            if (forward.sqrMagnitude > 0.0001f) {
-                return Quaternion.LookRotation(forward.normalized, Vector3.up).eulerAngles.y;
-            }
+            return waypoint.GetFallbackView(fromWaypoint);
+        }
 
-            return mover.viewPivot.rotation.eulerAngles.y;
+        private void ClampTargetAnglesToCurrentView() {
+            if (currentView == null) return;
+            Vector3 origin = GetViewOrigin();
+            currentView.ClampAngles(origin, ref targetYaw, ref targetPitch);
         }
 
         private void TryEdge(EdgeDir dir) {
@@ -223,14 +319,14 @@ namespace FNaS.Gameplay {
 
             if (link.action == View.LinkAction.Back) {
                 if (history.Count > 0) {
-                    SetView(history.Pop(), pushHistory: false, snap: false);
+                    SetView(history.Pop(), pushHistory: false, snap: false, preserveAngles: false);
                     cooldownTimer = switchCooldown;
                 }
                 return;
             }
 
             if (link.action == View.LinkAction.GoToView && link.targetView != null) {
-                SetView(link.targetView, pushHistory: true, snap: false);
+                SetView(link.targetView, pushHistory: true, snap: false, preserveAngles: false);
                 cooldownTimer = switchCooldown;
             }
         }
@@ -241,6 +337,7 @@ namespace FNaS.Gameplay {
 
             Waypoint waypoint = mover.CurrentWaypoint;
             WaypointTransition transition = null;
+            View forcedEnterView = null;
 
             if (currentView != null) {
                 var overrideMove = currentView.GetOverride(dir);
@@ -251,20 +348,25 @@ namespace FNaS.Gameplay {
                     }
 
                     transition = waypoint.GetTransitionTo(overrideMove.targetWaypoint);
+
+                    if (transition != null) {
+                        forcedEnterView = overrideMove.enterView;
+                    }
                 }
             }
 
             if (transition == null) {
                 transition = waypoint.GetTransition(dir);
+                forcedEnterView = null;
             }
 
             if (transition == null || transition.target == null) return;
 
             activeMoveDir = dir;
-            StartCoroutine(MoveAndApplyEntry(transition));
+            StartCoroutine(MoveAndApplyEntry(transition, forcedEnterView));
         }
 
-        private IEnumerator MoveAndApplyEntry(WaypointTransition transition) {
+        private IEnumerator MoveAndApplyEntry(WaypointTransition transition, View forcedEnterView) {
             Waypoint fromWaypoint = mover.CurrentWaypoint;
 
             bool started = mover.BeginTransition(transition);
@@ -277,7 +379,37 @@ namespace FNaS.Gameplay {
                 yield return null;
             }
 
-            EnterWaypoint(mover.CurrentWaypoint, fromWaypoint);
+            float incomingYaw = GetCurrentCameraYaw();
+            float incomingPitch = GetCurrentCameraPitch();
+
+            if (forcedEnterView != null) {
+                currentWaypoint = mover.CurrentWaypoint;
+
+                history.Clear();
+                cooldownTimer = 0f;
+
+                if (currentWaypoint != null && mover != null && mover.rigTransform != null) {
+                    waypointBaseRigPos = currentWaypoint.transform.position;
+                    waypointBaseRigPos.y = mover.rigTransform.position.y;
+
+                    hasWaypointBaseRigPos = true;
+                    mover.rigTransform.position = waypointBaseRigPos;
+                    targetRigPos = waypointBaseRigPos;
+                }
+                else {
+                    hasWaypointBaseRigPos = false;
+                }
+
+                targetYaw = incomingYaw;
+                targetPitch = incomingPitch;
+
+                bool preserveAngles = forcedEnterView.ContainsAngles(GetViewOrigin(), incomingYaw, incomingPitch);
+                SetView(forcedEnterView, pushHistory: false, snap: snapOnEnter, preserveAngles: preserveAngles);
+                activeMoveDir = null;
+                yield break;
+            }
+
+            EnterWaypoint(mover.CurrentWaypoint, fromWaypoint, incomingYaw, incomingPitch);
             activeMoveDir = null;
         }
 
@@ -340,6 +472,39 @@ namespace FNaS.Gameplay {
             Vector3 worldOffset = right * local.x + Vector3.up * local.y + forward * local.z;
 
             targetRigPos = waypointBaseRigPos + worldOffset;
+        }
+
+        private Vector3 GetViewOrigin() {
+            if (hasWaypointBaseRigPos) {
+                return waypointBaseRigPos;
+            }
+
+            if (mover != null && mover.rigTransform != null) {
+                return mover.rigTransform.position;
+            }
+
+            return transform.position;
+        }
+
+        private float GetCurrentCameraYaw() {
+            if (mover != null && mover.viewPivot != null) {
+                return mover.viewPivot.rotation.eulerAngles.y;
+            }
+
+            return transform.rotation.eulerAngles.y;
+        }
+
+        private float GetCurrentCameraPitch() {
+            if (mover != null && mover.viewPivot != null) {
+                return NormalizePitch(mover.viewPivot.rotation.eulerAngles.x);
+            }
+
+            return NormalizePitch(transform.rotation.eulerAngles.x);
+        }
+
+        private static float NormalizePitch(float eulerX) {
+            if (eulerX > 180f) eulerX -= 360f;
+            return eulerX;
         }
 
         private static Direction VectorToDir(Vector2 move) {
