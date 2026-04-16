@@ -4,7 +4,7 @@
 - Added full main settings screen.
 - Added a hidden fun setting :)
 - Added presentation mode to progressively show the animatronics throughout the night, with AI values changing as the night progresses.
-- Added stars indicating progress.
+- Added stars indicating progress. Note that a red exclamation mark from changing dev settings indicates a star cannot be earned.
 
 ### Changed
 - Most text across the game (that aren't settings) now uses the font VCR OSD Mono.
