@@ -36,6 +36,11 @@ namespace FNaS.Systems {
             public string text;
         }
 
+        private enum WritingSoundMode {
+            Normal = 0,
+            Fun = 1
+        }
+
         [Header("Input")]
         [TextArea(4, 20)]
         public string textToWrite =
@@ -99,7 +104,13 @@ APARTMENT";
 
         [Header("Writing Audio")]
         public AudioSource writingAudioSource;
+
+        [Tooltip("Default writing sound. This mode resets playback when writing stops.")]
         public AudioClip writingLoopClip;
+
+        [Tooltip("Fun writing sound. This mode resumes from the previous playback position when writing stops/starts.")]
+        public AudioClip funWritingLoopClip;
+
         [Range(0f, 1f)] public float writingVolume = 0.8f;
         public float minPitch = 0.85f;
         public float maxPitch = 1.35f;
@@ -107,8 +118,6 @@ APARTMENT";
         public float speedForMaxPitch = 0.8f;
         [Tooltip("How quickly pitch responds to speed changes.")]
         public float audioSmoothing = 10f;
-        [Tooltip("If enabled, stopping writing pauses the loop so it resumes from the same playback position next time.")]
-        public bool resumeWritingAudioFromLastPosition = true;
 
         [Header("Runtime (read-only)")]
         [SerializeField] private int builtStrokeCount;
@@ -126,6 +135,9 @@ APARTMENT";
         [Header("Runtime Audio (read-only)")]
         [SerializeField] private float currentPenSpeed;
         [SerializeField] private float smoothedPenSpeed;
+        [SerializeField] private WritingSoundMode activeWritingSoundMode = WritingSoundMode.Normal;
+        [SerializeField] private bool usePitchAdjustment = true;
+        [SerializeField] private bool resumeWritingAudioFromLastPosition = false;
 
         private readonly List<BuiltLine> builtLines = new();
         private readonly List<Vector2Int> brushOffsets = new();
@@ -170,6 +182,17 @@ APARTMENT";
 
             glyphScale = settings.GetFloat("paper.glyphScale");
             textToWrite = PaperTextPresets.ResolveText(settings.GetInt("paper.textPreset"));
+
+            activeWritingSoundMode = (WritingSoundMode)Mathf.Clamp(
+                settings.GetInt("fun.paperWritingSoundMode"),
+                0,
+                1
+            );
+
+            usePitchAdjustment = settings.GetBool("fun.paperWritingUsePitchAdjust");
+            resumeWritingAudioFromLastPosition = activeWritingSoundMode == WritingSoundMode.Fun;
+
+            RefreshWritingAudioConfig();
         }
 
         private void CachePenInitialPose() {
@@ -181,13 +204,44 @@ APARTMENT";
         }
 
         private void SetupWritingAudio() {
-            if (writingAudioSource != null) {
-                writingAudioSource.playOnAwake = false;
-                writingAudioSource.loop = true;
-                writingAudioSource.clip = writingLoopClip;
-                writingAudioSource.volume = writingVolume;
+            if (writingAudioSource == null) return;
+
+            writingAudioSource.playOnAwake = false;
+            writingAudioSource.loop = true;
+            writingAudioSource.volume = writingVolume;
+            writingAudioSource.pitch = 1f;
+
+            RefreshWritingAudioConfig();
+        }
+
+        private void RefreshWritingAudioConfig() {
+            if (writingAudioSource == null) return;
+
+            AudioClip targetClip = GetActiveWritingClip();
+
+            bool clipChanged = writingAudioSource.clip != targetClip;
+
+            if (clipChanged && writingAudioSource.isPlaying) {
+                writingAudioSource.Stop();
+            }
+
+            if (clipChanged) {
+                writingAudioSource.time = 0f;
+            }
+
+            writingAudioSource.clip = targetClip;
+            writingAudioSource.loop = true;
+            writingAudioSource.volume = writingVolume;
+
+            if (!usePitchAdjustment) {
                 writingAudioSource.pitch = 1f;
             }
+        }
+
+        private AudioClip GetActiveWritingClip() {
+            return activeWritingSoundMode == WritingSoundMode.Fun && funWritingLoopClip != null
+                ? funWritingLoopClip
+                : writingLoopClip;
         }
 
         private void Update() {
@@ -854,7 +908,10 @@ APARTMENT";
         }
 
         private void UpdateWritingAudio() {
-            if (writingAudioSource == null || writingLoopClip == null) return;
+            if (writingAudioSource == null) return;
+
+            AudioClip activeClip = GetActiveWritingClip();
+            if (activeClip == null) return;
 
             bool shouldPlay =
                 paperProgress != null &&
@@ -862,25 +919,33 @@ APARTMENT";
                 penTip != null;
 
             if (!shouldPlay) {
-                if (writingAudioSource.isPlaying) {
-                    writingAudioSource.Pause();
+                StopWritingAudio(resetPlaybackPosition: false);
+                smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, 0f, Time.deltaTime * audioSmoothing);
+
+                if (!usePitchAdjustment) {
+                    writingAudioSource.pitch = 1f;
+                    writingAudioSource.volume = writingVolume;
                 }
 
-                hasLastPenAudioPosition = false;
-                currentPenSpeed = 0f;
-                smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, 0f, Time.deltaTime * audioSmoothing);
                 return;
             }
 
-            writingAudioSource.clip = writingLoopClip;
+            if (writingAudioSource.clip != activeClip) {
+                bool wasPlaying = writingAudioSource.isPlaying;
+                writingAudioSource.Stop();
+                writingAudioSource.clip = activeClip;
+                writingAudioSource.time = 0f;
+
+                if (wasPlaying) {
+                    writingAudioSource.Play();
+                }
+            }
+
             writingAudioSource.loop = true;
             writingAudioSource.volume = writingVolume;
 
             if (!writingAudioSource.isPlaying) {
-                writingAudioSource.clip = writingLoopClip;
-                writingAudioSource.volume = writingVolume;
-
-                if (writingAudioSource.time > 0f) {
+                if (resumeWritingAudioFromLastPosition && writingAudioSource.time > 0f) {
                     writingAudioSource.UnPause();
                 }
                 else {
@@ -904,9 +969,15 @@ APARTMENT";
 
             smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, currentPenSpeed, Time.deltaTime * audioSmoothing);
 
-            float t = Mathf.Clamp01(smoothedPenSpeed / Mathf.Max(0.001f, speedForMaxPitch));
-            writingAudioSource.pitch = Mathf.Lerp(minPitch, maxPitch, t);
-            writingAudioSource.volume = Mathf.Lerp(writingVolume * 0.75f, writingVolume, t);
+            if (usePitchAdjustment) {
+                float t = Mathf.Clamp01(smoothedPenSpeed / Mathf.Max(0.001f, speedForMaxPitch));
+                writingAudioSource.pitch = Mathf.Lerp(minPitch, maxPitch, t);
+                writingAudioSource.volume = Mathf.Lerp(writingVolume * 0.75f, writingVolume, t);
+            }
+            else {
+                writingAudioSource.pitch = 1f;
+                writingAudioSource.volume = writingVolume;
+            }
         }
 
         private void OnDrawGizmosSelected() {

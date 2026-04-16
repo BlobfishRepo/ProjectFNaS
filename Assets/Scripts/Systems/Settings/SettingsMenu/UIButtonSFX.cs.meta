@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 675e7d1a0791aa94c97f3dae0c412ace
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - audioSource: {instanceID: 0}
+  - hoverClip: {instanceID: 0}
+  - clickClip: {fileID: 8300000, guid: 257a1848c767c8a4e9b9bab16de477ec, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -13,6 +13,7 @@ namespace FNaS.Settings {
     [Serializable]
     public class RuntimeGameSettingsSaveData {
         public bool debugMenuUnlocked = false;
+        public bool playerSettingsDebugUnlocked = false;
         public List<SettingValueEntry> entries = new();
     }
 
@@ -27,10 +28,16 @@ namespace FNaS.Settings {
         private readonly Dictionary<string, bool> boolValues = new();
 
         [SerializeField] private bool debugMenuUnlocked;
+        [SerializeField] private bool playerSettingsDebugUnlocked;
 
         public bool DebugMenuUnlocked {
             get => debugMenuUnlocked;
             set => debugMenuUnlocked = value;
+        }
+
+        public bool PlayerSettingsDebugUnlocked {
+            get => playerSettingsDebugUnlocked;
+            set => playerSettingsDebugUnlocked = value;
         }
 
         private void Awake() {
@@ -69,6 +76,7 @@ namespace FNaS.Settings {
             }
 
             debugMenuUnlocked = false;
+            playerSettingsDebugUnlocked = false;
         }
 
         public void LoadFromJson() {
@@ -89,6 +97,7 @@ namespace FNaS.Settings {
                 }
 
                 debugMenuUnlocked = saveData.debugMenuUnlocked;
+                playerSettingsDebugUnlocked = saveData.playerSettingsDebugUnlocked;
 
                 if (saveData.entries == null)
                     return;
@@ -132,6 +141,7 @@ namespace FNaS.Settings {
             try {
                 RuntimeGameSettingsSaveData saveData = new() {
                     debugMenuUnlocked = debugMenuUnlocked,
+                    playerSettingsDebugUnlocked = playerSettingsDebugUnlocked,
                     entries = BuildEntries()
                 };
 
@@ -226,6 +236,95 @@ namespace FNaS.Settings {
 
         public StalkerMovementMode GetStalkerMovementMode() {
             return (StalkerMovementMode)GetInt("debug.stalkerMovementMode");
+        }
+
+        public bool AreStarRelevantSettingsAtDefaults(Predicate<string> allowedKeyOverride = null) {
+            foreach (var def in SettingsSchema.Definitions) {
+                if (!def.affectsStarEligibility)
+                    continue;
+
+                if (allowedKeyOverride != null && allowedKeyOverride(def.key))
+                    continue;
+
+                switch (def.controlType) {
+                    case SettingControlType.FloatSlider:
+                        if (!Mathf.Approximately(GetFloat(def.key), def.defaultFloat))
+                            return false;
+                        break;
+
+                    case SettingControlType.IntSlider:
+                    case SettingControlType.Dropdown:
+                        if (GetInt(def.key) != def.defaultInt)
+                            return false;
+                        break;
+
+                    case SettingControlType.Toggle:
+                        if (GetBool(def.key) != def.defaultBool)
+                            return false;
+                        break;
+                }
+            }
+
+            return true;
+        }
+
+        public bool HasNonDefaultStarRelevantDevGameplaySettings() {
+            foreach (var def in SettingsSchema.Definitions) {
+                // Only care about settings that appear on the hidden dev gameplay screen.
+                if ((def.screens & SettingScreen.DevGameplay) == 0)
+                    continue;
+
+                // Only care about settings that affect star eligibility.
+                if (!def.affectsStarEligibility)
+                    continue;
+
+                switch (def.controlType) {
+                    case SettingControlType.FloatSlider:
+                        if (!Mathf.Approximately(GetFloat(def.key), def.defaultFloat))
+                            return true;
+                        break;
+
+                    case SettingControlType.IntSlider:
+                    case SettingControlType.Dropdown:
+                        if (GetInt(def.key) != def.defaultInt)
+                            return true;
+                        break;
+
+                    case SettingControlType.Toggle:
+                        if (GetBool(def.key) != def.defaultBool)
+                            return true;
+                        break;
+                }
+            }
+
+            return false;
+        }
+
+        public bool HasNonDefaultFunSettingsEnabled() {
+            foreach (var def in SettingsSchema.Definitions) {
+                if ((def.screens & SettingScreen.PlayerSettingsDebug) == 0)
+                    continue;
+
+                switch (def.controlType) {
+                    case SettingControlType.FloatSlider:
+                        if (!Mathf.Approximately(GetFloat(def.key), def.defaultFloat))
+                            return true;
+                        break;
+
+                    case SettingControlType.IntSlider:
+                    case SettingControlType.Dropdown:
+                        if (GetInt(def.key) != def.defaultInt)
+                            return true;
+                        break;
+
+                    case SettingControlType.Toggle:
+                        if (GetBool(def.key) != def.defaultBool)
+                            return true;
+                        break;
+                }
+            }
+
+            return false;
         }
     }
 }

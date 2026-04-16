@@ -1,4 +1,15 @@
 # Changelog
+# April 15
+### Added
+- Added full main settings screen.
+- Added a hidden fun setting :)
+- Added presentation mode to progressively show the animatronics throughout the night, with AI values changing as the night progresses.
+- Added stars indicating progress.
+
+### Changed
+- Most text across the game (that aren't settings) now uses the font VCR OSD Mono.
+- Former setting page moved to a hidden dev screen, accessible using the Shift key on the Custom Night menu.
+
 # April 14
 ### Added
 - Certain views now support moving camera freely within a bounding box.

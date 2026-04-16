@@ -8394,12 +8394,12 @@ MonoBehaviour:
   pageBoundsColor: {r: 0, g: 1, b: 1, a: 1}
   writingAudioSource: {fileID: 480117186}
   writingLoopClip: {fileID: 8300000, guid: f0cf68d3773fafe48a33f87f75719fa8, type: 3}
+  funWritingLoopClip: {fileID: 8300000, guid: 27e4287ac73bc4a489f08da72cf4d2b6, type: 3}
   writingVolume: 0.8
   minPitch: 0.5
   maxPitch: 1.35
   speedForMaxPitch: 1
   audioSmoothing: 10
-  resumeWritingAudioFromLastPosition: 1
   builtStrokeCount: 0
   builtSegmentCount: 0
   totalLength: 0
@@ -8411,6 +8411,9 @@ MonoBehaviour:
   revealCursorSegmentIndex: 0
   currentPenSpeed: 0
   smoothedPenSpeed: 0
+  activeWritingSoundMode: 0
+  usePitchAdjustment: 1
+  resumeWritingAudioFromLastPosition: 1
 --- !u!82 &480117186
 AudioSource:
   m_ObjectHideFlags: 0
@@ -10537,7 +10540,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.7798742, g: 0.7798742, b: 0.7798742, a: 1}
+  m_Color: {r: 0.7798742, g: 0.7798742, b: 0.7798742, a: 0.78431374}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -13855,7 +13858,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FNaS.Systems.NightGameplayFlow
   winState: {fileID: 428565955}
-  delayAfterCampaignWinSeconds: 1.5
+  delayAfterWinSeconds: 1.5
 --- !u!114 &1164606900
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14272,7 +14275,7 @@ PrefabInstance:
     - target: {fileID: 7350970390456849531, guid: efa63d8e1e6b5284ba9e41f837f82fe6, type: 3}
       propertyPath: left.targetView
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 448189949}
     - target: {fileID: 7350970390456849531, guid: efa63d8e1e6b5284ba9e41f837f82fe6, type: 3}
       propertyPath: rigLocalOffset.x
       value: 0
@@ -14706,6 +14709,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FNaS.Settings.RuntimeGameSettings
   debugMenuUnlocked: 0
+  playerSettingsDebugUnlocked: 0
 --- !u!1 &1264652841 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 192069916727069550, guid: 70d54d67c3bbfda409854e9b33610189, type: 3}
@@ -15120,8 +15124,8 @@ MonoBehaviour:
 
     12:00 AM'
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: ffadc873ad40fab4fb6e4dfb1e1f41b1, type: 2}
+  m_sharedMaterial: {fileID: 5598774427606220212, guid: ffadc873ad40fab4fb6e4dfb1e1f41b1, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -19546,7 +19550,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.Stalker.StalkerEntity
   ai: 20
   opportunityIntervalTicks: 1
-  freezeIfSeenOnCamera: 0
+  freezeIfSeenOnCamera: 1
   freezeIfSeenInPerson: 1
   allowShareNodeWithPlayer: 1
   doorKillTicks: 2

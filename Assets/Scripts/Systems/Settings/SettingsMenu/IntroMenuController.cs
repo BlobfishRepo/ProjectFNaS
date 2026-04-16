@@ -13,19 +13,50 @@ namespace FNaS.UI {
         [SerializeField] private string nextSceneName = "SceneGameplay";
 
         [Header("References")]
-        [SerializeField] private SettingsMenuBuilder menuBuilder;
+        [SerializeField] private SettingsMenuBuilder customNightMenuBuilder;
+        [SerializeField] private SettingsMenuBuilder playerSettingsMenuBuilder;
+        [SerializeField] private SettingsMenuBuilder presentationSettingsMenuBuilder;
+        [SerializeField] private SettingsMenuBuilder devGameplayMenuBuilder;
         [SerializeField] private NightSessionManager nightSessionManager;
 
-        [Header("Optional Continue UI")]
+        [Header("Panels")]
+        [SerializeField] private GameObject mainMenuPanel;
+        [SerializeField] private GameObject customNightPanel;
+        [SerializeField] private GameObject playerSettingsPanel;
+        [SerializeField] private GameObject presentationSettingsPanel;
+        [SerializeField] private GameObject devGameplayPanel;
+
+        [Header("Buttons")]
         [SerializeField] private Button continueCampaignButton;
         [SerializeField] private TMP_Text continueCampaignButtonText;
         [SerializeField] private string continueLabelFormat = "Continue Night {0}";
 
-        [Header("Menu Filter")]
-        [SerializeField] private SettingScreen introMenuScreens = SettingScreen.IntroDev;
+        [SerializeField] private Button customNightButton;
+        [SerializeField] private TMP_Text customNightButtonText;
+        [SerializeField] private string customNightLockedLabel = "Custom Night (Locked)";
+        [SerializeField] private string customNightUnlockedLabel = "Custom Night";
+
+        [Header("Stars")]
+        [SerializeField] private GameObject star1Object;
+        [SerializeField] private GameObject star2Object;
+        [SerializeField] private GameObject star3Object;
+
+        [Header("Indicators")]
+        [SerializeField] private GameObject devSettingsChangedIndicator;
+        [SerializeField] private GameObject funSettingsEnabledIndicator;
 
         private RuntimeGameSettings runtimeSettings;
         private PlayerInputActions inputActions;
+
+        private enum TitlePanel {
+            MainMenu,
+            CustomNight,
+            PlayerSettings,
+            PresentationSettings,
+            DevGameplay
+        }
+
+        private TitlePanel currentPanel = TitlePanel.MainMenu;
 
         private void EnsureInputActions() {
             if (inputActions == null) {
@@ -71,30 +102,42 @@ namespace FNaS.UI {
 
         private void Start() {
             ResolveReferences();
-            RebuildMenu();
-            RefreshContinueButton();
+            ShowMainMenu();
+            RefreshAll();
         }
 
         private void OnToggleDebug(InputAction.CallbackContext ctx) {
             ResolveReferences();
             if (runtimeSettings == null) return;
 
-            runtimeSettings.DebugMenuUnlocked = !runtimeSettings.DebugMenuUnlocked;
-            runtimeSettings.SaveToJson();
+            if (currentPanel == TitlePanel.PlayerSettings || currentPanel == TitlePanel.PresentationSettings) {
+                runtimeSettings.PlayerSettingsDebugUnlocked = !runtimeSettings.PlayerSettingsDebugUnlocked;
+                runtimeSettings.SaveToJson();
+                RebuildCurrentPanel();
+                return;
+            }
 
-            RebuildMenu();
-            RefreshContinueButton();
+            if (currentPanel == TitlePanel.CustomNight) {
+                runtimeSettings.DebugMenuUnlocked = true;
+                runtimeSettings.SaveToJson();
+                ShowDevGameplay();
+                return;
+            }
+
+            if (currentPanel == TitlePanel.DevGameplay) {
+                runtimeSettings.DebugMenuUnlocked = false;
+                runtimeSettings.SaveToJson();
+                ShowCustomNightPreserveCurrent();
+                return;
+            }
         }
 
-        private void RebuildMenu() {
-            ResolveReferences();
-            if (menuBuilder == null || runtimeSettings == null) return;
-
-            menuBuilder.Rebuild(
-                runtimeSettings,
-                runtimeSettings.DebugMenuUnlocked,
-                introMenuScreens
-            );
+        private void RefreshAll() {
+            RefreshContinueButton();
+            RefreshCustomNightButton();
+            RefreshStars();
+            RefreshIndicators();
+            RebuildCurrentPanel();
         }
 
         private void RefreshContinueButton() {
@@ -117,7 +160,146 @@ namespace FNaS.UI {
             }
         }
 
-        public void OnNewCampaignPressed() {
+        private void RefreshCustomNightButton() {
+            bool unlocked = nightSessionManager != null && nightSessionManager.IsCustomNightUnlocked();
+
+            if (customNightButton != null) {
+                customNightButton.interactable = unlocked;
+            }
+
+            if (customNightButtonText != null) {
+                customNightButtonText.text = unlocked ? customNightUnlockedLabel : customNightLockedLabel;
+            }
+        }
+
+        private void RefreshStars() {
+            if (star1Object != null) star1Object.SetActive(NightProgressSave.HasStar1());
+            if (star2Object != null) star2Object.SetActive(NightProgressSave.HasStar2());
+            if (star3Object != null) star3Object.SetActive(NightProgressSave.HasStar3());
+        }
+
+        private void RefreshIndicators() {
+            bool showDevChanged = false;
+            bool showFunEnabled = false;
+
+            if (runtimeSettings != null) {
+                showDevChanged = runtimeSettings.HasNonDefaultStarRelevantDevGameplaySettings();
+                showFunEnabled = runtimeSettings.HasNonDefaultFunSettingsEnabled();
+            }
+
+            if (devSettingsChangedIndicator != null) {
+                devSettingsChangedIndicator.SetActive(showDevChanged);
+            }
+
+            if (funSettingsEnabledIndicator != null) {
+                funSettingsEnabledIndicator.SetActive(showFunEnabled);
+            }
+        }
+
+        private void SetActivePanel(TitlePanel panel) {
+            currentPanel = panel;
+
+            if (mainMenuPanel != null) mainMenuPanel.SetActive(panel == TitlePanel.MainMenu);
+            if (customNightPanel != null) customNightPanel.SetActive(panel == TitlePanel.CustomNight);
+            if (playerSettingsPanel != null) playerSettingsPanel.SetActive(panel == TitlePanel.PlayerSettings);
+            if (presentationSettingsPanel != null) presentationSettingsPanel.SetActive(panel == TitlePanel.PresentationSettings);
+            if (devGameplayPanel != null) devGameplayPanel.SetActive(panel == TitlePanel.DevGameplay);
+        }
+
+        private void RebuildCurrentPanel() {
+            ResolveReferences();
+            if (runtimeSettings == null) return;
+
+            switch (currentPanel) {
+                case TitlePanel.CustomNight:
+                    if (customNightMenuBuilder != null) {
+                        customNightMenuBuilder.Rebuild(runtimeSettings, false, SettingScreen.CustomNight);
+                    }
+                    break;
+
+                case TitlePanel.PlayerSettings:
+                    if (playerSettingsMenuBuilder != null) {
+                        SettingScreen playerScreens = SettingScreen.PlayerSettings;
+                        if (runtimeSettings.PlayerSettingsDebugUnlocked) {
+                            playerScreens |= SettingScreen.PlayerSettingsDebug;
+                        }
+
+                        playerSettingsMenuBuilder.Rebuild(runtimeSettings, false, playerScreens);
+                    }
+                    break;
+
+                case TitlePanel.PresentationSettings:
+                    if (presentationSettingsMenuBuilder != null) {
+                        SettingScreen presentationScreens = SettingScreen.PlayerSettings;
+                        if (runtimeSettings.PlayerSettingsDebugUnlocked) {
+                            presentationScreens |= SettingScreen.PlayerSettingsDebug;
+                        }
+
+                        presentationSettingsMenuBuilder.Rebuild(runtimeSettings, false, presentationScreens);
+                    }
+                    break;
+
+                case TitlePanel.DevGameplay:
+                    if (devGameplayMenuBuilder != null) {
+                        devGameplayMenuBuilder.Rebuild(runtimeSettings, runtimeSettings.DebugMenuUnlocked, SettingScreen.DevGameplay);
+                    }
+                    break;
+            }
+
+            RefreshIndicators();
+        }
+
+        public void ShowMainMenu() {
+            SetActivePanel(TitlePanel.MainMenu);
+            RefreshAll();
+        }
+
+        public void ShowCustomNight() {
+            ResolveReferences();
+            if (nightSessionManager == null || !nightSessionManager.IsCustomNightUnlocked()) {
+                return;
+            }
+
+            // Opening Custom Night from the main menu should start from defaults.
+            if (runtimeSettings != null) {
+                runtimeSettings.ResetToDefaults();
+                runtimeSettings.SaveToJson();
+            }
+
+            SetActivePanel(TitlePanel.CustomNight);
+            RefreshAll();
+        }
+
+        private void ShowCustomNightPreserveCurrent() {
+            ResolveReferences();
+            if (nightSessionManager == null || !nightSessionManager.IsCustomNightUnlocked()) {
+                return;
+            }
+
+            SetActivePanel(TitlePanel.CustomNight);
+            RefreshAll();
+        }
+
+        public void ShowPlayerSettings() {
+            SetActivePanel(TitlePanel.PlayerSettings);
+            RefreshAll();
+        }
+
+        public void ShowPresentationSettings() {
+            SetActivePanel(TitlePanel.PresentationSettings);
+            RefreshAll();
+        }
+
+        public void ShowDevGameplay() {
+            if (currentPanel != TitlePanel.CustomNight && currentPanel != TitlePanel.DevGameplay) {
+                return;
+            }
+
+            SetActivePanel(TitlePanel.DevGameplay);
+            RefreshAll();
+        }
+
+        public void OnNewGamePressed() {
             ResolveReferences();
             if (runtimeSettings == null || nightSessionManager == null) return;
 
@@ -125,7 +307,7 @@ namespace FNaS.UI {
             SceneManager.LoadScene(nextSceneName);
         }
 
-        public void OnContinueCampaignPressed() {
+        public void OnContinuePressed() {
             ResolveReferences();
             if (runtimeSettings == null || nightSessionManager == null) return;
 
@@ -133,11 +315,20 @@ namespace FNaS.UI {
             SceneManager.LoadScene(nextSceneName);
         }
 
-        public void OnSingleNightPressed() {
+        public void OnStartCustomNightPressed() {
             ResolveReferences();
-            if (nightSessionManager == null) return;
+            if (runtimeSettings == null || nightSessionManager == null) return;
+            if (!nightSessionManager.IsCustomNightUnlocked()) return;
 
-            nightSessionManager.BeginSingleNight();
+            nightSessionManager.BeginCustomNight(runtimeSettings);
+            SceneManager.LoadScene(nextSceneName);
+        }
+
+        public void OnStartPresentationPressed() {
+            ResolveReferences();
+            if (runtimeSettings == null || nightSessionManager == null) return;
+
+            nightSessionManager.BeginPresentationNight(runtimeSettings);
             SceneManager.LoadScene(nextSceneName);
         }
 
@@ -147,9 +338,7 @@ namespace FNaS.UI {
 
             runtimeSettings.ResetToDefaults();
             runtimeSettings.SaveToJson();
-
-            RebuildMenu();
-            RefreshContinueButton();
+            RefreshAll();
         }
     }
 }
