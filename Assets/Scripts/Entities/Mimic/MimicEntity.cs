@@ -46,6 +46,12 @@ namespace FNaS.Entities.Mimic {
         [Tooltip("How long the flashlight must stay on the Mimic to banish it.")]
         public float holdToBanishSeconds = 1.5f;
 
+        [Tooltip("Optional cheaper target for flashlight checks. If null, falls back to the active variant transform.")]
+        public Transform flashlightTarget;
+
+        [Tooltip("How often to re-check flashlight illumination while active. Lower = more responsive, higher = cheaper.")]
+        [Min(0.01f)] public float illuminateCheckInterval = 0.05f;
+
         [Header("Punish")]
         [Range(0f, 1f)] public float batteryDrainPercent = 0.10f;
         public int punishPulseCount = 4;
@@ -116,6 +122,13 @@ namespace FNaS.Entities.Mimic {
         private int jumpscareLayer = -1;
         private int originalLayer = -1;
 
+        // Cached / throttled flashlight check state
+        private float nextIlluminateCheckTime;
+        private bool cachedIlluminated;
+
+        // Reused buffer to avoid allocating a fresh list every spawn attempt
+        private readonly List<SpawnChoice> spawnChoicesBuffer = new List<SpawnChoice>(32);
+
         public Phase CurrentPhase => phase;
         public bool IsActive => phase == Phase.Active;
 
@@ -144,6 +157,8 @@ namespace FNaS.Entities.Mimic {
             if (jumpscareCamera != null) {
                 jumpscareCamera.enabled = false;
             }
+
+            ResetIlluminationCache();
         }
 
         private void OnEnable() {
@@ -227,8 +242,7 @@ namespace FNaS.Entities.Mimic {
                 return false;
             }
 
-            transform.position = choice.anchor.position;
-            transform.rotation = choice.anchor.rotation;
+            transform.SetPositionAndRotation(choice.anchor.position, choice.anchor.rotation);
 
             ShowOnlyVariant(choice.variant);
 
@@ -241,6 +255,8 @@ namespace FNaS.Entities.Mimic {
             laughTimer = GetNextLaughInterval();
             phase = Phase.Active;
 
+            ResetIlluminationCache();
+
             PlayOneShot(spawnClip, spawnVolume);
 
             if (verboseLogging) {
@@ -251,11 +267,7 @@ namespace FNaS.Entities.Mimic {
         }
 
         private void UpdateActive() {
-            bool illuminated =
-                flashlight != null &&
-                currentVariant != null &&
-                currentVariant.activeInHierarchy &&
-                flashlight.IsIlluminating(currentVariant.transform);
+            bool illuminated = GetCachedIlluminated();
 
             if (illuminated) {
                 banishTimer += Time.deltaTime;
@@ -281,11 +293,30 @@ namespace FNaS.Entities.Mimic {
             }
         }
 
+        private bool GetCachedIlluminated() {
+            if (flashlight == null || currentVariant == null || !currentVariant.activeInHierarchy) {
+                cachedIlluminated = false;
+                return false;
+            }
+
+            if (Time.time < nextIlluminateCheckTime) {
+                return cachedIlluminated;
+            }
+
+            nextIlluminateCheckTime = Time.time + Mathf.Max(0.01f, illuminateCheckInterval);
+
+            Transform target = flashlightTarget != null ? flashlightTarget : currentVariant.transform;
+            cachedIlluminated = flashlight.IsIlluminating(target);
+            return cachedIlluminated;
+        }
+
+        private void ResetIlluminationCache() {
+            nextIlluminateCheckTime = 0f;
+            cachedIlluminated = false;
+        }
+
         private void Banish() {
             PlayOneShot(banishClip, banishVolume);
-
-            // Match the stalker-style flashlight feedback:
-            // pulse the player-facing screen fader when the Mimic is successfully shined away.
             screenFader?.Pulse();
 
             HideAllVariants();
@@ -295,12 +326,12 @@ namespace FNaS.Entities.Mimic {
             banishTimer = 0f;
             dangerTimer = 0f;
             laughTimer = 0f;
+            ResetIlluminationCache();
 
             phase = Phase.Cooldown;
             cooldownTimer = Mathf.Max(0f, cooldownSeconds);
 
-            transform.position = startPosition;
-            transform.rotation = startRotation;
+            transform.SetPositionAndRotation(startPosition, startRotation);
 
             if (verboseLogging) {
                 Debug.Log("Mimic banished.", this);
@@ -322,14 +353,14 @@ namespace FNaS.Entities.Mimic {
             phase = Phase.Punishing;
 
             if (punishAnchor != null) {
-                transform.position = punishAnchor.position;
-                transform.rotation = punishAnchor.rotation;
+                transform.SetPositionAndRotation(punishAnchor.position, punishAnchor.rotation);
             }
 
             GameObject punishVisual = jumpscareVariant != null ? jumpscareVariant : currentVariant;
 
             if (punishVisual == null && allMimicVariants != null) {
-                foreach (var go in allMimicVariants) {
+                for (int i = 0; i < allMimicVariants.Length; i++) {
+                    GameObject go = allMimicVariants[i];
                     if (go != null) {
                         punishVisual = go;
                         break;
@@ -385,12 +416,12 @@ namespace FNaS.Entities.Mimic {
             banishTimer = 0f;
             dangerTimer = 0f;
             laughTimer = 0f;
+            ResetIlluminationCache();
 
             phase = Phase.Cooldown;
             cooldownTimer = Mathf.Max(0f, cooldownSeconds);
 
-            transform.position = startPosition;
-            transform.rotation = startRotation;
+            transform.SetPositionAndRotation(startPosition, startRotation);
 
             if (playerMovement != null) {
                 playerMovement.ResumeActiveMovement();
@@ -426,9 +457,9 @@ namespace FNaS.Entities.Mimic {
             laughTimer = 0f;
             currentAnchor = null;
             currentVariant = null;
+            ResetIlluminationCache();
 
-            transform.position = startPosition;
-            transform.rotation = startRotation;
+            transform.SetPositionAndRotation(startPosition, startRotation);
 
             if (startInCooldown) {
                 phase = Phase.Cooldown;
@@ -444,7 +475,7 @@ namespace FNaS.Entities.Mimic {
             if (anchorSets == null || anchorSets.Length == 0) return null;
 
             MasterNode playerNode = playerMovement != null ? playerMovement.CurrentMasterNode : null;
-            List<SpawnChoice> valid = new List<SpawnChoice>();
+            spawnChoicesBuffer.Clear();
 
             foreach (var set in anchorSets) {
                 if (set == null) continue;
@@ -459,7 +490,7 @@ namespace FNaS.Entities.Mimic {
                 foreach (var slot in set.mimicAnchors) {
                     if (slot == null || slot.anchor == null || slot.mimicVariant == null) continue;
 
-                    valid.Add(new SpawnChoice {
+                    spawnChoicesBuffer.Add(new SpawnChoice {
                         anchor = slot.anchor,
                         variant = slot.mimicVariant
                     });
@@ -467,11 +498,11 @@ namespace FNaS.Entities.Mimic {
             }
 
             if (verboseLogging) {
-                Debug.Log($"Mimic found {valid.Count} valid spawn choices.", this);
+                Debug.Log($"Mimic found {spawnChoicesBuffer.Count} valid spawn choices.", this);
             }
 
-            if (valid.Count == 0) return null;
-            return valid[Random.Range(0, valid.Count)];
+            if (spawnChoicesBuffer.Count == 0) return null;
+            return spawnChoicesBuffer[Random.Range(0, spawnChoicesBuffer.Count)];
         }
 
         private float GetDangerSeconds() {
@@ -500,12 +531,17 @@ namespace FNaS.Entities.Mimic {
         }
 
         private void HideAllVariants() {
-            if (allMimicVariants == null) return;
-
-            foreach (var go in allMimicVariants) {
-                if (go != null) {
-                    go.SetActive(false);
+            if (allMimicVariants != null) {
+                for (int i = 0; i < allMimicVariants.Length; i++) {
+                    GameObject go = allMimicVariants[i];
+                    if (go != null) {
+                        go.SetActive(false);
+                    }
                 }
+            }
+
+            if (jumpscareVariant != null) {
+                jumpscareVariant.SetActive(false);
             }
         }
 

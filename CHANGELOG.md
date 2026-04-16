@@ -1,4 +1,37 @@
 # Changelog
+# April 15
+### Added
+- Added full main settings screen.
+- Added a hidden fun setting :)
+- Added presentation mode to progressively show the animatronics throughout the night, with AI values changing as the night progresses.
+- Added stars indicating progress.
+
+### Changed
+- Most text across the game (that aren't settings) now uses the font VCR OSD Mono.
+- Former setting page moved to a hidden dev screen, accessible using the Shift key on the Custom Night menu.
+
+# April 14
+### Added
+- Certain views now support moving camera freely within a bounding box.
+
+### Changed
+- Improved performance of writing on paper.
+- Updated apartment minimap on camera to match new apartment layout.
+- Updated button stylings on camera minimap.
+- Moved Move Compass to bottom-right corner and made unavailable movement options brighter.
+
+# April 13
+### Added
+- Added a Jumpscare animation to the Mimic.
+
+### Changed
+- Improved performance of Mimic model.
+- Camera now only renders when in view of the player.
+- Made Mimic sound based on relative location.
+
+### Issues
+- Paper is laggy again.
+
 ## April 12
 ### Added
 - Added Nights 1-5 with different presents, and with save/load for the most recent night.

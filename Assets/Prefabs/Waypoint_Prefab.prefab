@@ -47,8 +47,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Node
   masterNode: {fileID: 0}
-  defaultView: {fileID: 5945648460963956995}
-  linkedDoor: {fileID: 0}
+  defaultView: {fileID: 0}
   transitions: []
   entryRules: []
 --- !u!1 &4288056845743398087
@@ -180,14 +179,3 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1394780325717313713, guid: efa63d8e1e6b5284ba9e41f837f82fe6, type: 3}
   m_PrefabInstance: {fileID: 3783247271823580536}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &5945648460963956995 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7350970390456849531, guid: efa63d8e1e6b5284ba9e41f837f82fe6, type: 3}
-  m_PrefabInstance: {fileID: 3783247271823580536}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 50d24a1d5a254ef479968980f569dece, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::NodeView

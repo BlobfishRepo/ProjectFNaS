@@ -250,5 +250,9 @@ namespace FNaS.Entities.Mold {
             if (winState != null && winState.hasWon) return true;
             return false;
         }
+
+        public bool IsSpraying() {
+            return isSprayToggledOn;
+        }
     }
 }

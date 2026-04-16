@@ -12,7 +12,7 @@ namespace FNaS.Systems {
                 case 1:
                     settings.SetInt("stalker.ai", 4);
                     settings.SetInt("lostGirl.ai", 0);
-                    settings.SetInt("mimic.ai", 0);
+                    settings.SetInt("mimic.ai", 1);
                     settings.SetInt("mold.ai", 0);
 
                     settings.SetFloat("paper.secondsToWin", 30f);
@@ -23,7 +23,7 @@ namespace FNaS.Systems {
                 case 2:
                     settings.SetInt("stalker.ai", 6);
                     settings.SetInt("lostGirl.ai", 0);
-                    settings.SetInt("mimic.ai", 0);
+                    settings.SetInt("mimic.ai", 2);
                     settings.SetInt("mold.ai", 2);
 
                     settings.SetFloat("paper.secondsToWin", 40f);
@@ -34,7 +34,7 @@ namespace FNaS.Systems {
                 case 3:
                     settings.SetInt("stalker.ai", 8);
                     settings.SetInt("lostGirl.ai", 4);
-                    settings.SetInt("mimic.ai", 2);
+                    settings.SetInt("mimic.ai", 4);
                     settings.SetInt("mold.ai", 4);
 
                     settings.SetFloat("paper.secondsToWin", 50f);

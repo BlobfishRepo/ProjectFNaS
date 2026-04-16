@@ -18,6 +18,14 @@ namespace FNaS.Systems {
             public float length;
         }
 
+        [Serializable]
+        private class BuiltLine {
+            public readonly List<DrawSegment> segments = new();
+            public float lineLength;
+            public float globalStartLength;
+            public float globalEndLength;
+        }
+
         private enum TokenType {
             Word,
             Newline
@@ -26,6 +34,11 @@ namespace FNaS.Systems {
         private struct TextToken {
             public TokenType type;
             public string text;
+        }
+
+        private enum WritingSoundMode {
+            Normal = 0,
+            Fun = 1
         }
 
         [Header("Input")]
@@ -91,7 +104,13 @@ APARTMENT";
 
         [Header("Writing Audio")]
         public AudioSource writingAudioSource;
+
+        [Tooltip("Default writing sound. This mode resets playback when writing stops.")]
         public AudioClip writingLoopClip;
+
+        [Tooltip("Fun writing sound. This mode resumes from the previous playback position when writing stops/starts.")]
+        public AudioClip funWritingLoopClip;
+
         [Range(0f, 1f)] public float writingVolume = 0.8f;
         public float minPitch = 0.85f;
         public float maxPitch = 1.35f;
@@ -110,13 +129,17 @@ APARTMENT";
         [Header("Runtime Perf (read-only)")]
         [SerializeField] private int inkRadiusPixels = 1;
         [SerializeField] private int brushOffsetCount = 0;
+        [SerializeField] private int revealCursorLineIndex = 0;
         [SerializeField] private int revealCursorSegmentIndex = 0;
 
         [Header("Runtime Audio (read-only)")]
         [SerializeField] private float currentPenSpeed;
         [SerializeField] private float smoothedPenSpeed;
+        [SerializeField] private WritingSoundMode activeWritingSoundMode = WritingSoundMode.Normal;
+        [SerializeField] private bool usePitchAdjustment = true;
+        [SerializeField] private bool resumeWritingAudioFromLastPosition = false;
 
-        private readonly List<DrawSegment> drawSegments = new();
+        private readonly List<BuiltLine> builtLines = new();
         private readonly List<Vector2Int> brushOffsets = new();
 
         private Vector3 penInitialPosition;
@@ -151,9 +174,7 @@ APARTMENT";
         }
 
         private void OnDisable() {
-            if (writingAudioSource != null && writingAudioSource.isPlaying) {
-                writingAudioSource.Stop();
-            }
+            StopWritingAudio(resetPlaybackPosition: true);
         }
 
         public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
@@ -162,9 +183,16 @@ APARTMENT";
             glyphScale = settings.GetFloat("paper.glyphScale");
             textToWrite = PaperTextPresets.ResolveText(settings.GetInt("paper.textPreset"));
 
-            if (Application.isPlaying) {
-                Rebuild();
-            }
+            activeWritingSoundMode = (WritingSoundMode)Mathf.Clamp(
+                settings.GetInt("fun.paperWritingSoundMode"),
+                0,
+                1
+            );
+
+            usePitchAdjustment = settings.GetBool("fun.paperWritingUsePitchAdjust");
+            resumeWritingAudioFromLastPosition = activeWritingSoundMode == WritingSoundMode.Fun;
+
+            RefreshWritingAudioConfig();
         }
 
         private void CachePenInitialPose() {
@@ -176,13 +204,44 @@ APARTMENT";
         }
 
         private void SetupWritingAudio() {
-            if (writingAudioSource != null) {
-                writingAudioSource.playOnAwake = false;
-                writingAudioSource.loop = true;
-                writingAudioSource.clip = writingLoopClip;
-                writingAudioSource.volume = writingVolume;
+            if (writingAudioSource == null) return;
+
+            writingAudioSource.playOnAwake = false;
+            writingAudioSource.loop = true;
+            writingAudioSource.volume = writingVolume;
+            writingAudioSource.pitch = 1f;
+
+            RefreshWritingAudioConfig();
+        }
+
+        private void RefreshWritingAudioConfig() {
+            if (writingAudioSource == null) return;
+
+            AudioClip targetClip = GetActiveWritingClip();
+
+            bool clipChanged = writingAudioSource.clip != targetClip;
+
+            if (clipChanged && writingAudioSource.isPlaying) {
+                writingAudioSource.Stop();
+            }
+
+            if (clipChanged) {
+                writingAudioSource.time = 0f;
+            }
+
+            writingAudioSource.clip = targetClip;
+            writingAudioSource.loop = true;
+            writingAudioSource.volume = writingVolume;
+
+            if (!usePitchAdjustment) {
                 writingAudioSource.pitch = 1f;
             }
+        }
+
+        private AudioClip GetActiveWritingClip() {
+            return activeWritingSoundMode == WritingSoundMode.Fun && funWritingLoopClip != null
+                ? funWritingLoopClip
+                : writingLoopClip;
         }
 
         private void Update() {
@@ -193,11 +252,12 @@ APARTMENT";
 
             if (currentRevealLength < lastRevealLength - 0.0001f) {
                 ClearInkTexture();
+                revealCursorLineIndex = 0;
                 revealCursorSegmentIndex = 0;
-                DrawRange(0f, currentRevealLength);
+                DrawRangeAcrossLines(0f, currentRevealLength);
             }
             else if (currentRevealLength > lastRevealLength + 0.0001f) {
-                DrawRange(lastRevealLength, currentRevealLength);
+                DrawRangeAcrossLines(lastRevealLength, currentRevealLength);
             }
 
             lastRevealLength = currentRevealLength;
@@ -217,12 +277,13 @@ APARTMENT";
 
         [ContextMenu("Rebuild Writing Geometry")]
         public void Rebuild() {
-            drawSegments.Clear();
+            builtLines.Clear();
             totalLength = 0f;
             currentRevealLength = 0f;
             lastRevealLength = 0f;
             builtStrokeCount = 0;
             builtSegmentCount = 0;
+            revealCursorLineIndex = 0;
             revealCursorSegmentIndex = 0;
             nextInkApplyTime = 0f;
 
@@ -255,7 +316,10 @@ APARTMENT";
             List<TextToken> tokens = Tokenize(workingText);
             BuildTextGeometry(tokens);
 
-            builtSegmentCount = drawSegments.Count;
+            builtSegmentCount = 0;
+            for (int i = 0; i < builtLines.Count; i++) {
+                builtSegmentCount += builtLines[i].segments.Count;
+            }
             UpdateOverlayVisibility();
 
             if (verboseLogging) {
@@ -346,12 +410,32 @@ APARTMENT";
             float z = pageOrigin.y;
             float x = pageOrigin.x + lineHeight;
 
+            BuiltLine currentLine = new BuiltLine();
+
+            void FinalizeCurrentLineIfNeeded() {
+                if (currentLine.segments.Count == 0 && currentLine.lineLength <= 0f) {
+                    return;
+                }
+
+                currentLine.globalStartLength = totalLength;
+                currentLine.globalEndLength = totalLength + currentLine.lineLength;
+                totalLength = currentLine.globalEndLength;
+
+                builtLines.Add(currentLine);
+                currentLine = new BuiltLine();
+            }
+
+            void AdvanceToNextLine() {
+                FinalizeCurrentLineIfNeeded();
+                z = pageOrigin.y;
+                x += lineAdvance;
+            }
+
             for (int i = 0; i < tokens.Count; i++) {
                 TextToken token = tokens[i];
 
                 if (token.type == TokenType.Newline) {
-                    z = pageOrigin.y;
-                    x += lineAdvance;
+                    AdvanceToNextLine();
                     continue;
                 }
 
@@ -359,8 +443,7 @@ APARTMENT";
 
                 bool atLineStart = Mathf.Abs(z - pageOrigin.y) < 0.0001f;
                 if (!atLineStart && z + wordWidth > pageOrigin.y + pageSize.y) {
-                    z = pageOrigin.y;
-                    x += lineAdvance;
+                    AdvanceToNextLine();
                 }
 
                 if (x > pageOrigin.x + pageSize.x) {
@@ -398,7 +481,7 @@ APARTMENT";
                             pagePts[p] = new Vector2(px, pz);
                         }
 
-                        AddBuiltStroke(pagePts);
+                        AddBuiltStroke(currentLine, pagePts);
                     }
 
                     z += glyph.advance * unitsPerGlyphHeight;
@@ -416,6 +499,8 @@ APARTMENT";
                     z += wordSpacing * unitsPerGlyphHeight;
                 }
             }
+
+            FinalizeCurrentLineIfNeeded();
         }
 
         private float MeasureWordWidth(string word, float unitsPerGlyphHeight) {
@@ -441,8 +526,8 @@ APARTMENT";
             return width;
         }
 
-        private void AddBuiltStroke(Vector2[] pagePoints) {
-            if (pagePoints == null || pagePoints.Length < 2) return;
+        private void AddBuiltStroke(BuiltLine line, Vector2[] pagePoints) {
+            if (line == null || pagePoints == null || pagePoints.Length < 2) return;
 
             bool addedAnySegment = false;
 
@@ -453,17 +538,17 @@ APARTMENT";
                 float len = Vector2.Distance(a, b);
                 if (len <= 0.000001f) continue;
 
-                drawSegments.Add(new DrawSegment {
+                line.segments.Add(new DrawSegment {
                     pageA = a,
                     pageB = b,
                     pixelA = PageToPixelFloat(a),
                     pixelB = PageToPixelFloat(b),
-                    globalStartLength = totalLength,
-                    globalEndLength = totalLength + len,
+                    globalStartLength = line.lineLength,
+                    globalEndLength = line.lineLength + len,
                     length = len
                 });
 
-                totalLength += len;
+                line.lineLength += len;
                 addedAnySegment = true;
             }
 
@@ -543,23 +628,67 @@ APARTMENT";
             nextInkApplyTime = Time.time + (1f / Mathf.Max(1f, inkApplyRate));
         }
 
-        private void DrawRange(float fromLength, float toLength) {
-            if (drawSegments.Count == 0) return;
-            if (toLength <= fromLength) return;
+        private int GetLineIndexAtGlobalLength(float globalLength) {
+            if (builtLines.Count == 0) return -1;
 
-            if (fromLength <= 0f) {
-                revealCursorSegmentIndex = 0;
+            globalLength = Mathf.Clamp(globalLength, 0f, totalLength);
+
+            for (int i = 0; i < builtLines.Count; i++) {
+                if (globalLength <= builtLines[i].globalEndLength) {
+                    return i;
+                }
             }
 
-            while (revealCursorSegmentIndex < drawSegments.Count &&
-                   drawSegments[revealCursorSegmentIndex].globalEndLength <= fromLength) {
+            return builtLines.Count - 1;
+        }
+
+        private void DrawRangeAcrossLines(float fromLength, float toLength) {
+            if (builtLines.Count == 0) return;
+            if (toLength <= fromLength) return;
+
+            while (revealCursorLineIndex < builtLines.Count) {
+                BuiltLine line = builtLines[revealCursorLineIndex];
+
+                if (line.globalEndLength <= fromLength) {
+                    revealCursorLineIndex++;
+                    revealCursorSegmentIndex = 0;
+                    continue;
+                }
+
+                if (line.globalStartLength >= toLength) {
+                    break;
+                }
+
+                float localFrom = Mathf.Max(0f, fromLength - line.globalStartLength);
+                float localTo = Mathf.Min(line.lineLength, toLength - line.globalStartLength);
+
+                if (localTo > localFrom) {
+                    DrawRangeInCurrentLine(line, localFrom, localTo);
+                }
+
+                if (localTo >= line.lineLength - 0.0001f) {
+                    revealCursorLineIndex++;
+                    revealCursorSegmentIndex = 0;
+                    continue;
+                }
+
+                break;
+            }
+        }
+
+        private void DrawRangeInCurrentLine(BuiltLine line, float fromLength, float toLength) {
+            if (line == null || line.segments.Count == 0) return;
+            if (toLength <= fromLength) return;
+
+            while (revealCursorSegmentIndex < line.segments.Count &&
+                   line.segments[revealCursorSegmentIndex].globalEndLength <= fromLength) {
                 revealCursorSegmentIndex++;
             }
 
             int i = revealCursorSegmentIndex;
 
-            while (i < drawSegments.Count) {
-                DrawSegment seg = drawSegments[i];
+            while (i < line.segments.Count) {
+                DrawSegment seg = line.segments[i];
 
                 if (seg.globalStartLength >= toLength) {
                     break;
@@ -575,9 +704,35 @@ APARTMENT";
                 i++;
             }
 
-            while (revealCursorSegmentIndex < drawSegments.Count &&
-                   drawSegments[revealCursorSegmentIndex].globalEndLength <= toLength) {
+            while (revealCursorSegmentIndex < line.segments.Count &&
+                   line.segments[revealCursorSegmentIndex].globalEndLength <= toLength) {
                 revealCursorSegmentIndex++;
+            }
+        }
+
+        private void DrawRangeInLine(BuiltLine line, float fromLength, float toLength) {
+            if (line == null || line.segments.Count == 0) return;
+            if (toLength <= fromLength) return;
+
+            int startIndex = 0;
+            while (startIndex < line.segments.Count &&
+                   line.segments[startIndex].globalEndLength <= fromLength) {
+                startIndex++;
+            }
+
+            for (int i = startIndex; i < line.segments.Count; i++) {
+                DrawSegment seg = line.segments[i];
+
+                if (seg.globalStartLength >= toLength) {
+                    break;
+                }
+
+                float segFrom = Mathf.Max(fromLength, seg.globalStartLength);
+                float segTo = Mathf.Min(toLength, seg.globalEndLength);
+
+                if (segTo > segFrom) {
+                    DrawSegmentRange(seg, segFrom, segTo);
+                }
             }
         }
 
@@ -689,7 +844,7 @@ APARTMENT";
                 return;
             }
 
-            if (revealLength <= 0f || totalLength <= 0f || drawSegments.Count == 0) {
+            if (revealLength <= 0f || totalLength <= 0f || builtLines.Count == 0) {
                 return;
             }
 
@@ -699,20 +854,28 @@ APARTMENT";
         }
 
         private Vector2 GetPagePointAtGlobalLength(float length) {
-            if (drawSegments.Count == 0) return Vector2.zero;
+            if (builtLines.Count == 0) return Vector2.zero;
 
             length = Mathf.Clamp(length, 0f, totalLength);
 
-            for (int i = 0; i < drawSegments.Count; i++) {
-                DrawSegment seg = drawSegments[i];
+            int lineIndex = GetLineIndexAtGlobalLength(length);
+            if (lineIndex < 0) return Vector2.zero;
 
-                if (length <= seg.globalEndLength) {
-                    float t = Mathf.InverseLerp(seg.globalStartLength, seg.globalEndLength, length);
+            BuiltLine line = builtLines[lineIndex];
+            float localLength = Mathf.Clamp(length - line.globalStartLength, 0f, line.lineLength);
+
+            for (int i = 0; i < line.segments.Count; i++) {
+                DrawSegment seg = line.segments[i];
+
+                if (localLength <= seg.globalEndLength) {
+                    float t = Mathf.InverseLerp(seg.globalStartLength, seg.globalEndLength, localLength);
                     return Vector2.Lerp(seg.pageA, seg.pageB, t);
                 }
             }
 
-            return drawSegments[drawSegments.Count - 1].pageB;
+            return line.segments.Count > 0
+                ? line.segments[line.segments.Count - 1].pageB
+                : Vector2.zero;
         }
 
         private void RestorePenPoseIfNeeded() {
@@ -722,8 +885,33 @@ APARTMENT";
             penTip.rotation = penInitialRotation;
         }
 
+        private void StopWritingAudio(bool resetPlaybackPosition) {
+            if (writingAudioSource == null) return;
+
+            if (resumeWritingAudioFromLastPosition && !resetPlaybackPosition) {
+                if (writingAudioSource.isPlaying) {
+                    writingAudioSource.Pause();
+                }
+            }
+            else {
+                if (writingAudioSource.isPlaying) {
+                    writingAudioSource.Stop();
+                }
+
+                if (writingAudioSource.clip != null) {
+                    writingAudioSource.time = 0f;
+                }
+            }
+
+            hasLastPenAudioPosition = false;
+            currentPenSpeed = 0f;
+        }
+
         private void UpdateWritingAudio() {
-            if (writingAudioSource == null || writingLoopClip == null) return;
+            if (writingAudioSource == null) return;
+
+            AudioClip activeClip = GetActiveWritingClip();
+            if (activeClip == null) return;
 
             bool shouldPlay =
                 paperProgress != null &&
@@ -731,20 +919,38 @@ APARTMENT";
                 penTip != null;
 
             if (!shouldPlay) {
-                if (writingAudioSource.isPlaying) {
-                    writingAudioSource.Stop();
+                StopWritingAudio(resetPlaybackPosition: false);
+                smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, 0f, Time.deltaTime * audioSmoothing);
+
+                if (!usePitchAdjustment) {
+                    writingAudioSource.pitch = 1f;
+                    writingAudioSource.volume = writingVolume;
                 }
 
-                hasLastPenAudioPosition = false;
-                currentPenSpeed = 0f;
-                smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, 0f, Time.deltaTime * audioSmoothing);
                 return;
             }
 
+            if (writingAudioSource.clip != activeClip) {
+                bool wasPlaying = writingAudioSource.isPlaying;
+                writingAudioSource.Stop();
+                writingAudioSource.clip = activeClip;
+                writingAudioSource.time = 0f;
+
+                if (wasPlaying) {
+                    writingAudioSource.Play();
+                }
+            }
+
+            writingAudioSource.loop = true;
+            writingAudioSource.volume = writingVolume;
+
             if (!writingAudioSource.isPlaying) {
-                writingAudioSource.clip = writingLoopClip;
-                writingAudioSource.volume = writingVolume;
-                writingAudioSource.Play();
+                if (resumeWritingAudioFromLastPosition && writingAudioSource.time > 0f) {
+                    writingAudioSource.UnPause();
+                }
+                else {
+                    writingAudioSource.Play();
+                }
             }
 
             Vector3 currentPos = penTip.position;
@@ -763,9 +969,15 @@ APARTMENT";
 
             smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, currentPenSpeed, Time.deltaTime * audioSmoothing);
 
-            float t = Mathf.Clamp01(smoothedPenSpeed / Mathf.Max(0.001f, speedForMaxPitch));
-            writingAudioSource.pitch = Mathf.Lerp(minPitch, maxPitch, t);
-            writingAudioSource.volume = Mathf.Lerp(writingVolume * 0.75f, writingVolume, t);
+            if (usePitchAdjustment) {
+                float t = Mathf.Clamp01(smoothedPenSpeed / Mathf.Max(0.001f, speedForMaxPitch));
+                writingAudioSource.pitch = Mathf.Lerp(minPitch, maxPitch, t);
+                writingAudioSource.volume = Mathf.Lerp(writingVolume * 0.75f, writingVolume, t);
+            }
+            else {
+                writingAudioSource.pitch = 1f;
+                writingAudioSource.volume = writingVolume;
+            }
         }
 
         private void OnDrawGizmosSelected() {

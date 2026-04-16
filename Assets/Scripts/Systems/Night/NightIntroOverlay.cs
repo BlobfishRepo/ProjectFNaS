@@ -54,7 +54,7 @@ namespace FNaS.Systems {
         public void ShowImmediate() {
             if (titleText != null) {
                 NightSessionManager session = NightSessionManager.Instance;
-                titleText.text = session != null ? session.GetIntroText() : "Custom Night\n12:00 AM";
+                titleText.text = session != null ? session.GetIntroText() : "Night 1\n12:00 AM";
                 titleText.enabled = true;
             }
 

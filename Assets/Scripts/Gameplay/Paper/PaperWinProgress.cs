@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine.InputSystem;
 using FNaS.Gameplay;
 using FNaS.Settings;
+using FNaS.Entities.Mold;
 
 namespace FNaS.Systems {
     public class PaperWinProgress : MonoBehaviour, IRuntimeSettingsConsumer {
@@ -25,6 +26,8 @@ namespace FNaS.Systems {
         public WinState winState;
         public LoseState loseState;
         public SecurityMonitorController securityMonitorController;
+        public FlashlightTool flashlightTool;
+        public MoldSprayTool moldSprayTool;
 
         [Header("Allowed Views")]
         public View paperView;
@@ -104,7 +107,11 @@ namespace FNaS.Systems {
         }
 
         private void Update() {
-            if (ShouldBlockInput()) {
+            if (writeState != WriteState.Idle && AreToolsInterrupting()) {
+                if (verboseLogging) {
+                    Debug.Log("Paper writing stopped due to tool usage.", this);
+                }
+
                 StopWriting(resetPickupDelay: true);
                 return;
             }
@@ -308,6 +315,12 @@ namespace FNaS.Systems {
 
         public bool IsInPickupDelay() {
             return writeState == WriteState.PickupDelay;
+        }
+
+        private bool AreToolsInterrupting() {
+            if (flashlightTool != null && flashlightTool.isOn) return true;
+            if (moldSprayTool != null && moldSprayTool.IsSpraying()) return true;
+            return false;
         }
     }
 }
