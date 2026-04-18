@@ -1,4 +1,15 @@
 # Changelog
+# April 16
+### Added
+- Added post-it note system to explain game mechanics in-game.
+- Added another text preset for the assignment.
+
+### Changed
+- Made the Monitor display slightly larger to match the model.
+- Tweaked values for Nights 1-5 and Presentation Night.
+- Adjusted fun settings.
+- Mimic's AI value now controls spawn chance instead of duration.
+
 # April 15
 ### Added
 - Added full main settings screen.

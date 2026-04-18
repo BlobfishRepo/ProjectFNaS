@@ -36,11 +36,8 @@ namespace FNaS.Entities.Mimic {
         public bool startInCooldown = true;
 
         [Header("Danger Timer")]
-        [Tooltip("Danger time at AI 20.")]
-        public float minDangerSeconds = 15f;
-
-        [Tooltip("Danger time at AI 1.")]
-        public float maxDangerSeconds = 30f;
+        [Tooltip("Guaranteed time before punish once the Mimic has spawned.")]
+        public float dangerSecondsFixed = 40f;
 
         [Header("Flashlight")]
         [Tooltip("How long the flashlight must stay on the Mimic to banish it.")]
@@ -226,10 +223,21 @@ namespace FNaS.Entities.Mimic {
                 Debug.Log($"Mimic tick {tick}, dormant counter = {dormantTickCounter}", this);
             }
 
-            if (dormantTickCounter >= Mathf.Max(1, spawnEveryTicks)) {
-                if (TrySpawn()) {
-                    dormantTickCounter = 0;
-                }
+            if (dormantTickCounter < Mathf.Max(1, spawnEveryTicks)) {
+                return;
+            }
+
+            dormantTickCounter = 0;
+
+            float spawnChancePercent = GetSpawnChancePercent();
+            float roll = Random.Range(0f, 100f);
+
+            if (verboseLogging) {
+                Debug.Log($"Mimic spawn roll: {roll:F1} <= {spawnChancePercent:F1} ?", this);
+            }
+
+            if (roll <= spawnChancePercent) {
+                TrySpawn();
             }
         }
 
@@ -251,7 +259,7 @@ namespace FNaS.Entities.Mimic {
 
             banishTimer = 0f;
             dangerTimer = 0f;
-            dangerSeconds = GetDangerSeconds();
+            dangerSeconds = Mathf.Max(0.01f, dangerSecondsFixed);
             laughTimer = GetNextLaughInterval();
             phase = Phase.Active;
 
@@ -505,12 +513,12 @@ namespace FNaS.Entities.Mimic {
             return spawnChoicesBuffer[Random.Range(0, spawnChoicesBuffer.Count)];
         }
 
-        private float GetDangerSeconds() {
-            if (ai <= 0) return float.PositiveInfinity;
+        //private float GetDangerSeconds() {
+        //    if (ai <= 0) return float.PositiveInfinity;
 
-            float t = Mathf.Clamp01((ai - 1f) / 19f);
-            return Mathf.Lerp(maxDangerSeconds, minDangerSeconds, t);
-        }
+        //    float t = Mathf.Clamp01((ai - 1f) / 19f);
+        //    return Mathf.Lerp(maxDangerSeconds, minDangerSeconds, t);
+        //}
 
         private float GetNextLaughInterval() {
             float remaining = dangerSeconds - dangerTimer;
@@ -565,6 +573,11 @@ namespace FNaS.Entities.Mimic {
             foreach (Transform child in obj.transform) {
                 SetLayerRecursively(child.gameObject, layer);
             }
+        }
+
+        private float GetSpawnChancePercent() {
+            if (ai <= 0) return 0f;
+            return Mathf.Clamp(ai * 5f, 0f, 100f);
         }
 
         [ContextMenu("Refresh Anchor Cache")]

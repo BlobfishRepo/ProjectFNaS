@@ -136,7 +136,8 @@ APARTMENT";
         [SerializeField] private float currentPenSpeed;
         [SerializeField] private float smoothedPenSpeed;
         [SerializeField] private WritingSoundMode activeWritingSoundMode = WritingSoundMode.Normal;
-        [SerializeField] private bool usePitchAdjustment = true;
+        [SerializeField] private bool forcePitch = false;
+        [SerializeField] private float forcedPitch = 1f;
         [SerializeField] private bool resumeWritingAudioFromLastPosition = false;
 
         private readonly List<BuiltLine> builtLines = new();
@@ -189,7 +190,8 @@ APARTMENT";
                 1
             );
 
-            usePitchAdjustment = settings.GetBool("fun.paperWritingUsePitchAdjust");
+            forcePitch = settings.GetBool("fun.paperWritingForcePitch");
+            forcedPitch = settings.GetFloat("fun.paperWritingForcedPitch");
             resumeWritingAudioFromLastPosition = activeWritingSoundMode == WritingSoundMode.Fun;
 
             RefreshWritingAudioConfig();
@@ -233,7 +235,10 @@ APARTMENT";
             writingAudioSource.loop = true;
             writingAudioSource.volume = writingVolume;
 
-            if (!usePitchAdjustment) {
+            if (forcePitch) {
+                writingAudioSource.pitch = Mathf.Clamp(forcedPitch, 0.01f, 3f);
+            }
+            else {
                 writingAudioSource.pitch = 1f;
             }
         }
@@ -922,7 +927,11 @@ APARTMENT";
                 StopWritingAudio(resetPlaybackPosition: false);
                 smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, 0f, Time.deltaTime * audioSmoothing);
 
-                if (!usePitchAdjustment) {
+                if (forcePitch) {
+                    writingAudioSource.pitch = Mathf.Clamp(forcedPitch, 0.01f, 3f);
+                    writingAudioSource.volume = writingVolume;
+                }
+                else {
                     writingAudioSource.pitch = 1f;
                     writingAudioSource.volume = writingVolume;
                 }
@@ -963,20 +972,27 @@ APARTMENT";
             else {
                 float dt = Mathf.Max(Time.deltaTime, 0.0001f);
                 currentPenSpeed = Vector3.Distance(lastPenAudioPosition, currentPos) / dt;
+
+                float writingSpeedMultiplier = 1f;
+                if (paperProgress != null) {
+                    writingSpeedMultiplier = paperProgress.GetCurrentWritingSpeedMultiplier();
+                }
+
+                currentPenSpeed *= writingSpeedMultiplier;
                 currentPenSpeed = Mathf.Min(currentPenSpeed, speedForMaxPitch * 1.5f);
                 lastPenAudioPosition = currentPos;
             }
 
             smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, currentPenSpeed, Time.deltaTime * audioSmoothing);
 
-            if (usePitchAdjustment) {
+            if (forcePitch) {
+                writingAudioSource.pitch = Mathf.Clamp(forcedPitch, 0.01f, 3f);
+                writingAudioSource.volume = writingVolume;
+            }
+            else {
                 float t = Mathf.Clamp01(smoothedPenSpeed / Mathf.Max(0.001f, speedForMaxPitch));
                 writingAudioSource.pitch = Mathf.Lerp(minPitch, maxPitch, t);
                 writingAudioSource.volume = Mathf.Lerp(writingVolume * 0.75f, writingVolume, t);
-            }
-            else {
-                writingAudioSource.pitch = 1f;
-                writingAudioSource.volume = writingVolume;
             }
         }
 

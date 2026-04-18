@@ -42,6 +42,16 @@ namespace FNaS.Systems {
         [Header("Debug")]
         public bool verboseLogging = false;
 
+        [Header("Writing Behavior")]
+        [Tooltip("If true, switching monitor cameras stops writing.")]
+        public bool cancelOnMonitorCameraSwitch = true;
+
+        [Tooltip("If true, writing slows down when not directly on the Paper view.")]
+        public bool slowWhenNotDirectlyViewingPaper = false;
+
+        [Tooltip("Multiplier applied while writing if not directly on the Paper view.")]
+        [Range(0.1f, 1f)] public float offPaperWriteSpeedMultiplier = 0.7f;
+
         [Header("Runtime (read-only)")]
         [SerializeField] private float progress01;
         [SerializeField] private WriteState writeState = WriteState.Idle;
@@ -178,8 +188,14 @@ namespace FNaS.Systems {
                 return;
             }
 
+            float speedMultiplier = 1f;
+
+            if (slowWhenNotDirectlyViewingPaper && !IsPaperView(GetCurrentView())) {
+                speedMultiplier = Mathf.Clamp(offPaperWriteSpeedMultiplier, 0.1f, 1f);
+            }
+
             float denom = Mathf.Max(0.01f, secondsToWin);
-            progress01 = Mathf.Clamp01(progress01 + Time.unscaledDeltaTime / denom);
+            progress01 = Mathf.Clamp01(progress01 + (Time.unscaledDeltaTime * speedMultiplier) / denom);
             UpdateText();
 
             if (progress01 >= 1f) {
@@ -203,6 +219,7 @@ namespace FNaS.Systems {
 
         private void HandleMonitorCameraSwitched(int newIndex) {
             if (writeState == WriteState.Idle) return;
+            if (!cancelOnMonitorCameraSwitch) return;
 
             if (verboseLogging) {
                 Debug.Log($"Paper writing stopped due to monitor camera switch to index {newIndex}.", this);
@@ -307,6 +324,13 @@ namespace FNaS.Systems {
 
         public float GetProgress01() {
             return progress01;
+        }
+
+        public float GetCurrentWritingSpeedMultiplier() {
+            if (!slowWhenNotDirectlyViewingPaper) return 1f;
+            return IsPaperView(GetCurrentView())
+                ? 1f
+                : Mathf.Clamp(offPaperWriteSpeedMultiplier, 0.1f, 1f);
         }
 
         public bool IsWritingActive() {

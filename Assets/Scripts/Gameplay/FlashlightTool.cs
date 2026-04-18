@@ -96,6 +96,7 @@ namespace FNaS.Systems {
         private void OnDisable() {
             input.Player.Flashlight.performed -= OnFlashlightPressed;
             input.Player.Disable();
+            ForceOff();
         }
 
         private void Start() {

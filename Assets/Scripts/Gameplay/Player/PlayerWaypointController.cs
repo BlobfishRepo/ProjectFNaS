@@ -84,6 +84,7 @@ namespace FNaS.Gameplay {
         }
 
         private void Update() {
+            if (GameplayPauseManager.IsPausedGlobal) return;
             if (!isMoving) {
                 RestoreViewPivotBob();
             }
@@ -99,6 +100,7 @@ namespace FNaS.Gameplay {
         }
 
         public bool BeginTransition(WaypointTransition tr) {
+            if (GameplayPauseManager.IsPausedGlobal) return false;
             if (isMoving) return false;
             if (tr == null || tr.target == null) return false;
             if (loseState != null && loseState.hasLost) return false;
@@ -274,7 +276,7 @@ namespace FNaS.Gameplay {
             float traveled = 0f;
 
             while (traveled < totalLen) {
-                if (movementPaused) {
+                if (movementPaused || GameplayPauseManager.IsPausedGlobal) {
                     yield return null;
                     continue;
                 }

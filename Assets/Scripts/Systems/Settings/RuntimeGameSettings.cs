@@ -302,7 +302,7 @@ namespace FNaS.Settings {
 
         public bool HasNonDefaultFunSettingsEnabled() {
             foreach (var def in SettingsSchema.Definitions) {
-                if ((def.screens & SettingScreen.PlayerSettingsDebug) == 0)
+                if ((def.screens & SettingScreen.PlayerSettingsFun) == 0)
                     continue;
 
                 switch (def.controlType) {

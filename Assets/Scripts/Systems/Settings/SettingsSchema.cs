@@ -30,7 +30,7 @@ namespace FNaS.Settings {
         Flashlight,
         Systems,
         AudioVideo,
-        Debug
+        Fun
     }
 
     [Flags]
@@ -43,7 +43,7 @@ namespace FNaS.Settings {
 
         // Hidden / developer screens
         DevGameplay = 1 << 2,
-        PlayerSettingsDebug = 1 << 3,
+        PlayerSettingsFun = 1 << 3,
 
         Hidden = 1 << 4
     }
@@ -104,7 +104,7 @@ namespace FNaS.Settings {
                 controlType = SettingControlType.IntSlider,
                 screens = SettingScreen.CustomNight | SettingScreen.DevGameplay,
                 affectsStarEligibility = false,
-                defaultInt = 20,
+                defaultInt = 0,
                 min = 0,
                 max = 20
             },
@@ -143,7 +143,7 @@ namespace FNaS.Settings {
                 controlType = SettingControlType.IntSlider,
                 screens = SettingScreen.CustomNight | SettingScreen.DevGameplay,
                 affectsStarEligibility = false,
-                defaultInt = 20,
+                defaultInt = 0,
                 min = 0,
                 max = 20
             },
@@ -166,7 +166,7 @@ namespace FNaS.Settings {
                 controlType = SettingControlType.IntSlider,
                 screens = SettingScreen.CustomNight | SettingScreen.DevGameplay,
                 affectsStarEligibility = false,
-                defaultInt = 10,
+                defaultInt = 0,
                 min = 0,
                 max = 20
             },
@@ -178,7 +178,7 @@ namespace FNaS.Settings {
                 controlType = SettingControlType.IntSlider,
                 screens = SettingScreen.CustomNight | SettingScreen.DevGameplay,
                 affectsStarEligibility = true,
-                defaultInt = 10,
+                defaultInt = 0,
                 min = 0,
                 max = 20
             },
@@ -190,7 +190,7 @@ namespace FNaS.Settings {
                 controlType = SettingControlType.FloatSlider,
                 screens = SettingScreen.DevGameplay,
                 affectsStarEligibility = true,
-                defaultFloat = 30f,
+                defaultFloat = 60f,
                 min = 1f,
                 max = 300f
             },
@@ -271,31 +271,49 @@ namespace FNaS.Settings {
                 min = 0f,
                 max = 1f
             },
-
+            new SettingDefinition {
+                key = "player.disablePostItNotes",
+                label = "Disable Post-it Notes",
+                category = SettingCategory.AudioVideo,
+                controlType = SettingControlType.Toggle,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultBool = false
+            },
             new SettingDefinition {
                 key = "fun.paperWritingSoundMode",
                 label = "Writing Sound",
-                category = SettingCategory.Debug,
+                category = SettingCategory.Fun,
                 controlType = SettingControlType.Dropdown,
-                screens = SettingScreen.PlayerSettingsDebug,
+                screens = SettingScreen.PlayerSettingsFun,
                 affectsStarEligibility = false,
                 defaultInt = 0,
                 dropdownOptions = new[] { "Normal", "Fun" }
             },
             new SettingDefinition {
-                key = "fun.paperWritingUsePitchAdjust",
-                label = "Writing Pitch Adjust",
-                category = SettingCategory.Debug,
+                key = "fun.paperWritingForcePitch",
+                label = "Force Writing Pitch",
+                category = SettingCategory.Fun,
                 controlType = SettingControlType.Toggle,
-                screens = SettingScreen.PlayerSettingsDebug,
+                screens = SettingScreen.PlayerSettingsFun,
                 affectsStarEligibility = false,
-                defaultBool = true
+                defaultBool = false
             },
-
+            new SettingDefinition {
+                key = "fun.paperWritingForcedPitch",
+                label = "Forced Writing Pitch",
+                category = SettingCategory.Fun,
+                controlType = SettingControlType.FloatSlider,
+                screens = SettingScreen.PlayerSettingsFun,
+                affectsStarEligibility = false,
+                defaultFloat = 1f,
+                min = 0.5f,
+                max = 2f
+            },
             new SettingDefinition {
                 key = "debug.playerMovementMode",
                 label = "Player Movement Mode",
-                category = SettingCategory.Debug,
+                category = SettingCategory.Player,
                 controlType = SettingControlType.Dropdown,
                 debugOnly = true,
                 screens = SettingScreen.None,
@@ -306,7 +324,7 @@ namespace FNaS.Settings {
             new SettingDefinition {
                 key = "debug.stalkerMovementMode",
                 label = "Stalker Movement Mode",
-                category = SettingCategory.Debug,
+                category = SettingCategory.Stalker,
                 controlType = SettingControlType.Dropdown,
                 debugOnly = true,
                 screens = SettingScreen.None,
@@ -347,7 +365,7 @@ namespace FNaS.Settings {
                 SettingCategory.Flashlight => "Flashlight",
                 SettingCategory.Systems => "Systems",
                 SettingCategory.AudioVideo => "Audio / Video",
-                SettingCategory.Debug => "Debug",
+                SettingCategory.Fun => "Fun",
                 _ => category.ToString()
             };
         }

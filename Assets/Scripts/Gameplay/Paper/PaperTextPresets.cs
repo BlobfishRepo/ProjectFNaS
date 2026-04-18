@@ -1,17 +1,78 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
 namespace FNaS.Systems {
+    [Serializable]
+    public class PaperTextPresetEntry {
+        public int id;
+        [TextArea(3, 20)] public string text;
+    }
+
+    [Serializable]
+    public class PaperTextPresetDatabase {
+        public List<PaperTextPresetEntry> presets = new();
+    }
+
     public static class PaperTextPresets {
+        private const string ResourcePath = "PaperTextPresets";
+
+        private static bool loaded;
+        private static readonly Dictionary<int, string> presetMap = new();
+
         public static string ResolveText(int presetIndex) {
-            return presetIndex switch {
-                0 => "Hey guys, did you know that in terms of human companionship, Flareon is objectively the most huggable Pokemon? While their maximum temperature is likely too much for most, they are capable of controlling it, so they can set themselves to the perfect temperature for you. Along with that, they have a lot of fluff, making them undeniably incredibly soft to touch. But that's not all, they have a very respectable special defense stat of 110, which means that they are likely very calm and resistant to emotional damage. Because of this, if you have a bad day, you can vent to it while hugging it, and it won't mind. It can make itself even more endearing with moves like Charm and Baby Doll Eyes, ensuring that you never have a prolonged bout of depression ever again.",
-                1 => "2: It has been reported that some victims of torture, during the act, would retreat into a fantasy world from which they could not WAKE UP. In this catatonic state, the victim lived in a world just like their normal one, except they weren't being tortured. The only way that they realized they needed to WAKE UP was a note they found in their fantasy world. It would tell them about their condition, and tell them to WAKE UP. Even then, it would often take months until they were ready to discard their fantasy world and PLEASE WAKE UP.",
-                2 => "3: It has been reported that some victims of torture, during the act, would retreat into a fantasy world from which they could not WAKE UP. In this catatonic state, the victim lived in a world just like their normal one, except they weren't being tortured. The only way that they realized they needed to WAKE UP was a note they found in their fantasy world. It would tell them about their condition, and tell them to WAKE UP. Even then, it would often take months until they were ready to discard their fantasy world and PLEASE WAKE UP.",
-                3 => "4: It has been reported that some victims of torture, during the act, would retreat into a fantasy world from which they could not WAKE UP. In this catatonic state, the victim lived in a world just like their normal one, except they weren't being tortured. The only way that they realized they needed to WAKE UP was a note they found in their fantasy world. It would tell them about their condition, and tell them to WAKE UP. Even then, it would often take months until they were ready to discard their fantasy world and PLEASE WAKE UP.",
-                4 => "5: It has been reported that some victims of torture, during the act, would retreat into a fantasy world from which they could not WAKE UP. In this catatonic state, the victim lived in a world just like their normal one, except they weren't being tortured. The only way that they realized they needed to WAKE UP was a note they found in their fantasy world. It would tell them about their condition, and tell them to WAKE UP. Even then, it would often take months until they were ready to discard their fantasy world and PLEASE WAKE UP.",
-                5 => "The quick brown fox jumps over the lazy dog.",
-                6 => "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z\r\na b c d e f g h i j k l m n o p q r s t u v w x y z\r\n0 1 2 3 4 5 6 7 8 9\r\n. , ! ? : ; - _ ' \" / \\ ( ) [ ] + = * & # @ $ % ^ | < > ~",
-                7 => "7: It has been reported that some victims of torture, during the act, would retreat into a fantasy world from which they could not WAKE UP. In this catatonic state, the victim lived in a world just like their normal one, except they weren't being tortured. The only way that they realized they needed to WAKE UP was a note they found in their fantasy world. It would tell them about their condition, and tell them to WAKE UP. Even then, it would often take months until they were ready to discard their fantasy world and PLEASE WAKE UP.",
-                _ => "It has been reported that some victims of torture, during the act, would retreat into a fantasy world from which they could not WAKE UP. In this catatonic state, the victim lived in a world just like their normal one, except they weren't being tortured. The only way that they realized they needed to WAKE UP was a note they found in their fantasy world. It would tell them about their condition, and tell them to WAKE UP. Even then, it would often take months until they were ready to discard their fantasy world and PLEASE WAKE UP."
-            };
+            EnsureLoaded();
+
+            if (presetMap.TryGetValue(presetIndex, out string text)) {
+                return text ?? string.Empty;
+            }
+
+            if (presetMap.TryGetValue(0, out string fallback)) {
+                return fallback ?? string.Empty;
+            }
+
+            return string.Empty;
+        }
+
+        private static void EnsureLoaded() {
+            if (loaded) return;
+            loaded = true;
+
+            presetMap.Clear();
+
+            TextAsset jsonAsset = Resources.Load<TextAsset>(ResourcePath);
+            if (jsonAsset == null) {
+                Debug.LogWarning($"PaperTextPresets: Could not find Data/{ResourcePath}.json");
+                return;
+            }
+
+            PaperTextPresetDatabase db = null;
+
+            try {
+                db = JsonUtility.FromJson<PaperTextPresetDatabase>(jsonAsset.text);
+            }
+            catch (Exception ex) {
+                Debug.LogError($"PaperTextPresets: Failed to parse JSON. {ex}");
+                return;
+            }
+
+            if (db == null || db.presets == null) {
+                Debug.LogWarning("PaperTextPresets: JSON loaded, but no presets were found.");
+                return;
+            }
+
+            for (int i = 0; i < db.presets.Count; i++) {
+                PaperTextPresetEntry entry = db.presets[i];
+                if (entry == null) continue;
+
+                presetMap[entry.id] = entry.text ?? string.Empty;
+            }
+        }
+
+        public static void Reload() {
+            loaded = false;
+            presetMap.Clear();
+            EnsureLoaded();
         }
     }
 }
