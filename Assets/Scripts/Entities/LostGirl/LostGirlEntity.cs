@@ -55,6 +55,10 @@ namespace FNaS.Entities.LostGirl {
         public LostGirlMovement movement;
         public GameObject activeVisualRoot;
         public LostGirlJumpscareController jumpscareController;
+        public Animator animator;
+
+        [Header("Animator")]
+        public string runBoolName = "IsRunning";
 
         [Header("Audio")]
         public AudioSource audioSource;
@@ -96,9 +100,16 @@ namespace FNaS.Entities.LostGirl {
 
         private void Awake() {
             if (movement == null) movement = GetComponent<LostGirlMovement>();
+            if (animator == null && activeVisualRoot != null) {
+                animator = activeVisualRoot.GetComponentInChildren<Animator>();
+            }
+
             if (activeVisualRoot != null) activeVisualRoot.SetActive(false);
+
             movement?.StopMovement();
             StopRunningLoop();
+
+            SetRunningAnimation(false);
         }
 
         private void OnEnable() {
@@ -243,20 +254,23 @@ namespace FNaS.Entities.LostGirl {
 
             movement?.StopMovement();
             StopRunningLoop();
+            SetRunningAnimation(false);
             PlayOneShot(activationClip);
         }
 
-        private void StartChasing() {
-            phase = LostGirlPhase.Chasing;
-            activeTimer = 0f;
+private void StartChasing() {
+    phase = LostGirlPhase.Chasing;
+    activeTimer = 0f;
 
-            if (movement != null) {
-                movement.BeginMovement(playerTarget, movement.moveMode);
-            }
+    SetRunningAnimation(true);
 
-            PlayOneShot(runStartClip);
-            StartRunningLoop();
-        }
+    if (movement != null) {
+        movement.BeginMovement(playerTarget, movement.moveMode);
+    }
+
+    PlayOneShot(runStartClip);
+    StartRunningLoop();
+}
 
         private void UpdateChasing() {
             activeTimer += Time.deltaTime;
@@ -302,6 +316,7 @@ namespace FNaS.Entities.LostGirl {
             phase = LostGirlPhase.Jumpscare;
             movement?.StopMovement();
             StopRunningLoop();
+            SetRunningAnimation(false);
 
             if (jumpscareController != null) {
                 jumpscareController.PlayJumpscare(reason);
@@ -450,6 +465,7 @@ namespace FNaS.Entities.LostGirl {
 
             HideAllAnchorStages();
             StopRunningLoop();
+            SetRunningAnimation(false);
         }
 
         private bool HandleAIDisabledState() {
@@ -532,6 +548,13 @@ namespace FNaS.Entities.LostGirl {
             if (runningLoopSource != null && runningLoopSource.isPlaying) {
                 runningLoopSource.Stop();
             }
+        }
+
+        private void SetRunningAnimation(bool isRunning) {
+            if (animator == null) return;
+            if (string.IsNullOrWhiteSpace(runBoolName)) return;
+
+            animator.SetBool(runBoolName, isRunning);
         }
 
         private Vector3 GetKillOrigin() {

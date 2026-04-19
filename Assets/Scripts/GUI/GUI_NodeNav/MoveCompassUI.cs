@@ -14,7 +14,19 @@ namespace FNaS.Gameplay {
         [SerializeField] private Image tickS;
         [SerializeField] private Image tickD;
 
-        [Header("Tuning")]
+        [Header("Pan Indicator")]
+        [SerializeField] private Image panIndicator;
+
+        [Tooltip("Alpha when left-click look is available but not currently held.")]
+        [Range(0f, 1f)] public float panAvailableAlpha = 0.45f;
+
+        [Tooltip("Alpha when left-click look is currently being held.")]
+        [Range(0f, 1f)] public float panHeldAlpha = 0.95f;
+
+        [Tooltip("Alpha when left-click look is unavailable.")]
+        [Range(0f, 1f)] public float panUnavailableAlpha = 0f;
+
+        [Header("Turning")]
         [Tooltip("Alpha for available directions when NOT moving.")]
         [Range(0f, 1f)] public float availableAlpha = 0.9f;
 
@@ -28,6 +40,7 @@ namespace FNaS.Gameplay {
         public float fadeSpeed = 18f;
 
         private float wAlpha, aAlpha, sAlpha, dAlpha;
+        private float panAlpha;
 
         private void Awake() {
             if (!viewController) viewController = FindFirstObjectByType<ViewController>();
@@ -47,6 +60,7 @@ namespace FNaS.Gameplay {
                 ApplyTick(ref aAlpha, tickA, unavailableAlpha);
                 ApplyTick(ref sAlpha, tickS, unavailableAlpha);
                 ApplyTick(ref dAlpha, tickD, unavailableAlpha);
+                ApplyTick(ref panAlpha, panIndicator, panUnavailableAlpha);
                 SetOverall(1f);
                 return;
             }
@@ -63,11 +77,13 @@ namespace FNaS.Gameplay {
             float targetA = GetTargetAlpha(Direction.A, canA, moving, chosen);
             float targetS = GetTargetAlpha(Direction.S, canS, moving, chosen);
             float targetD = GetTargetAlpha(Direction.D, canD, moving, chosen);
+            float targetPan = GetPanTargetAlpha();
 
             SmoothTick(ref wAlpha, tickW, targetW);
             SmoothTick(ref aAlpha, tickA, targetA);
             SmoothTick(ref sAlpha, tickS, targetS);
             SmoothTick(ref dAlpha, tickD, targetD);
+            SmoothTick(ref panAlpha, panIndicator, targetPan);
 
             SetOverall(1f);
         }
@@ -80,6 +96,13 @@ namespace FNaS.Gameplay {
                 return availableAlpha;
 
             return unavailableAlpha;
+        }
+
+        private float GetPanTargetAlpha() {
+            if (viewController == null) return panUnavailableAlpha;
+            if (!viewController.ShouldShowPanIndicator) return panUnavailableAlpha;
+            if (viewController.IsPanHeld) return panHeldAlpha;
+            return panAvailableAlpha;
         }
 
         private bool CanMove(Direction dir, Waypoint waypoint, View view) {

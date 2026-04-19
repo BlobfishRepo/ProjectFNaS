@@ -51,6 +51,26 @@ namespace FNaS.Gameplay {
         public View CurrentView => currentView;
         public Direction? ActiveMoveDir => activeMoveDir;
 
+        // UI-facing helpers
+        public bool RequiresLeftClickToPan => requireLeftClickToPan;
+        public bool IsPanHeld =>
+            Mouse.current != null && Mouse.current.leftButton.isPressed;
+
+        public bool CanPanCurrentView {
+            get {
+                if (mover == null || mover.viewPivot == null) return false;
+                if (currentView == null) return false;
+                if (!currentView.HasPanRange) return false;
+                if (mover.IsMoving) return false;
+                if (loseState != null && loseState.hasLost) return false;
+                if (stalkerJumpscare != null && stalkerJumpscare.IsPlaying) return false;
+                return true;
+            }
+        }
+
+        // True specifically when the player is in a view where left click does something useful.
+        public bool ShouldShowPanIndicator => requireLeftClickToPan && CanPanCurrentView;
+
         public System.Action OnEnteredWaypointOrView;
 
         private readonly Stack<View> history = new();
@@ -255,18 +275,15 @@ namespace FNaS.Gameplay {
         private View FindBestEntryView(Waypoint waypoint, Waypoint fromWaypoint, float incomingYaw, float incomingPitch) {
             if (waypoint == null) return null;
 
-            // 1. Explicit default view takes priority.
             if (waypoint.defaultView != null) {
                 return waypoint.defaultView;
             }
 
-            // 2. Legacy entry-rule fallback can still take priority over nearest-angle if desired.
             View ruleView = waypoint.GetEntryRuleView(fromWaypoint);
             if (ruleView != null) {
                 return ruleView;
             }
 
-            // 3. Otherwise use nearest-angle selection.
             View[] views = waypoint.GetViews();
             Vector3 origin = GetViewOrigin();
 

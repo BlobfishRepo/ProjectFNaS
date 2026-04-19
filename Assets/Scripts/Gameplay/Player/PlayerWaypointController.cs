@@ -43,6 +43,12 @@ namespace FNaS.Gameplay {
         public AudioSource sfxSource;
         public AudioClip footstepClip;
 
+        [Tooltip("How long to fade footsteps out when a transition ends normally.")]
+        public float footstepFadeOutSeconds = 0.12f;
+
+        private Coroutine footstepFadeRoutine;
+        private float cachedSfxBaseVolume = 1f;
+
         [Header("Stalker")]
         [SerializeField] private StalkerJumpscareController stalkerJumpscare;
 
@@ -139,11 +145,7 @@ namespace FNaS.Gameplay {
             float minTurnDuration = 0.01f;
             float turnAnticipationSeconds = 0.15f;
 
-            if (sfxSource != null && footstepClip != null) {
-                sfxSource.clip = footstepClip;
-                sfxSource.loop = true;
-                sfxSource.Play();
-            }
+            StartFootstepsLoop();
 
             static Vector3 FlattenY(Vector3 v) { v.y = 0f; return v; }
 
@@ -222,7 +224,7 @@ namespace FNaS.Gameplay {
                 CurrentWaypoint = tr.target;
                 currentMasterNode = toMaster;
 
-                if (sfxSource != null) sfxSource.Stop();
+                StopFootstepsSoft();
                 isMoving = false;
                 RestoreViewPivotBobImmediate();
 
@@ -348,7 +350,7 @@ namespace FNaS.Gameplay {
             CurrentWaypoint = tr.target;
             currentMasterNode = toMaster;
 
-            if (sfxSource != null) sfxSource.Stop();
+            StopFootstepsSoft();
             isMoving = false;
             RestoreViewPivotBobImmediate();
 
@@ -419,9 +421,7 @@ namespace FNaS.Gameplay {
                 activeMoveRoutine = null;
             }
 
-            if (sfxSource != null) {
-                sfxSource.Stop();
-            }
+            StopFootstepsImmediate();
 
             movementPaused = false;
             footstepsWerePlayingBeforePause = false;
@@ -477,6 +477,65 @@ namespace FNaS.Gameplay {
             }
 
             door.SetTraversalOpen(false);
+        }
+
+        private void StartFootstepsLoop() {
+            if (sfxSource == null || footstepClip == null) return;
+
+            if (footstepFadeRoutine != null) {
+                StopCoroutine(footstepFadeRoutine);
+                footstepFadeRoutine = null;
+            }
+
+            cachedSfxBaseVolume = sfxSource.volume;
+            sfxSource.volume = cachedSfxBaseVolume;
+            sfxSource.clip = footstepClip;
+            sfxSource.loop = true;
+
+            if (!sfxSource.isPlaying) {
+                sfxSource.Play();
+            }
+        }
+
+        private void StopFootstepsSoft() {
+            if (sfxSource == null) return;
+
+            if (footstepFadeRoutine != null) {
+                StopCoroutine(footstepFadeRoutine);
+            }
+
+            footstepFadeRoutine = StartCoroutine(FadeOutFootsteps());
+        }
+
+        private void StopFootstepsImmediate() {
+            if (footstepFadeRoutine != null) {
+                StopCoroutine(footstepFadeRoutine);
+                footstepFadeRoutine = null;
+            }
+
+            if (sfxSource != null) {
+                sfxSource.Stop();
+                sfxSource.volume = cachedSfxBaseVolume;
+            }
+        }
+
+        private IEnumerator FadeOutFootsteps() {
+            if (sfxSource == null) yield break;
+
+            float startVolume = sfxSource.volume;
+            float duration = Mathf.Max(0.01f, footstepFadeOutSeconds);
+            float t = 0f;
+
+            while (t < duration) {
+                t += Time.deltaTime;
+                float a = Mathf.Clamp01(t / duration);
+                sfxSource.volume = Mathf.Lerp(startVolume, 0f, a);
+                yield return null;
+            }
+
+            sfxSource.Stop();
+            sfxSource.volume = cachedSfxBaseVolume;
+            footstepFadeRoutine = null;
         }
     }
 }

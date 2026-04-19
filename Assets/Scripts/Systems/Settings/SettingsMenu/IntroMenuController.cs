@@ -308,7 +308,7 @@ namespace FNaS.UI {
             RefreshAll();
         }
 
-        private void ShowCustomNightPreserveCurrent() {
+        public void ShowCustomNightPreserveCurrent() {
             ResolveReferences();
             if (nightSessionManager == null || !nightSessionManager.IsCustomNightUnlocked()) {
                 return;

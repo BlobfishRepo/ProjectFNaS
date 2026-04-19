@@ -35,6 +35,7 @@ public class View : MonoBehaviour {
     [Min(0f)] public float clampUp = 0f;
 
     public enum LinkAction { None, GoToView, Back }
+    public bool HasPanRange => clampLeft > 0f || clampRight > 0f || clampDown > 0f || clampUp > 0f;
 
     [System.Serializable]
     public struct EdgeLink {

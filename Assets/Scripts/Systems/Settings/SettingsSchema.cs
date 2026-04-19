@@ -154,9 +154,9 @@ namespace FNaS.Settings {
                 controlType = SettingControlType.FloatSlider,
                 screens = SettingScreen.DevGameplay,
                 affectsStarEligibility = true,
-                defaultFloat = 8f,
+                defaultFloat = 28f,
                 min = 1f,
-                max = 20f
+                max = 80f
             },
 
             new SettingDefinition {
@@ -233,7 +233,7 @@ namespace FNaS.Settings {
                 screens = SettingScreen.DevGameplay,
                 affectsStarEligibility = true,
                 defaultFloat = 5f,
-                min = 0.01f,
+                min = 0.1f,
                 max = 20f
             },
 

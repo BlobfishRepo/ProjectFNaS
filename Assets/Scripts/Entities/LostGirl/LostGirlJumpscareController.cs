@@ -1,6 +1,5 @@
 using System.Collections;
 using UnityEngine;
-using UnityEngine.AI;
 using FNaS.Systems;
 using FNaS.Gameplay;
 
@@ -10,14 +9,21 @@ namespace FNaS.Entities.LostGirl {
         [SerializeField] private LoseState loseState;
         [SerializeField] private PlayerWaypointController playerMovement;
         [SerializeField] private LostGirlMovement lostGirlMovement;
-        [SerializeField] private Animator animator;
+
+        [Header("Gameplay Visual")]
+        [SerializeField] private GameObject gameplayVisualRoot;
+
+        [Header("Jumpscare Visual")]
+        [SerializeField] private GameObject jumpscareVisualRoot;
+        [SerializeField] private Transform jumpscareModelRoot;
+        [SerializeField] private Animator jumpscareAnimator;
+        [SerializeField] private LostGirlJumpscareLook jumpscareLookAt;
 
         [Header("Presentation")]
-        [SerializeField] private Transform lostGirlRoot;
         [SerializeField] private Transform jumpscareAnchor;
-        [SerializeField] private GameObject visualRoot;
         [SerializeField] private Camera jumpscareCamera;
         [SerializeField] private string jumpscareLayerName = "Jumpscare";
+        [SerializeField] private Transform playerLookTarget;
 
         [Header("Settings")]
         [SerializeField] private string triggerName = "JumpscareTrigger";
@@ -28,29 +34,26 @@ namespace FNaS.Entities.LostGirl {
         [SerializeField][Range(0f, 1f)] private float jumpscareVolume = 1f;
 
         private bool isPlaying;
-        private int originalLayer = -1;
+        private int originalJumpscareLayer = -1;
         private int jumpscareLayer = -1;
-        private NavMeshAgent cachedAgent;
 
         public bool IsPlaying => isPlaying;
 
         private void Awake() {
             jumpscareLayer = LayerMask.NameToLayer(jumpscareLayerName);
 
-            if (visualRoot != null) {
-                originalLayer = visualRoot.layer;
+            if (jumpscareVisualRoot != null) {
+                originalJumpscareLayer = jumpscareVisualRoot.layer;
+                jumpscareVisualRoot.SetActive(false);
             }
 
             if (jumpscareCamera != null) {
                 jumpscareCamera.enabled = false;
             }
 
-            if (lostGirlRoot != null) {
-                cachedAgent = lostGirlRoot.GetComponent<NavMeshAgent>();
-                if (cachedAgent == null) {
-                    cachedAgent = lostGirlRoot.GetComponentInChildren<NavMeshAgent>();
-                }
-            }
+            //if (jumpscareLookAt != null) {
+            //    jumpscareLookAt.SetActive(false);
+            //}
         }
 
         public void PlayJumpscare(string loseReason) {
@@ -75,38 +78,55 @@ namespace FNaS.Entities.LostGirl {
                 lostGirlMovement.enabled = false;
             }
 
-            if (cachedAgent != null) {
-                cachedAgent.isStopped = true;
-                cachedAgent.ResetPath();
-                cachedAgent.enabled = false;
+            // Hide gameplay model so only the separate jumpscare model is visible.
+            if (gameplayVisualRoot != null) {
+                gameplayVisualRoot.SetActive(false);
             }
 
-            if (lostGirlRoot != null && jumpscareAnchor != null) {
-                lostGirlRoot.position = jumpscareAnchor.position;
-                lostGirlRoot.rotation = jumpscareAnchor.rotation;
+            if (jumpscareVisualRoot != null) {
+                jumpscareVisualRoot.SetActive(true);
             }
 
-            if (visualRoot != null && jumpscareLayer != -1) {
-                SetLayerRecursively(visualRoot, jumpscareLayer);
+            if (jumpscareModelRoot != null && jumpscareAnchor != null) {
+                jumpscareModelRoot.position = jumpscareAnchor.position;
+                jumpscareModelRoot.rotation = jumpscareAnchor.rotation;
+            }
+
+            if (jumpscareVisualRoot != null && jumpscareLayer != -1) {
+                SetLayerRecursively(jumpscareVisualRoot, jumpscareLayer);
             }
 
             if (jumpscareCamera != null) {
                 jumpscareCamera.enabled = true;
             }
 
-            if (animator != null) {
-                animator.Rebind();
-                animator.Update(0f);
-                animator.ResetTrigger(triggerName);
-                animator.SetTrigger(triggerName);
+            if (jumpscareLookAt != null) {
+                jumpscareLookAt.SetTarget(
+                    playerLookTarget != null
+                        ? playerLookTarget
+                        : (Camera.main != null ? Camera.main.transform : null)
+                );
+                jumpscareLookAt.SetActive(true);
+            }
+
+            if (jumpscareAnimator != null) {
+                jumpscareAnimator.Rebind();
+                jumpscareAnimator.Update(0f);
+                jumpscareAnimator.ResetTrigger(triggerName);
+                jumpscareAnimator.SetTrigger(triggerName);
             }
 
             yield return new WaitForSeconds(jumpscareDelayBeforeLose);
 
             loseState?.TriggerLose(loseReason);
 
-            if (visualRoot != null && originalLayer != -1) {
-                SetLayerRecursively(visualRoot, originalLayer);
+            // Leave the head where it is if you prefer. If not, turn this back on later.
+            // if (jumpscareLookAt != null) {
+            //     jumpscareLookAt.SetActive(false);
+            // }
+
+            if (jumpscareVisualRoot != null && originalJumpscareLayer != -1) {
+                SetLayerRecursively(jumpscareVisualRoot, originalJumpscareLayer);
             }
 
             if (jumpscareCamera != null) {

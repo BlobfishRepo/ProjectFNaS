@@ -1,4 +1,18 @@
 # Changelog
+# April 18
+### Added
+- Added model and jumpscare animation for the Lost Girl.
+- Added full sound cues for Lost Girl.
+- Added two more models for the Mimic.
+- Added an indicator for when you can pan around in a view.
+
+### Changed
+- Altered Mimic spawn points to match new models.
+- Made most views dynamic throughout the apartment.
+
+### Fixed
+- Fixed bugs in the Custom Night menu, where the Go Back button took you to the Main Menu.
+
 # April 16
 ### Added
 - Added post-it note system to explain game mechanics in-game.
