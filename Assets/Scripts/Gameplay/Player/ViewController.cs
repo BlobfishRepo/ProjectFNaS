@@ -47,11 +47,14 @@ namespace FNaS.Gameplay {
         [SerializeField] private LoseState loseState;
         [SerializeField] private StalkerJumpscareController stalkerJumpscare;
 
+        [Header("External Locks (read-only)")]
+        [SerializeField] private bool externalInputLocked;
+        [SerializeField] private bool externalLookLocked;
+
         public Waypoint CurrentWaypoint => currentWaypoint;
         public View CurrentView => currentView;
         public Direction? ActiveMoveDir => activeMoveDir;
 
-        // UI-facing helpers
         public bool RequiresLeftClickToPan => requireLeftClickToPan;
         public bool IsPanHeld =>
             Mouse.current != null && Mouse.current.leftButton.isPressed;
@@ -62,13 +65,13 @@ namespace FNaS.Gameplay {
                 if (currentView == null) return false;
                 if (!currentView.HasPanRange) return false;
                 if (mover.IsMoving) return false;
+                if (externalInputLocked || externalLookLocked) return false;
                 if (loseState != null && loseState.hasLost) return false;
                 if (stalkerJumpscare != null && stalkerJumpscare.IsPlaying) return false;
                 return true;
             }
         }
 
-        // True specifically when the player is in a view where left click does something useful.
         public bool ShouldShowPanIndicator => requireLeftClickToPan && CanPanCurrentView;
 
         public System.Action OnEnteredWaypointOrView;
@@ -107,6 +110,27 @@ namespace FNaS.Gameplay {
             EnterWaypoint(mover.CurrentWaypoint, fromWaypoint: null, incomingYaw, incomingPitch);
         }
 
+        public void SetExternalInputLocked(bool locked) {
+            externalInputLocked = locked;
+
+            if (locked) {
+                activeMoveDir = null;
+            }
+        }
+
+        public void SetExternalLookLocked(bool locked, bool snapToCurrent = true) {
+            externalLookLocked = locked;
+
+            if (locked && snapToCurrent) {
+                targetYaw = GetCurrentCameraYaw();
+                targetPitch = GetCurrentCameraPitch();
+
+                if (mover != null && mover.viewPivot != null) {
+                    mover.viewPivot.rotation = Quaternion.Euler(targetPitch, targetYaw, 0f);
+                }
+            }
+        }
+
         private void Update() {
             if (mover == null || mover.rigTransform == null || mover.viewPivot == null) return;
             if (mover.IsMoving) return;
@@ -114,9 +138,16 @@ namespace FNaS.Gameplay {
             if (stalkerJumpscare != null && stalkerJumpscare.IsPlaying) return;
 
             SyncWaypointFromMover();
-            UpdateLookInput();
-            UpdateEdgeSwitching();
-            UpdateNodeMovementInput();
+
+            if (!externalInputLocked) {
+                UpdateLookInput();
+                UpdateEdgeSwitching();
+                UpdateNodeMovementInput();
+            }
+            else {
+                activeMoveDir = null;
+            }
+
             UpdateViewRotation();
             UpdateRigOffset();
         }
@@ -130,6 +161,7 @@ namespace FNaS.Gameplay {
         }
 
         private void UpdateLookInput() {
+            if (externalLookLocked) return;
             if (currentView == null || inputController == null) return;
 
             if (verticalLookDelayTimer > 0f) {

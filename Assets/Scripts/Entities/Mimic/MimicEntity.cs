@@ -55,6 +55,13 @@ namespace FNaS.Entities.Mimic {
         public float punishPulseSpacing = 0.25f;
         public float punishVisibleSeconds = 4.35f;
 
+        [Header("Post-Punish Pulse")]
+        [Tooltip("Extra black pulse effect after the Mimic punish ends.")]
+        public bool doPostPunishPulse = true;
+
+        [Min(1)] public int postPunishPulseCount = 4;
+        [Min(0f)] public float postPunishPulseGap = 0.10f;
+
         [Header("References")]
         public PlayerWaypointController playerMovement;
         public FlashlightTool flashlight;
@@ -358,6 +365,17 @@ namespace FNaS.Entities.Mimic {
                 playerMovement.PauseActiveMovement();
             }
 
+            ViewController viewController = playerMovement != null
+                ? playerMovement.GetComponent<ViewController>()
+                : null;
+
+            MonitorUsageTracker monitorUsageTracker = FindFirstObjectByType<MonitorUsageTracker>();
+
+            if (viewController != null) {
+                viewController.SetExternalInputLocked(true);
+                viewController.SetExternalLookLocked(true, true);
+            }
+
             phase = Phase.Punishing;
 
             if (punishAnchor != null) {
@@ -433,6 +451,23 @@ namespace FNaS.Entities.Mimic {
 
             if (playerMovement != null) {
                 playerMovement.ResumeActiveMovement();
+            }
+
+            if (viewController != null) {
+                viewController.SetExternalLookLocked(false);
+                viewController.SetExternalInputLocked(false);
+            }
+
+            if (doPostPunishPulse && screenFader != null) {
+                float postEffectDuration =
+                    postPunishPulseCount * (screenFader.fadeIn + screenFader.hold + screenFader.fadeOut) +
+                    Mathf.Max(0, postPunishPulseCount - 1) * postPunishPulseGap;
+
+                if (monitorUsageTracker != null) {
+                    monitorUsageTracker.SuppressMonitorAttentionForSeconds(postEffectDuration);
+                }
+
+                screenFader.PulseRepeated(postPunishPulseCount, postPunishPulseGap);
             }
 
             punishCoroutine = null;

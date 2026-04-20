@@ -29,6 +29,7 @@ namespace FNaS.Entities.LostGirl {
         public float directObserveMaxDistance = 25f;
         public LayerMask observationBlockers = ~0;
         public Transform playerViewOrigin;
+        public Camera playerObserveCamera;
         public GameAttentionState attentionState;
 
         [Header("Emerging")]
@@ -56,6 +57,8 @@ namespace FNaS.Entities.LostGirl {
         public GameObject activeVisualRoot;
         public LostGirlJumpscareController jumpscareController;
         public Animator animator;
+        public ScreenFader cameraFader;
+        public ScreenFader playerFader;
 
         [Header("Animator")]
         public string runBoolName = "IsRunning";
@@ -193,13 +196,20 @@ namespace FNaS.Entities.LostGirl {
 
             if (phase == LostGirlPhase.InGlass) {
                 if (tick % Mathf.Max(1, glassProgressOpportunityTicks) != 0) return;
-                if (IsObserved()) return;
+
+                bool directObserved = IsObservedInPerson();
+                if (directObserved) return;
 
                 if (glassStage < maxGlassStage) {
                     glassStage++;
                     reachedMaxStageThisCycle = glassStage >= maxGlassStage;
                     ShowCurrentGlassStage();
                     PlayOneShot(stageProgressClip);
+
+                    if (IsVisibleAnywhereOnPlayerScreen()) {
+                        playerFader?.Pulse();
+                    }
+
                     return;
                 }
 
@@ -256,9 +266,14 @@ namespace FNaS.Entities.LostGirl {
             StopRunningLoop();
             SetRunningAnimation(false);
             PlayOneShot(activationClip);
+
+            Transform emergeTarget = activeVisualRoot != null ? activeVisualRoot.transform : transform;
+            if (IsTransformVisibleAnywhereOnPlayerScreen(emergeTarget)) {
+                playerFader?.Pulse();
+            }
         }
 
-private void StartChasing() {
+        private void StartChasing() {
     phase = LostGirlPhase.Chasing;
     activeTimer = 0f;
 
@@ -330,7 +345,9 @@ private void StartChasing() {
             if (Time.time < nextObservationCheckTime) return;
             nextObservationCheckTime = Time.time + Mathf.Max(0.02f, observationCheckInterval);
 
-            if (!IsObserved()) {
+            bool directObserved = IsObservedInPerson() || IsObservedByCamera();
+
+            if (!directObserved) {
                 observedHoldTimer = 0f;
                 return;
             }
@@ -341,10 +358,19 @@ private void StartChasing() {
             if (observedHoldTimer < observeHoldSecondsToPushback) return;
 
             observedHoldTimer = 0f;
+
             if (glassStage > 0) {
                 glassStage--;
                 reachedMaxStageThisCycle = false;
                 ShowCurrentGlassStage();
+
+                if (IsObservedByCamera()) {
+                    cameraFader?.Pulse();
+                }
+
+                if (IsObservedInPerson()) {
+                    playerFader?.Pulse();
+                }
             }
         }
 
@@ -368,12 +394,29 @@ private void StartChasing() {
             Transform target = GetObservationTarget();
             if (target == null) return false;
 
-            Vector3 toTarget = target.position - playerViewOrigin.position;
+            Camera cam = playerObserveCamera != null ? playerObserveCamera : Camera.main;
+            if (cam == null) return false;
+
+            Vector3 targetPoint = target.position;
+            Collider targetCol = target.GetComponentInChildren<Collider>();
+            if (targetCol != null) {
+                targetPoint = targetCol.bounds.center;
+            }
+
+            Vector3 toTarget = targetPoint - playerViewOrigin.position;
             float dist = toTarget.magnitude;
+
             if (dist > Mathf.Max(0.01f, directObserveMaxDistance)) return false;
             if (dist > 0.001f && Vector3.Angle(playerViewOrigin.forward, toTarget) > directObserveAngleDegrees) return false;
 
-            return HasLineOfSight(playerViewOrigin.position, target.position);
+            Vector3 vp = cam.WorldToViewportPoint(targetPoint);
+
+            // Must be in front of the camera and inside the screen bounds.
+            if (vp.z <= 0f) return false;
+            if (vp.x < 0f || vp.x > 1f) return false;
+            if (vp.y < 0f || vp.y > 1f) return false;
+
+            return HasLineOfSight(playerViewOrigin.position, targetPoint);
         }
 
         private bool HasLineOfSight(Vector3 from, Vector3 to) {
@@ -563,6 +606,35 @@ private void StartChasing() {
 
         private Vector3 GetKillTarget() {
             return playerTarget != null ? playerTarget.position + Vector3.up * 1.2f : transform.position;
+        }
+
+        private bool IsVisibleAnywhereOnPlayerScreen() {
+            return IsTransformVisibleAnywhereOnPlayerScreen(GetObservationTarget());
+        }
+
+        private bool IsTransformVisibleAnywhereOnPlayerScreen(Transform target) {
+            if (target == null) return false;
+
+            Camera cam = playerObserveCamera != null ? playerObserveCamera : Camera.main;
+            if (cam == null) return false;
+
+            Vector3 targetPoint = target.position;
+            Collider targetCol = target.GetComponentInChildren<Collider>();
+            if (targetCol != null) {
+                targetPoint = targetCol.bounds.center;
+            }
+
+            Vector3 vp = cam.WorldToViewportPoint(targetPoint);
+
+            if (vp.z <= 0f) return false;
+            if (vp.x < 0f || vp.x > 1f) return false;
+            if (vp.y < 0f || vp.y > 1f) return false;
+
+            Vector3 losOrigin =
+                playerViewOrigin != null ? playerViewOrigin.position :
+                cam.transform.position;
+
+            return HasLineOfSight(losOrigin, targetPoint);
         }
     }
 }

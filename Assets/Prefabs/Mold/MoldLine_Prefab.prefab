@@ -87,8 +87,8 @@ MonoBehaviour:
   oneShotSource: {fileID: 4131499243023665512}
   ambienceSource: {fileID: 4131499243023665512}
   spreadClip: {fileID: 8300000, guid: bf6abd379299b874cbd0856ad587bb4c, type: 3}
-  sprayHitClip: {fileID: 0}
-  bloodTransitionClip: {fileID: 0}
+  sprayHitClip: {fileID: 8300000, guid: bf6abd379299b874cbd0856ad587bb4c, type: 3}
+  bloodTransitionClip: {fileID: 8300000, guid: 00bf34acd7d8fb944903e2879c6193f1, type: 3}
   ambienceClip: {fileID: 8300000, guid: bf6abd379299b874cbd0856ad587bb4c, type: 3}
   bloodAmbienceClip: {fileID: 8300000, guid: 37cb6b79427a27043825ea3db0ae9e5d, type: 3}
   spreadVolume: 1
@@ -97,7 +97,7 @@ MonoBehaviour:
   ambienceVolume: 0.25
   bloodAmbienceVolume: 0.35
   sprayHitCooldown: 0.2
-  useDebugColors: 1
+  useDebugColors: 0
   cleanColor: {r: 0, g: 0, b: 0, a: 0}
   markedColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   activeColor: {r: 0.12, g: 0.25, b: 0.08, a: 1}
@@ -298,7 +298,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 8a85feeb7be296d479de49421c2af3d0, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

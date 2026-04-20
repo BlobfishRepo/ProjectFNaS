@@ -1,5 +1,21 @@
 # Changelog
-# April 18
+## April 19
+### Added
+- After getting jumpscared by the Mimic, there is now a pulsing effect for a few seconds.
+- Added a flashlight battery indicator to the UI. Updated flashlight sound to not have a delay at the beginning.
+- Added Lost Girl models to the anchors.
+- Added updated sounds to the Mold.
+
+### Changed
+- Tweaked some view nodes with incorrect movement options.
+- Tweaked position of the Mimic spawn in the pantry to avoid bad flashlight collision.
+- Mimic jumpscare made more visible.
+- Lost Girl anchor is now hidden
+
+### Issues
+- Mold texture is WIP.
+
+## April 18
 ### Added
 - Added model and jumpscare animation for the Lost Girl.
 - Added full sound cues for Lost Girl.
@@ -13,7 +29,7 @@
 ### Fixed
 - Fixed bugs in the Custom Night menu, where the Go Back button took you to the Main Menu.
 
-# April 16
+## April 16
 ### Added
 - Added post-it note system to explain game mechanics in-game.
 - Added another text preset for the assignment.
@@ -24,7 +40,7 @@
 - Adjusted fun settings.
 - Mimic's AI value now controls spawn chance instead of duration.
 
-# April 15
+## April 15
 ### Added
 - Added full main settings screen.
 - Added a hidden fun setting :)
@@ -35,7 +51,7 @@
 - Most text across the game (that aren't settings) now uses the font VCR OSD Mono.
 - Former setting page moved to a hidden dev screen, accessible using the Shift key on the Custom Night menu.
 
-# April 14
+## April 14
 ### Added
 - Certain views now support moving camera freely within a bounding box.
 
@@ -45,7 +61,7 @@
 - Updated button stylings on camera minimap.
 - Moved Move Compass to bottom-right corner and made unavailable movement options brighter.
 
-# April 13
+## April 13
 ### Added
 - Added a Jumpscare animation to the Mimic.
 
