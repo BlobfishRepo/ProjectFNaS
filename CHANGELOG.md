@@ -1,4 +1,11 @@
 # Changelog
+## April 20
+### Added
+- Added Mold texture & blood texture.
+
+### Changed
+- Static noise on main menu turned down.
+
 ## April 19
 ### Added
 - After getting jumpscared by the Mimic, there is now a pulsing effect for a few seconds.
