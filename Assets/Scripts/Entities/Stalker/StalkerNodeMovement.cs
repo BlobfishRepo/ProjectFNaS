@@ -61,7 +61,7 @@ namespace FNaS.Entities.Stalker {
         public override void RefreshOccupancy() {
             if (blockerRegistry == null) return;
 
-            var node = CurrentMasterNode;
+            MasterNode node = CurrentMasterNode;
             if (node == null) return;
 
             if (lastBlockedNode != null && lastBlockedNode != node) {
@@ -76,6 +76,7 @@ namespace FNaS.Entities.Stalker {
             if (blockerRegistry != null && lastBlockedNode != null) {
                 blockerRegistry.SetBlockedForward(lastBlockedNode, false);
             }
+
             lastBlockedNode = null;
         }
 
@@ -86,13 +87,20 @@ namespace FNaS.Entities.Stalker {
             if (next == currentIndex) return false;
 
             if (!allowShareNodeWithPlayer && playerNode != null) {
-                var nextNode = resolvedPath[next];
+                MasterNode nextNode = resolvedPath[next];
                 if (nextNode == playerNode) return false;
             }
 
             currentIndex = next;
             OnChangedNode();
             return true;
+        }
+
+        public bool IsNextStepDoor() {
+            if (resolvedPath.Count == 0) return false;
+
+            int next = Mathf.Min(currentIndex + 1, resolvedPath.Count - 1);
+            return next != currentIndex && next >= resolvedPath.Count - 1;
         }
 
         public override bool PushBack(int steps) {
@@ -127,13 +135,13 @@ namespace FNaS.Entities.Stalker {
 
             lastTeleportedIndex = currentIndex;
 
-            var node = CurrentMasterNode;
+            MasterNode node = CurrentMasterNode;
             if (node == null || teleportTarget == null) return;
 
             Transform anchor = null;
-            var anchorSet = node.GetComponent<EntityAnchorSet>();
+            EntityAnchorSet anchorSet = node.GetComponent<EntityAnchorSet>();
             if (anchorSet != null) {
-                var slot = anchorSet.GetRandomStalkerAnchor();
+                EntityAnchorSet.AnchorSlot slot = anchorSet.GetRandomStalkerAnchor();
                 anchor = slot != null ? slot.anchor : null;
             }
 
@@ -160,8 +168,8 @@ namespace FNaS.Entities.Stalker {
                 return;
             }
 
-            foreach (var guid in pathDef.nodeGuids) {
-                var node = MasterNodeRegistry.Instance.GetOrNull(guid);
+            foreach (string guid in pathDef.nodeGuids) {
+                MasterNode node = MasterNodeRegistry.Instance.GetOrNull(guid);
                 if (node == null) {
                     Debug.LogError($"StalkerNodeMovement: Could not resolve MasterNode GUID '{guid}'.", this);
                     resolvedPath.Clear();
@@ -182,6 +190,15 @@ namespace FNaS.Entities.Stalker {
 
         private void OnDisable() {
             ClearOccupancy();
+        }
+
+        public MasterNode PeekNextNode() {
+            if (resolvedPath.Count == 0) return null;
+
+            int next = Mathf.Min(currentIndex + 1, resolvedPath.Count - 1);
+            if (next == currentIndex) return null;
+
+            return resolvedPath[next];
         }
     }
 }

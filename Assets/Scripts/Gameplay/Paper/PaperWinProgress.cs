@@ -1,9 +1,9 @@
-using UnityEngine;
 using TMPro;
+using UnityEngine;
 using UnityEngine.InputSystem;
+using FNaS.Entities.Mold;
 using FNaS.Gameplay;
 using FNaS.Settings;
-using FNaS.Entities.Mold;
 
 namespace FNaS.Systems {
     public class PaperWinProgress : MonoBehaviour, IRuntimeSettingsConsumer {
@@ -32,15 +32,11 @@ namespace FNaS.Systems {
         [Header("Allowed Views")]
         public View paperView;
         public string paperViewNameFallback = "Paper";
-
         public View monitorView;
         public string monitorViewNameFallback = "Monitor";
 
         [Header("UI")]
         public TMP_Text percentText;
-
-        [Header("Debug")]
-        public bool verboseLogging = false;
 
         [Header("Writing Behavior")]
         [Tooltip("If true, switching monitor cameras stops writing.")]
@@ -49,8 +45,11 @@ namespace FNaS.Systems {
         [Tooltip("If true, writing slows down when not directly on the Paper view.")]
         public bool slowWhenNotDirectlyViewingPaper = false;
 
-        [Tooltip("Multiplier applied while writing if not directly on the Paper view.")]
-        [Range(0.1f, 1f)] public float offPaperWriteSpeedMultiplier = 0.7f;
+        [Range(0.1f, 1f)]
+        public float offPaperWriteSpeedMultiplier = 0.7f;
+
+        [Header("Debug")]
+        public bool verboseLogging = false;
 
         [Header("Runtime (read-only)")]
         [SerializeField] private float progress01;
@@ -62,22 +61,10 @@ namespace FNaS.Systems {
 
         private void Awake() {
             input = new PlayerInputActions();
-
-            if (viewController == null) {
-                viewController = GetComponentInParent<ViewController>();
-            }
-
-            if (waypointMover == null) {
-                waypointMover = GetComponentInParent<PlayerWaypointController>();
-            }
-
-            if (winState == null) {
-                winState = FindFirstObjectByType<WinState>();
-            }
-
-            if (loseState == null) {
-                loseState = FindFirstObjectByType<LoseState>();
-            }
+            viewController ??= GetComponentInParent<ViewController>();
+            waypointMover ??= GetComponentInParent<PlayerWaypointController>();
+            winState ??= FindFirstObjectByType<WinState>();
+            loseState ??= FindFirstObjectByType<LoseState>();
         }
 
         private void OnEnable() {
@@ -108,7 +95,7 @@ namespace FNaS.Systems {
 
         private void Start() {
             RefreshAllowedWriteViewFlag();
-            UpdateText();
+            UpdatePercentText();
         }
 
         public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
@@ -117,115 +104,77 @@ namespace FNaS.Systems {
         }
 
         private void Update() {
-            if (writeState != WriteState.Idle && AreToolsInterrupting()) {
-                if (verboseLogging) {
-                    Debug.Log("Paper writing stopped due to tool usage.", this);
-                }
+            RefreshAllowedWriteViewFlag();
 
-                StopWriting(resetPickupDelay: true);
+            if (writeState == WriteState.Idle) {
                 return;
             }
 
-            RefreshAllowedWriteViewFlag();
-
-            if (writeState != WriteState.Idle && IsPlayerMoving()) {
-                if (verboseLogging) {
-                    Debug.Log("Paper writing stopped because waypoint movement started.", this);
-                }
-
+            if (!CanContinueWriting()) {
+                Log("Paper writing stopped because conditions are no longer valid.");
                 StopWriting(resetPickupDelay: true);
                 return;
             }
 
             switch (writeState) {
-                case WriteState.Idle:
-                    break;
-
                 case WriteState.PickupDelay:
-                    UpdatePickupDelay();
+                    pickupTimer += Time.unscaledDeltaTime;
+                    if (pickupTimer >= Mathf.Max(0.01f, pickupDelaySeconds)) {
+                        writeState = WriteState.Writing;
+                        Log("Paper writing began.");
+                    }
                     break;
 
                 case WriteState.Writing:
-                    UpdateWriting();
+                    progress01 = Mathf.Clamp01(
+                        progress01 + (Time.unscaledDeltaTime * GetCurrentWritingSpeedMultiplier()) / Mathf.Max(0.01f, secondsToWin)
+                    );
+                    UpdatePercentText();
+
+                    if (progress01 >= 1f) {
+                        winState?.TriggerWin();
+                        Log("Paper writing completed. Triggering win.");
+                    }
                     break;
             }
         }
 
-        private void OnInteractPressed(InputAction.CallbackContext ctx) {
-            if (ShouldBlockInput()) return;
+        private void OnInteractPressed(InputAction.CallbackContext _) {
             if (writeState != WriteState.Idle) return;
-            if (!IsCurrentlyOnAllowedWriteView()) return;
-            if (IsPlayerMoving()) return;
+            if (!CanStartWriting()) return;
 
             pickupTimer = 0f;
             writeState = WriteState.PickupDelay;
-
-            if (verboseLogging) {
-                Debug.Log("Paper writing pickup started.", this);
-            }
-        }
-
-        private void UpdatePickupDelay() {
-            if (!CanContinueWriting()) {
-                StopWriting(resetPickupDelay: true);
-                return;
-            }
-
-            pickupTimer += Time.unscaledDeltaTime;
-
-            if (pickupTimer >= Mathf.Max(0.01f, pickupDelaySeconds)) {
-                writeState = WriteState.Writing;
-
-                if (verboseLogging) {
-                    Debug.Log("Paper writing began.", this);
-                }
-            }
-        }
-
-        private void UpdateWriting() {
-            if (!CanContinueWriting()) {
-                StopWriting(resetPickupDelay: true);
-                return;
-            }
-
-            float speedMultiplier = 1f;
-
-            if (slowWhenNotDirectlyViewingPaper && !IsPaperView(GetCurrentView())) {
-                speedMultiplier = Mathf.Clamp(offPaperWriteSpeedMultiplier, 0.1f, 1f);
-            }
-
-            float denom = Mathf.Max(0.01f, secondsToWin);
-            progress01 = Mathf.Clamp01(progress01 + (Time.unscaledDeltaTime * speedMultiplier) / denom);
-            UpdateText();
-
-            if (progress01 >= 1f) {
-                winState?.TriggerWin();
-
-                if (verboseLogging) {
-                    Debug.Log("Paper writing completed. Triggering win.", this);
-                }
-            }
+            Log("Paper writing pickup started.");
         }
 
         private void HandleViewChanged() {
             RefreshAllowedWriteViewFlag();
 
-            if (writeState == WriteState.Idle) return;
-
-            if (!CanContinueWriting()) {
+            if (writeState != WriteState.Idle && !CanContinueWriting()) {
                 StopWriting(resetPickupDelay: true);
             }
         }
 
         private void HandleMonitorCameraSwitched(int newIndex) {
-            if (writeState == WriteState.Idle) return;
-            if (!cancelOnMonitorCameraSwitch) return;
+            if (writeState == WriteState.Idle || !cancelOnMonitorCameraSwitch) return;
 
-            if (verboseLogging) {
-                Debug.Log($"Paper writing stopped due to monitor camera switch to index {newIndex}.", this);
-            }
-
+            Log($"Paper writing stopped due to monitor camera switch to index {newIndex}.");
             StopWriting(resetPickupDelay: true);
+        }
+
+        private bool CanStartWriting() {
+            return !ShouldBlockInput() &&
+                   IsCurrentlyOnAllowedWriteView() &&
+                   !IsPlayerMoving() &&
+                   !AreToolsInterrupting();
+        }
+
+        private bool CanContinueWriting() {
+            return !ShouldBlockInput() &&
+                   IsCurrentlyOnAllowedWriteView() &&
+                   !IsPlayerMoving() &&
+                   !AreToolsInterrupting();
         }
 
         private void RefreshAllowedWriteViewFlag() {
@@ -234,117 +183,75 @@ namespace FNaS.Systems {
 
         private bool IsCurrentlyOnAllowedWriteView() {
             View currentView = GetCurrentView();
-            if (currentView == null) return false;
-
             return IsPaperView(currentView) || IsMonitorView(currentView);
         }
 
-        private View GetCurrentView() {
-            return viewController != null ? viewController.CurrentView : null;
-        }
+        private View GetCurrentView() => viewController != null ? viewController.CurrentView : null;
 
         private bool IsPaperView(View view) {
             if (view == null) return false;
+            if (paperView != null) return view == paperView;
 
-            if (paperView != null) {
-                return view == paperView;
-            }
-
-            if (!string.IsNullOrEmpty(paperViewNameFallback)) {
-                return string.Equals(
-                    view.gameObject.name,
-                    paperViewNameFallback,
-                    System.StringComparison.OrdinalIgnoreCase
-                );
-            }
-
-            return false;
+            return !string.IsNullOrEmpty(paperViewNameFallback) &&
+                   string.Equals(view.gameObject.name, paperViewNameFallback, System.StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsMonitorView(View view) {
             if (view == null) return false;
+            if (monitorView != null) return view == monitorView;
 
-            if (monitorView != null) {
-                return view == monitorView;
-            }
-
-            if (!string.IsNullOrEmpty(monitorViewNameFallback)) {
-                return string.Equals(
-                    view.gameObject.name,
-                    monitorViewNameFallback,
-                    System.StringComparison.OrdinalIgnoreCase
-                );
-            }
-
-            return false;
+            return !string.IsNullOrEmpty(monitorViewNameFallback) &&
+                   string.Equals(view.gameObject.name, monitorViewNameFallback, System.StringComparison.OrdinalIgnoreCase);
         }
 
-        private bool CanContinueWriting() {
-            if (ShouldBlockInput()) return false;
-            if (!IsCurrentlyOnAllowedWriteView()) return false;
-            if (IsPlayerMoving()) return false;
-            return true;
-        }
-
-        private bool IsPlayerMoving() {
-            return waypointMover != null && waypointMover.IsMoving;
-        }
+        private bool IsPlayerMoving() => waypointMover != null && waypointMover.IsMoving;
 
         private bool ShouldBlockInput() {
-            if (loseState != null && loseState.hasLost) return true;
-            if (winState != null && winState.hasWon) return true;
-            return false;
+            return (loseState != null && loseState.hasLost) ||
+                   (winState != null && winState.hasWon);
+        }
+
+        private bool AreToolsInterrupting() {
+            return (flashlightTool != null && flashlightTool.isOn) ||
+                   (moldSprayTool != null && moldSprayTool.IsSpraying());
         }
 
         private void StopWriting(bool resetPickupDelay) {
-            if (writeState != WriteState.Idle && verboseLogging) {
-                Debug.Log($"Paper writing stopped from state: {writeState}", this);
+            if (writeState != WriteState.Idle) {
+                Log($"Paper writing stopped from state: {writeState}");
             }
 
             writeState = WriteState.Idle;
-
-            if (resetPickupDelay) {
-                pickupTimer = 0f;
-            }
+            if (resetPickupDelay) pickupTimer = 0f;
         }
 
-        private void UpdateText() {
+        private void UpdatePercentText() {
             if (percentText == null) return;
+            percentText.text = $"{Mathf.RoundToInt(progress01 * 100f)}%";
+        }
 
-            int pct = Mathf.RoundToInt(progress01 * 100f);
-            percentText.text = $"{pct}%";
+        private void Log(string message) {
+            if (verboseLogging) {
+                Debug.Log(message, this);
+            }
         }
 
         public void ResetProgress() {
             progress01 = 0f;
-            UpdateText();
             StopWriting(resetPickupDelay: true);
             RefreshAllowedWriteViewFlag();
+            UpdatePercentText();
         }
 
-        public float GetProgress01() {
-            return progress01;
-        }
+        public float GetProgress01() => progress01;
+        public bool IsWritingActive() => writeState == WriteState.Writing;
+        public bool IsInPickupDelay() => writeState == WriteState.PickupDelay;
+        public float GetPickupDelayDuration() => Mathf.Max(0f, pickupDelaySeconds);
+        public float GetPickupDelayRemaining() => Mathf.Max(0f, pickupDelaySeconds - pickupTimer);
 
         public float GetCurrentWritingSpeedMultiplier() {
             if (!slowWhenNotDirectlyViewingPaper) return 1f;
-            return IsPaperView(GetCurrentView())
-                ? 1f
-                : Mathf.Clamp(offPaperWriteSpeedMultiplier, 0.1f, 1f);
-        }
-
-        public bool IsWritingActive() {
-            return writeState == WriteState.Writing;
-        }
-
-        public bool IsInPickupDelay() {
-            return writeState == WriteState.PickupDelay;
-        }
-
-        private bool AreToolsInterrupting() {
-            if (flashlightTool != null && flashlightTool.isOn) return true;
-            if (moldSprayTool != null && moldSprayTool.IsSpraying()) return true;
-            return false;
+            return IsPaperView(GetCurrentView()) ? 1f : Mathf.Clamp(offPaperWriteSpeedMultiplier, 0.1f, 1f);
         }
     }
 }

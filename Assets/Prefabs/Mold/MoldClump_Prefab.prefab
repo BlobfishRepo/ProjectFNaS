@@ -103,6 +103,7 @@ MonoBehaviour:
   activeColor: {r: 0.12, g: 0.25, b: 0.08, a: 1}
   isolatedColor: {r: 0, g: 0, b: 0.8, a: 1}
   bloodTint: {r: 0.35, g: 0.03, b: 0.03, a: 1}
+  visualSuppression01: 0
 --- !u!82 &-1057222563355475625
 AudioSource:
   m_ObjectHideFlags: 0

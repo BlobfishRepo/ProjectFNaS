@@ -41,6 +41,9 @@ namespace FNaS.UI {
         [SerializeField] private GameObject star2Object;
         [SerializeField] private GameObject star3Object;
 
+        [Header("Background")]
+        [SerializeField] private GameObject stalkerBackground;
+
         [Header("Indicators")]
         [SerializeField] private GameObject devSettingsChangedIndicator;
         [SerializeField] private GameObject funSettingsEnabledIndicator;
@@ -204,6 +207,8 @@ namespace FNaS.UI {
             if (playerSettingsPanel != null) playerSettingsPanel.SetActive(panel == TitlePanel.PlayerSettings);
             if (presentationSettingsPanel != null) presentationSettingsPanel.SetActive(panel == TitlePanel.PresentationSettings);
             if (devGameplayPanel != null) devGameplayPanel.SetActive(panel == TitlePanel.DevGameplay);
+            if (stalkerBackground != null)
+                stalkerBackground.SetActive(panel == TitlePanel.MainMenu);
         }
 
         private void RebuildCurrentPanel() {

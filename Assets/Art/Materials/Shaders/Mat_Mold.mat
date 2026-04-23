@@ -102,6 +102,9 @@ Material:
     - _BlendModePreserveSpecular: 1
     - _BloodAmount: 0
     - _BloodBlend: 1
+    - _BloodClusterStrength: 0.45
+    - _BloodMoldSparsity: 0.55
+    - _BloodNoiseBias: 0.12
     - _BloodThresholdMax: 0.7
     - _BloodThresholdMin: 0.1
     - _BumpScale: 1
@@ -138,6 +141,7 @@ Material:
     - _SrcBlendAlpha: 1
     - _Surface: 0
     - _TextureTiling: 1
+    - _UVShrink: 0.02
     - _WorkflowMode: 1
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1

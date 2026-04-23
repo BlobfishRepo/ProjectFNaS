@@ -1,4 +1,23 @@
 # Changelog
+## April 22
+### Added
+- Added models for pen and security camera.
+- Added mold patches throughout the apartment.
+- Added render of Stalker to the Main Menu.
+
+### Changed
+- Stalker's model has been adjusted to add more detail. 
+- Stalker AI adjusted:
+  - Stalker no longer moves through the TV node.
+  - Stalker can now be stalled by cameras again.
+  - Stalker now jumpscares you if you stay at the same node for too long. The exact time ranges from 3-10 seconds depending on AI value.
+- Pen no longer teleports, but moves around to relevant positions on desk or on paper.
+- Tweaked positions of some preexisting mold patches to fit new layout.
+- Adjusted some nodes' fields-of-vision and connections to other nodes.
+
+### Fixed
+- Fixed Stalker's jumpscare position being ruined if the player triggered a jumpscare while moving the camera.
+
 ## April 20
 ### Added
 - Added Mold texture & blood texture.

@@ -115,7 +115,7 @@ namespace FNaS.Settings {
                 controlType = SettingControlType.Toggle,
                 screens = SettingScreen.None,
                 affectsStarEligibility = true,
-                defaultBool = false
+                defaultBool = true
             },
             new SettingDefinition {
                 key = "stalker.freezeIfSeenInPerson",
@@ -133,7 +133,7 @@ namespace FNaS.Settings {
                 controlType = SettingControlType.Toggle,
                 screens = SettingScreen.None,
                 affectsStarEligibility = true,
-                defaultBool = true
+                defaultBool = false
             },
 
             new SettingDefinition {

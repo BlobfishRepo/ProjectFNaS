@@ -13,8 +13,8 @@ namespace FNaS.Systems {
             public Vector2 pageB;
             public Vector2 pixelA;
             public Vector2 pixelB;
-            public float globalStartLength;
-            public float globalEndLength;
+            public float localStartLength;
+            public float localEndLength;
             public float length;
         }
 
@@ -31,14 +31,14 @@ namespace FNaS.Systems {
             Newline
         }
 
-        private struct TextToken {
-            public TokenType type;
-            public string text;
-        }
-
         private enum WritingSoundMode {
             Normal = 0,
             Fun = 1
+        }
+
+        private struct TextToken {
+            public TokenType type;
+            public string text;
         }
 
         [Header("Input")]
@@ -59,9 +59,8 @@ APARTMENT";
         public bool onlyRenderOverlayOnPaperView = true;
 
         [Header("Layout")]
-        public Vector2 pageOrigin = new Vector2(-0.44f, -0.45f);
-        public Vector2 pageSize = new Vector2(0.88f, 0.9f);
-
+        public Vector2 pageOrigin = new(-0.44f, -0.45f);
+        public Vector2 pageSize = new(0.88f, 0.9f);
         public float lineHeight = 0.09f;
         public float lineSpacingMultiplier = 1.4f;
         public float characterSpacing = 0.05f;
@@ -83,15 +82,19 @@ APARTMENT";
         public string overlayShaderName = "Unlit/Transparent";
 
         [Header("Ink Performance")]
-        [Tooltip("How often the ink texture is uploaded to the GPU while writing.")]
         [Min(1f)] public float inkApplyRate = 20f;
-
-        [Tooltip("Distance in pixels between brush stamps along a line. Higher = faster, but more dotted if pushed too far.")]
         [Min(0.25f)] public float brushSpacingPixels = 1.5f;
 
-        [Header("Pen")]
+        [Header("Pen Audio")]
         public Transform penTip;
-        public bool hidePenWhenNotWriting = true;
+        public AudioSource writingAudioSource;
+        public AudioClip writingLoopClip;
+        public AudioClip funWritingLoopClip;
+        [Range(0f, 1f)] public float writingVolume = 0.8f;
+        public float minPitch = 0.85f;
+        public float maxPitch = 1.35f;
+        public float speedForMaxPitch = 0.8f;
+        public float audioSmoothing = 10f;
 
         [Header("Behavior")]
         public bool rebuildOnStart = true;
@@ -102,53 +105,25 @@ APARTMENT";
         public bool drawPageBoundsGizmo = true;
         public Color pageBoundsColor = Color.cyan;
 
-        [Header("Writing Audio")]
-        public AudioSource writingAudioSource;
-
-        [Tooltip("Default writing sound. This mode resets playback when writing stops.")]
-        public AudioClip writingLoopClip;
-
-        [Tooltip("Fun writing sound. This mode resumes from the previous playback position when writing stops/starts.")]
-        public AudioClip funWritingLoopClip;
-
-        [Range(0f, 1f)] public float writingVolume = 0.8f;
-        public float minPitch = 0.85f;
-        public float maxPitch = 1.35f;
-        [Tooltip("World-units-per-second that maps to max pitch.")]
-        public float speedForMaxPitch = 0.8f;
-        [Tooltip("How quickly pitch responds to speed changes.")]
-        public float audioSmoothing = 10f;
-
         [Header("Runtime (read-only)")]
         [SerializeField] private int builtStrokeCount;
         [SerializeField] private int builtSegmentCount;
         [SerializeField] private float totalLength;
         [SerializeField] private float currentRevealLength;
         [SerializeField] private string resolvedTextPreview;
-
-        [Header("Runtime Perf (read-only)")]
         [SerializeField] private int inkRadiusPixels = 1;
-        [SerializeField] private int brushOffsetCount = 0;
-        [SerializeField] private int revealCursorLineIndex = 0;
-        [SerializeField] private int revealCursorSegmentIndex = 0;
-
-        [Header("Runtime Audio (read-only)")]
+        [SerializeField] private int brushOffsetCount;
+        [SerializeField] private int revealCursorLineIndex;
+        [SerializeField] private int revealCursorSegmentIndex;
         [SerializeField] private float currentPenSpeed;
         [SerializeField] private float smoothedPenSpeed;
         [SerializeField] private WritingSoundMode activeWritingSoundMode = WritingSoundMode.Normal;
-        [SerializeField] private bool forcePitch = false;
+        [SerializeField] private bool forcePitch;
         [SerializeField] private float forcedPitch = 1f;
-        [SerializeField] private bool resumeWritingAudioFromLastPosition = false;
+        [SerializeField] private bool resumeWritingAudioFromLastPosition;
 
         private readonly List<BuiltLine> builtLines = new();
         private readonly List<Vector2Int> brushOffsets = new();
-
-        private Vector3 penInitialPosition;
-        private Quaternion penInitialRotation;
-        private bool cachedPenInitialPose;
-
-        private Vector3 lastPenAudioPosition;
-        private bool hasLastPenAudioPosition;
 
         private GameObject inkQuad;
         private Material inkMaterial;
@@ -158,11 +133,12 @@ APARTMENT";
         private Color32 inkColor32;
         private bool inkDirty;
 
-        private float lastRevealLength = 0f;
-        private float nextInkApplyTime = 0f;
+        private float lastRevealLength;
+        private float nextInkApplyTime;
+        private Vector3 lastPenAudioPosition;
+        private bool hasLastPenAudioPosition;
 
         private void Start() {
-            CachePenInitialPose();
             SetupWritingAudio();
 
             if (rebuildOnStart) {
@@ -183,13 +159,7 @@ APARTMENT";
 
             glyphScale = settings.GetFloat("paper.glyphScale");
             textToWrite = PaperTextPresets.ResolveText(settings.GetInt("paper.textPreset"));
-
-            activeWritingSoundMode = (WritingSoundMode)Mathf.Clamp(
-                settings.GetInt("fun.paperWritingSoundMode"),
-                0,
-                1
-            );
-
+            activeWritingSoundMode = (WritingSoundMode)Mathf.Clamp(settings.GetInt("fun.paperWritingSoundMode"), 0, 1);
             forcePitch = settings.GetBool("fun.paperWritingForcePitch");
             forcedPitch = settings.GetFloat("fun.paperWritingForcedPitch");
             resumeWritingAudioFromLastPosition = activeWritingSoundMode == WritingSoundMode.Fun;
@@ -197,61 +167,75 @@ APARTMENT";
             RefreshWritingAudioConfig();
         }
 
-        private void CachePenInitialPose() {
-            if (penTip == null || cachedPenInitialPose) return;
-
-            penInitialPosition = penTip.position;
-            penInitialRotation = penTip.rotation;
-            cachedPenInitialPose = true;
-        }
-
-        private void SetupWritingAudio() {
-            if (writingAudioSource == null) return;
-
-            writingAudioSource.playOnAwake = false;
-            writingAudioSource.loop = true;
-            writingAudioSource.volume = writingVolume;
-            writingAudioSource.pitch = 1f;
-
-            RefreshWritingAudioConfig();
-        }
-
-        private void RefreshWritingAudioConfig() {
-            if (writingAudioSource == null) return;
-
-            AudioClip targetClip = GetActiveWritingClip();
-
-            bool clipChanged = writingAudioSource.clip != targetClip;
-
-            if (clipChanged && writingAudioSource.isPlaying) {
-                writingAudioSource.Stop();
-            }
-
-            if (clipChanged) {
-                writingAudioSource.time = 0f;
-            }
-
-            writingAudioSource.clip = targetClip;
-            writingAudioSource.loop = true;
-            writingAudioSource.volume = writingVolume;
-
-            if (forcePitch) {
-                writingAudioSource.pitch = Mathf.Clamp(forcedPitch, 0.01f, 3f);
-            }
-            else {
-                writingAudioSource.pitch = 1f;
-            }
-        }
-
-        private AudioClip GetActiveWritingClip() {
-            return activeWritingSoundMode == WritingSoundMode.Fun && funWritingLoopClip != null
-                ? funWritingLoopClip
-                : writingLoopClip;
-        }
-
         private void Update() {
             UpdateOverlayVisibility();
+            UpdateReveal();
+            UploadInkIfNeeded();
+            UpdateWritingAudio();
+        }
 
+        [ContextMenu("Rebuild Writing Geometry")]
+        public void Rebuild() {
+            ResetBuildState();
+            EnsureInkQuad();
+            RefreshInkSettings();
+            ClearInkTexture();
+
+            if (glyphLibrary == null) {
+                Debug.LogWarning("PaperWritingStrokeDisplay: No glyph library assigned.", this);
+                UpdateOverlayVisibility();
+                return;
+            }
+
+            resolvedTextPreview = ResolveWorkingText();
+            BuildTextGeometry(Tokenize(resolvedTextPreview));
+            builtSegmentCount = CountSegments();
+            UpdateOverlayVisibility();
+
+            if (verboseLogging) {
+                Debug.Log(
+                    $"Built {builtStrokeCount} strokes / {builtSegmentCount} segments. Total length = {totalLength:F3}. " +
+                    $"LineHeight={lineHeight:F3}, GlyphScale={glyphScale:F3}, BrushRadius={inkRadiusPixels}, BrushOffsets={brushOffsetCount}",
+                    this
+                );
+            }
+        }
+
+        private void ResetBuildState() {
+            builtLines.Clear();
+            totalLength = 0f;
+            currentRevealLength = 0f;
+            lastRevealLength = 0f;
+            builtStrokeCount = 0;
+            builtSegmentCount = 0;
+            revealCursorLineIndex = 0;
+            revealCursorSegmentIndex = 0;
+            nextInkApplyTime = 0f;
+        }
+
+        private string ResolveWorkingText() {
+            string text = textToWrite ?? string.Empty;
+            if (uppercaseInput) text = text.ToUpperInvariant();
+
+            if (text.Length > maxCharacters) {
+                text = text[..maxCharacters];
+                if (verboseLogging) {
+                    Debug.LogWarning($"PaperWritingStrokeDisplay: Text truncated to {maxCharacters} characters.", this);
+                }
+            }
+
+            return text;
+        }
+
+        private int CountSegments() {
+            int count = 0;
+            for (int i = 0; i < builtLines.Count; i++) {
+                count += builtLines[i].segments.Count;
+            }
+            return count;
+        }
+
+        private void UpdateReveal() {
             float progress01 = paperProgress != null ? paperProgress.GetProgress01() : 0f;
             currentRevealLength = totalLength * Mathf.Clamp01(progress01);
 
@@ -266,628 +250,51 @@ APARTMENT";
             }
 
             lastRevealLength = currentRevealLength;
+        }
+
+        private void UploadInkIfNeeded() {
+            if (!inkDirty) return;
 
             bool writingActive = paperProgress != null && paperProgress.IsWritingActive();
-
-            if (inkDirty && Time.time >= nextInkApplyTime) {
+            if (Time.time >= nextInkApplyTime || !writingActive) {
                 UploadInkTexture();
             }
-            else if (inkDirty && !writingActive) {
-                UploadInkTexture();
-            }
-
-            UpdatePen(currentRevealLength);
-            UpdateWritingAudio();
         }
 
-        [ContextMenu("Rebuild Writing Geometry")]
-        public void Rebuild() {
-            builtLines.Clear();
-            totalLength = 0f;
-            currentRevealLength = 0f;
-            lastRevealLength = 0f;
-            builtStrokeCount = 0;
-            builtSegmentCount = 0;
-            revealCursorLineIndex = 0;
-            revealCursorSegmentIndex = 0;
-            nextInkApplyTime = 0f;
+        private void SetupWritingAudio() {
+            if (writingAudioSource == null) return;
 
-            EnsureInkQuad();
-            RefreshInkSettings();
-            ClearInkTexture();
-
-            if (glyphLibrary == null) {
-                Debug.LogWarning("PaperWritingStrokeDisplay: No glyph library assigned.", this);
-                UpdateOverlayVisibility();
-                return;
-            }
-
-            string workingText = textToWrite ?? string.Empty;
-
-            if (uppercaseInput) {
-                workingText = workingText.ToUpperInvariant();
-            }
-
-            if (workingText.Length > maxCharacters) {
-                workingText = workingText.Substring(0, maxCharacters);
-
-                if (verboseLogging) {
-                    Debug.LogWarning($"PaperWritingStrokeDisplay: Text truncated to {maxCharacters} characters.", this);
-                }
-            }
-
-            resolvedTextPreview = workingText;
-
-            List<TextToken> tokens = Tokenize(workingText);
-            BuildTextGeometry(tokens);
-
-            builtSegmentCount = 0;
-            for (int i = 0; i < builtLines.Count; i++) {
-                builtSegmentCount += builtLines[i].segments.Count;
-            }
-            UpdateOverlayVisibility();
-
-            if (verboseLogging) {
-                Debug.Log(
-                    $"Built {builtStrokeCount} strokes / {builtSegmentCount} segments. " +
-                    $"Total length = {totalLength:F3}. " +
-                    $"LineHeight={lineHeight:F3}, GlyphScale={glyphScale:F3}, " +
-                    $"BrushRadius={inkRadiusPixels}, BrushOffsets={brushOffsetCount}",
-                    this
-                );
-            }
+            writingAudioSource.playOnAwake = false;
+            writingAudioSource.loop = true;
+            writingAudioSource.volume = writingVolume;
+            writingAudioSource.pitch = 1f;
+            RefreshWritingAudioConfig();
         }
 
-        private void RefreshInkSettings() {
-            inkColor32 = inkColor;
+        private void RefreshWritingAudioConfig() {
+            if (writingAudioSource == null) return;
 
-            float pixelsPerUnitX = textureWidth / Mathf.Max(0.0001f, pageSize.x);
-            float pixelsPerUnitY = textureHeight / Mathf.Max(0.0001f, pageSize.y);
-            float pixelsPerUnit = (pixelsPerUnitX + pixelsPerUnitY) * 0.5f;
+            AudioClip targetClip = GetActiveWritingClip();
+            bool clipChanged = writingAudioSource.clip != targetClip;
 
-            inkRadiusPixels = Mathf.Max(1, Mathf.RoundToInt(lineWidth * 0.5f * pixelsPerUnit));
-            RebuildBrushOffsets();
+            if (clipChanged && writingAudioSource.isPlaying) {
+                writingAudioSource.Stop();
+            }
+
+            if (clipChanged) {
+                writingAudioSource.time = 0f;
+            }
+
+            writingAudioSource.clip = targetClip;
+            writingAudioSource.loop = true;
+            writingAudioSource.volume = writingVolume;
+            writingAudioSource.pitch = forcePitch ? Mathf.Clamp(forcedPitch, 0.01f, 3f) : 1f;
         }
 
-        private void RebuildBrushOffsets() {
-            brushOffsets.Clear();
-
-            int r2 = inkRadiusPixels * inkRadiusPixels;
-
-            for (int y = -inkRadiusPixels; y <= inkRadiusPixels; y++) {
-                for (int x = -inkRadiusPixels; x <= inkRadiusPixels; x++) {
-                    if (x * x + y * y <= r2) {
-                        brushOffsets.Add(new Vector2Int(x, y));
-                    }
-                }
-            }
-
-            brushOffsetCount = brushOffsets.Count;
-        }
-
-        private List<TextToken> Tokenize(string text) {
-            List<TextToken> tokens = new();
-            if (string.IsNullOrEmpty(text)) return tokens;
-
-            StringBuilder sb = new();
-
-            void FlushWord() {
-                if (sb.Length == 0) return;
-
-                tokens.Add(new TextToken {
-                    type = TokenType.Word,
-                    text = sb.ToString()
-                });
-
-                sb.Clear();
-            }
-
-            for (int i = 0; i < text.Length; i++) {
-                char c = text[i];
-
-                if (c == '\r') continue;
-
-                if (c == '\n') {
-                    FlushWord();
-                    tokens.Add(new TextToken {
-                        type = TokenType.Newline,
-                        text = "\n"
-                    });
-                    continue;
-                }
-
-                if (char.IsWhiteSpace(c)) {
-                    FlushWord();
-                    continue;
-                }
-
-                sb.Append(c);
-            }
-
-            FlushWord();
-            return tokens;
-        }
-
-        private void BuildTextGeometry(List<TextToken> tokens) {
-            float unitsPerGlyphHeight = lineHeight * glyphScale;
-            float lineAdvance = lineHeight * lineSpacingMultiplier;
-
-            float z = pageOrigin.y;
-            float x = pageOrigin.x + lineHeight;
-
-            BuiltLine currentLine = new BuiltLine();
-
-            void FinalizeCurrentLineIfNeeded() {
-                if (currentLine.segments.Count == 0 && currentLine.lineLength <= 0f) {
-                    return;
-                }
-
-                currentLine.globalStartLength = totalLength;
-                currentLine.globalEndLength = totalLength + currentLine.lineLength;
-                totalLength = currentLine.globalEndLength;
-
-                builtLines.Add(currentLine);
-                currentLine = new BuiltLine();
-            }
-
-            void AdvanceToNextLine() {
-                FinalizeCurrentLineIfNeeded();
-                z = pageOrigin.y;
-                x += lineAdvance;
-            }
-
-            for (int i = 0; i < tokens.Count; i++) {
-                TextToken token = tokens[i];
-
-                if (token.type == TokenType.Newline) {
-                    AdvanceToNextLine();
-                    continue;
-                }
-
-                float wordWidth = MeasureWordWidth(token.text, unitsPerGlyphHeight);
-
-                bool atLineStart = Mathf.Abs(z - pageOrigin.y) < 0.0001f;
-                if (!atLineStart && z + wordWidth > pageOrigin.y + pageSize.y) {
-                    AdvanceToNextLine();
-                }
-
-                if (x > pageOrigin.x + pageSize.x) {
-                    if (verboseLogging) {
-                        Debug.LogWarning("PaperWritingStrokeDisplay: Text overflowed page bounds.", this);
-                    }
-                    break;
-                }
-
-                for (int charIndex = 0; charIndex < token.text.Length; charIndex++) {
-                    char c = token.text[charIndex];
-
-                    if (!glyphLibrary.TryGetGlyph(c, out StrokeGlyphLibrary.RuntimeGlyph glyph)) {
-                        z += 0.5f * unitsPerGlyphHeight;
-
-                        if (charIndex < token.text.Length - 1) {
-                            z += characterSpacing * unitsPerGlyphHeight;
-                        }
-
-                        continue;
-                    }
-
-                    for (int s = 0; s < glyph.strokes.Count; s++) {
-                        var stroke = glyph.strokes[s];
-                        if (stroke == null || stroke.points == null || stroke.points.Count < 2) continue;
-
-                        Vector2[] pagePts = new Vector2[stroke.points.Count];
-
-                        for (int p = 0; p < stroke.points.Count; p++) {
-                            Vector2 gp = stroke.points[p].position;
-
-                            float pz = z + gp.x * unitsPerGlyphHeight;
-                            float px = x - gp.y * unitsPerGlyphHeight;
-
-                            pagePts[p] = new Vector2(px, pz);
-                        }
-
-                        AddBuiltStroke(currentLine, pagePts);
-                    }
-
-                    z += glyph.advance * unitsPerGlyphHeight;
-
-                    if (charIndex < token.text.Length - 1) {
-                        z += characterSpacing * unitsPerGlyphHeight;
-                    }
-                }
-
-                bool hasNextWord =
-                    i + 1 < tokens.Count &&
-                    tokens[i + 1].type == TokenType.Word;
-
-                if (hasNextWord) {
-                    z += wordSpacing * unitsPerGlyphHeight;
-                }
-            }
-
-            FinalizeCurrentLineIfNeeded();
-        }
-
-        private float MeasureWordWidth(string word, float unitsPerGlyphHeight) {
-            if (string.IsNullOrEmpty(word)) return 0f;
-
-            float width = 0f;
-
-            for (int i = 0; i < word.Length; i++) {
-                char c = word[i];
-
-                if (glyphLibrary.TryGetGlyph(c, out StrokeGlyphLibrary.RuntimeGlyph glyph)) {
-                    width += glyph.advance * unitsPerGlyphHeight;
-                }
-                else {
-                    width += 0.5f * unitsPerGlyphHeight;
-                }
-
-                if (i < word.Length - 1) {
-                    width += characterSpacing * unitsPerGlyphHeight;
-                }
-            }
-
-            return width;
-        }
-
-        private void AddBuiltStroke(BuiltLine line, Vector2[] pagePoints) {
-            if (line == null || pagePoints == null || pagePoints.Length < 2) return;
-
-            bool addedAnySegment = false;
-
-            for (int i = 1; i < pagePoints.Length; i++) {
-                Vector2 a = pagePoints[i - 1];
-                Vector2 b = pagePoints[i];
-
-                float len = Vector2.Distance(a, b);
-                if (len <= 0.000001f) continue;
-
-                line.segments.Add(new DrawSegment {
-                    pageA = a,
-                    pageB = b,
-                    pixelA = PageToPixelFloat(a),
-                    pixelB = PageToPixelFloat(b),
-                    globalStartLength = line.lineLength,
-                    globalEndLength = line.lineLength + len,
-                    length = len
-                });
-
-                line.lineLength += len;
-                addedAnySegment = true;
-            }
-
-            if (addedAnySegment) {
-                builtStrokeCount++;
-            }
-        }
-
-        private void EnsureInkQuad() {
-            if (inkQuad == null) {
-                inkQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                inkQuad.name = "InkOverlay";
-                inkQuad.transform.SetParent(overlayRoot != null ? overlayRoot : transform, false);
-
-                Collider col = inkQuad.GetComponent<Collider>();
-                if (col != null) {
-                    if (Application.isPlaying) {
-                        Destroy(col);
-                    }
-                    else {
-                        DestroyImmediate(col);
-                    }
-                }
-            }
-
-            inkQuad.transform.localPosition = new Vector3(
-                pageOrigin.x + pageSize.x * 0.5f,
-                localSurfaceOffset,
-                pageOrigin.y + pageSize.y * 0.5f
-            );
-
-            inkQuad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            inkQuad.transform.localScale = new Vector3(pageSize.x, pageSize.y, 1f);
-
-            if (inkTexture == null || inkTexture.width != textureWidth || inkTexture.height != textureHeight) {
-                inkTexture = new Texture2D(textureWidth, textureHeight, TextureFormat.RGBA32, false, true);
-                inkTexture.wrapMode = TextureWrapMode.Clamp;
-                inkTexture.filterMode = FilterMode.Bilinear;
-                inkPixels = new Color32[textureWidth * textureHeight];
-            }
-
-            if (inkMaterial == null) {
-                Shader shader = Shader.Find(overlayShaderName);
-                if (shader == null) {
-                    shader = Shader.Find("Sprites/Default");
-                }
-
-                inkMaterial = new Material(shader);
-                inkMaterial.name = "InkOverlay_Mat";
-            }
-
-            inkMaterial.mainTexture = inkTexture;
-
-            inkRenderer = inkQuad.GetComponent<Renderer>();
-            if (inkRenderer != null) {
-                inkRenderer.sharedMaterial = inkMaterial;
-            }
-        }
-
-        private void ClearInkTexture() {
-            EnsureInkQuad();
-
-            Color32 clear = new Color32(0, 0, 0, 0);
-            Array.Fill(inkPixels, clear);
-
-            inkTexture.SetPixels32(inkPixels);
-            inkTexture.Apply(false, false);
-            inkDirty = false;
-        }
-
-        private void UploadInkTexture() {
-            if (inkTexture == null || inkPixels == null) return;
-
-            inkTexture.SetPixels32(inkPixels);
-            inkTexture.Apply(false, false);
-            inkDirty = false;
-            nextInkApplyTime = Time.time + (1f / Mathf.Max(1f, inkApplyRate));
-        }
-
-        private int GetLineIndexAtGlobalLength(float globalLength) {
-            if (builtLines.Count == 0) return -1;
-
-            globalLength = Mathf.Clamp(globalLength, 0f, totalLength);
-
-            for (int i = 0; i < builtLines.Count; i++) {
-                if (globalLength <= builtLines[i].globalEndLength) {
-                    return i;
-                }
-            }
-
-            return builtLines.Count - 1;
-        }
-
-        private void DrawRangeAcrossLines(float fromLength, float toLength) {
-            if (builtLines.Count == 0) return;
-            if (toLength <= fromLength) return;
-
-            while (revealCursorLineIndex < builtLines.Count) {
-                BuiltLine line = builtLines[revealCursorLineIndex];
-
-                if (line.globalEndLength <= fromLength) {
-                    revealCursorLineIndex++;
-                    revealCursorSegmentIndex = 0;
-                    continue;
-                }
-
-                if (line.globalStartLength >= toLength) {
-                    break;
-                }
-
-                float localFrom = Mathf.Max(0f, fromLength - line.globalStartLength);
-                float localTo = Mathf.Min(line.lineLength, toLength - line.globalStartLength);
-
-                if (localTo > localFrom) {
-                    DrawRangeInCurrentLine(line, localFrom, localTo);
-                }
-
-                if (localTo >= line.lineLength - 0.0001f) {
-                    revealCursorLineIndex++;
-                    revealCursorSegmentIndex = 0;
-                    continue;
-                }
-
-                break;
-            }
-        }
-
-        private void DrawRangeInCurrentLine(BuiltLine line, float fromLength, float toLength) {
-            if (line == null || line.segments.Count == 0) return;
-            if (toLength <= fromLength) return;
-
-            while (revealCursorSegmentIndex < line.segments.Count &&
-                   line.segments[revealCursorSegmentIndex].globalEndLength <= fromLength) {
-                revealCursorSegmentIndex++;
-            }
-
-            int i = revealCursorSegmentIndex;
-
-            while (i < line.segments.Count) {
-                DrawSegment seg = line.segments[i];
-
-                if (seg.globalStartLength >= toLength) {
-                    break;
-                }
-
-                float segFrom = Mathf.Max(fromLength, seg.globalStartLength);
-                float segTo = Mathf.Min(toLength, seg.globalEndLength);
-
-                if (segTo > segFrom) {
-                    DrawSegmentRange(seg, segFrom, segTo);
-                }
-
-                i++;
-            }
-
-            while (revealCursorSegmentIndex < line.segments.Count &&
-                   line.segments[revealCursorSegmentIndex].globalEndLength <= toLength) {
-                revealCursorSegmentIndex++;
-            }
-        }
-
-        private void DrawRangeInLine(BuiltLine line, float fromLength, float toLength) {
-            if (line == null || line.segments.Count == 0) return;
-            if (toLength <= fromLength) return;
-
-            int startIndex = 0;
-            while (startIndex < line.segments.Count &&
-                   line.segments[startIndex].globalEndLength <= fromLength) {
-                startIndex++;
-            }
-
-            for (int i = startIndex; i < line.segments.Count; i++) {
-                DrawSegment seg = line.segments[i];
-
-                if (seg.globalStartLength >= toLength) {
-                    break;
-                }
-
-                float segFrom = Mathf.Max(fromLength, seg.globalStartLength);
-                float segTo = Mathf.Min(toLength, seg.globalEndLength);
-
-                if (segTo > segFrom) {
-                    DrawSegmentRange(seg, segFrom, segTo);
-                }
-            }
-        }
-
-        private void DrawSegmentRange(DrawSegment seg, float fromGlobal, float toGlobal) {
-            if (seg.length <= 0.000001f || toGlobal <= fromGlobal) return;
-
-            float t0 = Mathf.InverseLerp(seg.globalStartLength, seg.globalEndLength, fromGlobal);
-            float t1 = Mathf.InverseLerp(seg.globalStartLength, seg.globalEndLength, toGlobal);
-
-            Vector2 a = Vector2.Lerp(seg.pixelA, seg.pixelB, t0);
-            Vector2 b = Vector2.Lerp(seg.pixelA, seg.pixelB, t1);
-
-            DrawThickLine(
-                Mathf.RoundToInt(a.x),
-                Mathf.RoundToInt(a.y),
-                Mathf.RoundToInt(b.x),
-                Mathf.RoundToInt(b.y)
-            );
-        }
-
-        private Vector2 PageToPixelFloat(Vector2 pagePoint) {
-            float u = Mathf.InverseLerp(pageOrigin.x, pageOrigin.x + pageSize.x, pagePoint.x);
-            float v = Mathf.InverseLerp(pageOrigin.y, pageOrigin.y + pageSize.y, pagePoint.y);
-
-            u = Mathf.Clamp01(u);
-            v = Mathf.Clamp01(v);
-
-            return new Vector2(
-                u * (textureWidth - 1),
-                v * (textureHeight - 1)
-            );
-        }
-
-        private void DrawThickLine(int x0, int y0, int x1, int y1) {
-            float dx = x1 - x0;
-            float dy = y1 - y0;
-            float dist = Mathf.Sqrt(dx * dx + dy * dy);
-
-            if (dist <= 0.0001f) {
-                StampBrush(x0, y0);
-                return;
-            }
-
-            float spacing = Mathf.Max(0.25f, brushSpacingPixels);
-            int steps = Mathf.Max(1, Mathf.CeilToInt(dist / spacing));
-
-            for (int i = 0; i <= steps; i++) {
-                float t = i / (float)steps;
-                int x = Mathf.RoundToInt(Mathf.Lerp(x0, x1, t));
-                int y = Mathf.RoundToInt(Mathf.Lerp(y0, y1, t));
-                StampBrush(x, y);
-            }
-        }
-
-        private void StampBrush(int cx, int cy) {
-            for (int i = 0; i < brushOffsets.Count; i++) {
-                Vector2Int o = brushOffsets[i];
-                int x = cx + o.x;
-                int y = cy + o.y;
-
-                if ((uint)x >= textureWidth || (uint)y >= textureHeight) continue;
-
-                inkPixels[y * textureWidth + x] = inkColor32;
-            }
-
-            inkDirty = true;
-        }
-
-        private void UpdateOverlayVisibility() {
-            if (!onlyRenderOverlayOnPaperView) return;
-            if (inkRenderer == null) return;
-
-            inkRenderer.enabled = IsCurrentlyOnPaperView();
-        }
-
-        private bool IsCurrentlyOnPaperView() {
-            if (viewController == null) return true;
-
-            View currentView = viewController.CurrentView;
-            if (currentView == null) return false;
-
-            if (paperView != null) {
-                return currentView == paperView;
-            }
-
-            if (!string.IsNullOrEmpty(paperViewNameFallback)) {
-                return string.Equals(
-                    currentView.gameObject.name,
-                    paperViewNameFallback,
-                    StringComparison.OrdinalIgnoreCase
-                );
-            }
-
-            return false;
-        }
-
-        private void UpdatePen(float revealLength) {
-            if (penTip == null) return;
-
-            bool showPen = paperProgress != null &&
-                           (paperProgress.IsWritingActive() || paperProgress.IsInPickupDelay());
-
-            if (hidePenWhenNotWriting) {
-                penTip.gameObject.SetActive(showPen);
-            }
-
-            if (!showPen) {
-                RestorePenPoseIfNeeded();
-                return;
-            }
-
-            if (revealLength <= 0f || totalLength <= 0f || builtLines.Count == 0) {
-                return;
-            }
-
-            Vector2 pagePos = GetPagePointAtGlobalLength(revealLength);
-            Vector3 localPos = new Vector3(pagePos.x, localSurfaceOffset, pagePos.y);
-            penTip.position = transform.TransformPoint(localPos);
-        }
-
-        private Vector2 GetPagePointAtGlobalLength(float length) {
-            if (builtLines.Count == 0) return Vector2.zero;
-
-            length = Mathf.Clamp(length, 0f, totalLength);
-
-            int lineIndex = GetLineIndexAtGlobalLength(length);
-            if (lineIndex < 0) return Vector2.zero;
-
-            BuiltLine line = builtLines[lineIndex];
-            float localLength = Mathf.Clamp(length - line.globalStartLength, 0f, line.lineLength);
-
-            for (int i = 0; i < line.segments.Count; i++) {
-                DrawSegment seg = line.segments[i];
-
-                if (localLength <= seg.globalEndLength) {
-                    float t = Mathf.InverseLerp(seg.globalStartLength, seg.globalEndLength, localLength);
-                    return Vector2.Lerp(seg.pageA, seg.pageB, t);
-                }
-            }
-
-            return line.segments.Count > 0
-                ? line.segments[line.segments.Count - 1].pageB
-                : Vector2.zero;
-        }
-
-        private void RestorePenPoseIfNeeded() {
-            if (penTip == null || !cachedPenInitialPose) return;
-
-            penTip.position = penInitialPosition;
-            penTip.rotation = penInitialRotation;
+        private AudioClip GetActiveWritingClip() {
+            return activeWritingSoundMode == WritingSoundMode.Fun && funWritingLoopClip != null
+                ? funWritingLoopClip
+                : writingLoopClip;
         }
 
         private void StopWritingAudio(bool resetPlaybackPosition) {
@@ -918,24 +325,15 @@ APARTMENT";
             AudioClip activeClip = GetActiveWritingClip();
             if (activeClip == null) return;
 
-            bool shouldPlay =
-                paperProgress != null &&
-                paperProgress.IsWritingActive() &&
-                penTip != null;
-
+            bool shouldPlay = paperProgress != null && paperProgress.IsWritingActive() && penTip != null;
             if (!shouldPlay) {
                 StopWritingAudio(resetPlaybackPosition: false);
                 smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, 0f, Time.deltaTime * audioSmoothing);
-
-                if (forcePitch) {
-                    writingAudioSource.pitch = Mathf.Clamp(forcedPitch, 0.01f, 3f);
-                    writingAudioSource.volume = writingVolume;
-                }
-                else {
+                ApplyAudioPitchAndVolume(forcePitch ? forcedPitch : 1f, forcePitch ? writingVolume : writingVolume);
+                if (!forcePitch) {
                     writingAudioSource.pitch = 1f;
                     writingAudioSource.volume = writingVolume;
                 }
-
                 return;
             }
 
@@ -944,10 +342,7 @@ APARTMENT";
                 writingAudioSource.Stop();
                 writingAudioSource.clip = activeClip;
                 writingAudioSource.time = 0f;
-
-                if (wasPlaying) {
-                    writingAudioSource.Play();
-                }
+                if (wasPlaying) writingAudioSource.Play();
             }
 
             writingAudioSource.loop = true;
@@ -962,6 +357,20 @@ APARTMENT";
                 }
             }
 
+            UpdatePenSpeedForAudio();
+
+            if (forcePitch) {
+                writingAudioSource.pitch = Mathf.Clamp(forcedPitch, 0.01f, 3f);
+                writingAudioSource.volume = writingVolume;
+                return;
+            }
+
+            float t = Mathf.Clamp01(smoothedPenSpeed / Mathf.Max(0.001f, speedForMaxPitch));
+            writingAudioSource.pitch = Mathf.Lerp(minPitch, maxPitch, t);
+            writingAudioSource.volume = Mathf.Lerp(writingVolume * 0.75f, writingVolume, t);
+        }
+
+        private void UpdatePenSpeedForAudio() {
             Vector3 currentPos = penTip.position;
 
             if (!hasLastPenAudioPosition) {
@@ -972,35 +381,453 @@ APARTMENT";
             else {
                 float dt = Mathf.Max(Time.deltaTime, 0.0001f);
                 currentPenSpeed = Vector3.Distance(lastPenAudioPosition, currentPos) / dt;
-
-                float writingSpeedMultiplier = 1f;
-                if (paperProgress != null) {
-                    writingSpeedMultiplier = paperProgress.GetCurrentWritingSpeedMultiplier();
-                }
-
-                currentPenSpeed *= writingSpeedMultiplier;
+                currentPenSpeed *= paperProgress != null ? paperProgress.GetCurrentWritingSpeedMultiplier() : 1f;
                 currentPenSpeed = Mathf.Min(currentPenSpeed, speedForMaxPitch * 1.5f);
                 lastPenAudioPosition = currentPos;
             }
 
             smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, currentPenSpeed, Time.deltaTime * audioSmoothing);
+        }
 
-            if (forcePitch) {
-                writingAudioSource.pitch = Mathf.Clamp(forcedPitch, 0.01f, 3f);
-                writingAudioSource.volume = writingVolume;
+        private void ApplyAudioPitchAndVolume(float pitch, float volume) {
+            if (writingAudioSource == null) return;
+            writingAudioSource.pitch = Mathf.Clamp(pitch, 0.01f, 3f);
+            writingAudioSource.volume = volume;
+        }
+
+        private void RefreshInkSettings() {
+            inkColor32 = inkColor;
+
+            float pixelsPerUnitX = textureWidth / Mathf.Max(0.0001f, pageSize.x);
+            float pixelsPerUnitY = textureHeight / Mathf.Max(0.0001f, pageSize.y);
+            float pixelsPerUnit = (pixelsPerUnitX + pixelsPerUnitY) * 0.5f;
+
+            inkRadiusPixels = Mathf.Max(1, Mathf.RoundToInt(lineWidth * 0.5f * pixelsPerUnit));
+            RebuildBrushOffsets();
+        }
+
+        private void RebuildBrushOffsets() {
+            brushOffsets.Clear();
+            int r2 = inkRadiusPixels * inkRadiusPixels;
+
+            for (int y = -inkRadiusPixels; y <= inkRadiusPixels; y++) {
+                for (int x = -inkRadiusPixels; x <= inkRadiusPixels; x++) {
+                    if (x * x + y * y <= r2) {
+                        brushOffsets.Add(new Vector2Int(x, y));
+                    }
+                }
             }
-            else {
-                float t = Mathf.Clamp01(smoothedPenSpeed / Mathf.Max(0.001f, speedForMaxPitch));
-                writingAudioSource.pitch = Mathf.Lerp(minPitch, maxPitch, t);
-                writingAudioSource.volume = Mathf.Lerp(writingVolume * 0.75f, writingVolume, t);
+
+            brushOffsetCount = brushOffsets.Count;
+        }
+
+        private List<TextToken> Tokenize(string text) {
+            List<TextToken> tokens = new();
+            if (string.IsNullOrEmpty(text)) return tokens;
+
+            StringBuilder sb = new();
+
+            void FlushWord() {
+                if (sb.Length == 0) return;
+                tokens.Add(new TextToken { type = TokenType.Word, text = sb.ToString() });
+                sb.Clear();
             }
+
+            for (int i = 0; i < text.Length; i++) {
+                char c = text[i];
+                if (c == '\r') continue;
+
+                if (c == '\n') {
+                    FlushWord();
+                    tokens.Add(new TextToken { type = TokenType.Newline, text = "\n" });
+                    continue;
+                }
+
+                if (char.IsWhiteSpace(c)) {
+                    FlushWord();
+                    continue;
+                }
+
+                sb.Append(c);
+            }
+
+            FlushWord();
+            return tokens;
+        }
+
+        private void BuildTextGeometry(List<TextToken> tokens) {
+            float unitsPerGlyphHeight = lineHeight * glyphScale;
+            float lineAdvance = lineHeight * lineSpacingMultiplier;
+            float z = pageOrigin.y;
+            float x = pageOrigin.x + lineHeight;
+            BuiltLine currentLine = new();
+
+            void FinalizeLine() {
+                if (currentLine.segments.Count == 0 && currentLine.lineLength <= 0f) return;
+
+                currentLine.globalStartLength = totalLength;
+                currentLine.globalEndLength = totalLength + currentLine.lineLength;
+                totalLength = currentLine.globalEndLength;
+                builtLines.Add(currentLine);
+                currentLine = new BuiltLine();
+            }
+
+            void AdvanceLine() {
+                FinalizeLine();
+                z = pageOrigin.y;
+                x += lineAdvance;
+            }
+
+            for (int i = 0; i < tokens.Count; i++) {
+                TextToken token = tokens[i];
+                if (token.type == TokenType.Newline) {
+                    AdvanceLine();
+                    continue;
+                }
+
+                float wordWidth = MeasureWordWidth(token.text, unitsPerGlyphHeight);
+                bool atLineStart = Mathf.Abs(z - pageOrigin.y) < 0.0001f;
+
+                if (!atLineStart && z + wordWidth > pageOrigin.y + pageSize.y) {
+                    AdvanceLine();
+                }
+
+                if (x > pageOrigin.x + pageSize.x) {
+                    if (verboseLogging) {
+                        Debug.LogWarning("PaperWritingStrokeDisplay: Text overflowed page bounds.", this);
+                    }
+                    break;
+                }
+
+                for (int charIndex = 0; charIndex < token.text.Length; charIndex++) {
+                    char c = token.text[charIndex];
+
+                    if (!glyphLibrary.TryGetGlyph(c, out StrokeGlyphLibrary.RuntimeGlyph glyph)) {
+                        z += 0.5f * unitsPerGlyphHeight;
+                        if (charIndex < token.text.Length - 1) {
+                            z += characterSpacing * unitsPerGlyphHeight;
+                        }
+                        continue;
+                    }
+
+                    for (int s = 0; s < glyph.strokes.Count; s++) {
+                        var stroke = glyph.strokes[s];
+                        if (stroke == null || stroke.points == null || stroke.points.Count < 2) continue;
+
+                        Vector2[] pagePoints = new Vector2[stroke.points.Count];
+                        for (int p = 0; p < stroke.points.Count; p++) {
+                            Vector2 gp = stroke.points[p].position;
+                            pagePoints[p] = new Vector2(
+                                x - gp.y * unitsPerGlyphHeight,
+                                z + gp.x * unitsPerGlyphHeight
+                            );
+                        }
+
+                        AddBuiltStroke(currentLine, pagePoints);
+                    }
+
+                    z += glyph.advance * unitsPerGlyphHeight;
+                    if (charIndex < token.text.Length - 1) {
+                        z += characterSpacing * unitsPerGlyphHeight;
+                    }
+                }
+
+                bool hasNextWord = i + 1 < tokens.Count && tokens[i + 1].type == TokenType.Word;
+                if (hasNextWord) {
+                    z += wordSpacing * unitsPerGlyphHeight;
+                }
+            }
+
+            FinalizeLine();
+        }
+
+        private float MeasureWordWidth(string word, float unitsPerGlyphHeight) {
+            if (string.IsNullOrEmpty(word)) return 0f;
+
+            float width = 0f;
+            for (int i = 0; i < word.Length; i++) {
+                if (glyphLibrary.TryGetGlyph(word[i], out StrokeGlyphLibrary.RuntimeGlyph glyph)) {
+                    width += glyph.advance * unitsPerGlyphHeight;
+                }
+                else {
+                    width += 0.5f * unitsPerGlyphHeight;
+                }
+
+                if (i < word.Length - 1) {
+                    width += characterSpacing * unitsPerGlyphHeight;
+                }
+            }
+
+            return width;
+        }
+
+        private void AddBuiltStroke(BuiltLine line, Vector2[] pagePoints) {
+            if (line == null || pagePoints == null || pagePoints.Length < 2) return;
+
+            bool addedAnySegment = false;
+            for (int i = 1; i < pagePoints.Length; i++) {
+                Vector2 a = pagePoints[i - 1];
+                Vector2 b = pagePoints[i];
+                float len = Vector2.Distance(a, b);
+                if (len <= 0.000001f) continue;
+
+                line.segments.Add(new DrawSegment {
+                    pageA = a,
+                    pageB = b,
+                    pixelA = PageToPixelFloat(a),
+                    pixelB = PageToPixelFloat(b),
+                    localStartLength = line.lineLength,
+                    localEndLength = line.lineLength + len,
+                    length = len
+                });
+
+                line.lineLength += len;
+                addedAnySegment = true;
+            }
+
+            if (addedAnySegment) builtStrokeCount++;
+        }
+
+        private void EnsureInkQuad() {
+            if (inkQuad == null) {
+                inkQuad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                inkQuad.name = "InkOverlay";
+                inkQuad.transform.SetParent(overlayRoot != null ? overlayRoot : transform, false);
+
+                Collider col = inkQuad.GetComponent<Collider>();
+                if (col != null) {
+                    if (Application.isPlaying) Destroy(col);
+                    else DestroyImmediate(col);
+                }
+            }
+
+            inkQuad.transform.localPosition = new Vector3(
+                pageOrigin.x + pageSize.x * 0.5f,
+                localSurfaceOffset,
+                pageOrigin.y + pageSize.y * 0.5f
+            );
+            inkQuad.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            inkQuad.transform.localScale = new Vector3(pageSize.x, pageSize.y, 1f);
+
+            if (inkTexture == null || inkTexture.width != textureWidth || inkTexture.height != textureHeight) {
+                inkTexture = new Texture2D(textureWidth, textureHeight, TextureFormat.RGBA32, false, true) {
+                    wrapMode = TextureWrapMode.Clamp,
+                    filterMode = FilterMode.Bilinear
+                };
+                inkPixels = new Color32[textureWidth * textureHeight];
+            }
+
+            if (inkMaterial == null) {
+                Shader shader = Shader.Find(overlayShaderName) ?? Shader.Find("Sprites/Default");
+                inkMaterial = new Material(shader) { name = "InkOverlay_Mat" };
+            }
+
+            inkMaterial.mainTexture = inkTexture;
+            inkRenderer = inkQuad.GetComponent<Renderer>();
+            if (inkRenderer != null) {
+                inkRenderer.sharedMaterial = inkMaterial;
+            }
+        }
+
+        private void ClearInkTexture() {
+            EnsureInkQuad();
+            Array.Fill(inkPixels, new Color32(0, 0, 0, 0));
+            inkTexture.SetPixels32(inkPixels);
+            inkTexture.Apply(false, false);
+            inkDirty = false;
+        }
+
+        private void UploadInkTexture() {
+            if (inkTexture == null || inkPixels == null) return;
+            inkTexture.SetPixels32(inkPixels);
+            inkTexture.Apply(false, false);
+            inkDirty = false;
+            nextInkApplyTime = Time.time + (1f / Mathf.Max(1f, inkApplyRate));
+        }
+
+        private void DrawRangeAcrossLines(float fromLength, float toLength) {
+            if (builtLines.Count == 0 || toLength <= fromLength) return;
+
+            while (revealCursorLineIndex < builtLines.Count) {
+                BuiltLine line = builtLines[revealCursorLineIndex];
+
+                if (line.globalEndLength <= fromLength) {
+                    revealCursorLineIndex++;
+                    revealCursorSegmentIndex = 0;
+                    continue;
+                }
+
+                if (line.globalStartLength >= toLength) break;
+
+                float localFrom = Mathf.Max(0f, fromLength - line.globalStartLength);
+                float localTo = Mathf.Min(line.lineLength, toLength - line.globalStartLength);
+
+                if (localTo > localFrom) {
+                    DrawRangeInCurrentLine(line, localFrom, localTo);
+                }
+
+                if (localTo >= line.lineLength - 0.0001f) {
+                    revealCursorLineIndex++;
+                    revealCursorSegmentIndex = 0;
+                    continue;
+                }
+
+                break;
+            }
+        }
+
+        private void DrawRangeInCurrentLine(BuiltLine line, float fromLength, float toLength) {
+            if (line == null || line.segments.Count == 0 || toLength <= fromLength) return;
+
+            while (revealCursorSegmentIndex < line.segments.Count &&
+                   line.segments[revealCursorSegmentIndex].localEndLength <= fromLength) {
+                revealCursorSegmentIndex++;
+            }
+
+            int i = revealCursorSegmentIndex;
+            while (i < line.segments.Count) {
+                DrawSegment seg = line.segments[i];
+                if (seg.localStartLength >= toLength) break;
+
+                float segFrom = Mathf.Max(fromLength, seg.localStartLength);
+                float segTo = Mathf.Min(toLength, seg.localEndLength);
+                if (segTo > segFrom) {
+                    DrawSegmentRange(seg, segFrom, segTo);
+                }
+
+                i++;
+            }
+
+            while (revealCursorSegmentIndex < line.segments.Count &&
+                   line.segments[revealCursorSegmentIndex].localEndLength <= toLength) {
+                revealCursorSegmentIndex++;
+            }
+        }
+
+        private void DrawSegmentRange(DrawSegment seg, float fromLocal, float toLocal) {
+            if (seg.length <= 0.000001f || toLocal <= fromLocal) return;
+
+            float t0 = Mathf.InverseLerp(seg.localStartLength, seg.localEndLength, fromLocal);
+            float t1 = Mathf.InverseLerp(seg.localStartLength, seg.localEndLength, toLocal);
+            Vector2 a = Vector2.Lerp(seg.pixelA, seg.pixelB, t0);
+            Vector2 b = Vector2.Lerp(seg.pixelA, seg.pixelB, t1);
+
+            DrawThickLine(
+                Mathf.RoundToInt(a.x), Mathf.RoundToInt(a.y),
+                Mathf.RoundToInt(b.x), Mathf.RoundToInt(b.y)
+            );
+        }
+
+        private Vector2 PageToPixelFloat(Vector2 pagePoint) {
+            float u = Mathf.Clamp01(Mathf.InverseLerp(pageOrigin.x, pageOrigin.x + pageSize.x, pagePoint.x));
+            float v = Mathf.Clamp01(Mathf.InverseLerp(pageOrigin.y, pageOrigin.y + pageSize.y, pagePoint.y));
+            return new Vector2(u * (textureWidth - 1), v * (textureHeight - 1));
+        }
+
+        private void DrawThickLine(int x0, int y0, int x1, int y1) {
+            float dx = x1 - x0;
+            float dy = y1 - y0;
+            float dist = Mathf.Sqrt(dx * dx + dy * dy);
+
+            if (dist <= 0.0001f) {
+                StampBrush(x0, y0);
+                return;
+            }
+
+            int steps = Mathf.Max(1, Mathf.CeilToInt(dist / Mathf.Max(0.25f, brushSpacingPixels)));
+            for (int i = 0; i <= steps; i++) {
+                float t = i / (float)steps;
+                StampBrush(
+                    Mathf.RoundToInt(Mathf.Lerp(x0, x1, t)),
+                    Mathf.RoundToInt(Mathf.Lerp(y0, y1, t))
+                );
+            }
+        }
+
+        private void StampBrush(int cx, int cy) {
+            for (int i = 0; i < brushOffsets.Count; i++) {
+                Vector2Int o = brushOffsets[i];
+                int x = cx + o.x;
+                int y = cy + o.y;
+                if ((uint)x >= textureWidth || (uint)y >= textureHeight) continue;
+                inkPixels[y * textureWidth + x] = inkColor32;
+            }
+
+            inkDirty = true;
+        }
+
+        private void UpdateOverlayVisibility() {
+            if (!onlyRenderOverlayOnPaperView || inkRenderer == null) return;
+            inkRenderer.enabled = IsCurrentlyOnPaperView();
+        }
+
+        private bool IsCurrentlyOnPaperView() {
+            if (viewController == null) return true;
+
+            View currentView = viewController.CurrentView;
+            if (currentView == null) return false;
+            if (paperView != null) return currentView == paperView;
+
+            return !string.IsNullOrEmpty(paperViewNameFallback) &&
+                   string.Equals(currentView.gameObject.name, paperViewNameFallback, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private int GetLineIndexAtGlobalLength(float globalLength) {
+            if (builtLines.Count == 0) return -1;
+
+            globalLength = Mathf.Clamp(globalLength, 0f, totalLength);
+            for (int i = 0; i < builtLines.Count; i++) {
+                if (globalLength <= builtLines[i].globalEndLength) {
+                    return i;
+                }
+            }
+
+            return builtLines.Count - 1;
+        }
+
+        private Vector2 GetPagePointAtGlobalLength(float length) {
+            if (builtLines.Count == 0) return Vector2.zero;
+
+            length = Mathf.Clamp(length, 0f, totalLength);
+            int lineIndex = GetLineIndexAtGlobalLength(length);
+            if (lineIndex < 0) return Vector2.zero;
+
+            BuiltLine line = builtLines[lineIndex];
+            float localLength = Mathf.Clamp(length - line.globalStartLength, 0f, line.lineLength);
+
+            for (int i = 0; i < line.segments.Count; i++) {
+                DrawSegment seg = line.segments[i];
+                if (localLength <= seg.localEndLength) {
+                    float t = Mathf.InverseLerp(seg.localStartLength, seg.localEndLength, localLength);
+                    return Vector2.Lerp(seg.pageA, seg.pageB, t);
+                }
+            }
+
+            return line.segments.Count > 0 ? line.segments[^1].pageB : Vector2.zero;
+        }
+
+        public Vector3 GetWorldPointAtCurrentRevealLengthOrStart() {
+            if (builtLines.Count == 0) {
+                return transform.TransformPoint(new Vector3(pageOrigin.x, localSurfaceOffset, pageOrigin.y));
+            }
+
+            if (currentRevealLength <= 0.0001f && builtLines[0].segments.Count > 0) {
+                Vector2 start = builtLines[0].segments[0].pageA;
+                return transform.TransformPoint(new Vector3(start.x, localSurfaceOffset, start.y));
+            }
+
+            Vector2 pagePos = GetPagePointAtGlobalLength(currentRevealLength);
+            return transform.TransformPoint(new Vector3(pagePos.x, localSurfaceOffset, pagePos.y));
+        }
+
+        public int GetCurrentLineIndex() {
+            return GetLineIndexAtGlobalLength(currentRevealLength);
         }
 
         private void OnDrawGizmosSelected() {
             if (!drawPageBoundsGizmo) return;
 
             Gizmos.color = pageBoundsColor;
-
             Vector3 bl = transform.TransformPoint(new Vector3(pageOrigin.x, localSurfaceOffset, pageOrigin.y));
             Vector3 br = transform.TransformPoint(new Vector3(pageOrigin.x + pageSize.x, localSurfaceOffset, pageOrigin.y));
             Vector3 tl = transform.TransformPoint(new Vector3(pageOrigin.x, localSurfaceOffset, pageOrigin.y + pageSize.y));

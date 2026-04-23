@@ -60,6 +60,11 @@ namespace FNaS.Entities.Mold {
         [Header("Spray Spread Lockout")]
         [Min(0.01f)] public float spraySpreadBlockSeconds = 5f;
 
+        [Header("Spray Visual Suppression")]
+        [Min(0.01f)] public float sprayVisualContactHoldTime = 0.10f;
+        [Min(0f)] public float sprayVisualRegrowDelay = 0.75f;
+        [Min(0.01f)] public float sprayVisualRegrowSpeedMultiplier = 2.5f;
+
         [Header("Blood Escalation")]
         public bool allowBloodPhase = true;
         [Min(0.01f)] public float bloodTransitionSeconds = 30f;
@@ -95,6 +100,9 @@ namespace FNaS.Entities.Mold {
         private readonly Dictionary<MoldPatch, int> distToNearestLight = new();
         private readonly Dictionary<MoldPatch, int> distToNearestCamera = new();
         private readonly Dictionary<MoldPatch, float> bloodTimerByPatch = new();
+        private readonly Dictionary<MoldPatch, float> sprayVisualSuppressionByPatch = new();
+        private readonly Dictionary<MoldPatch, float> sprayVisualLastContactTimeByPatch = new();
+        private readonly List<MoldPatch> sprayVisualKeysBuffer = new();
 
         private readonly Dictionary<MoldPatch, float> sprayBlockTimerByPatch = new();
         private readonly List<MoldPatch> expiredSprayBlocksBuffer = new();
@@ -150,6 +158,7 @@ namespace FNaS.Entities.Mold {
 
             HandleAIDisabledState();
             UpdateSprayBlockTimers();
+            UpdateSprayVisualSuppression();
             UpdateBloodTimers();
         }
 
@@ -230,6 +239,8 @@ namespace FNaS.Entities.Mold {
         private void ResetAllMoldToClean() {
             sprayBlockTimerByPatch.Clear();
             bloodTimerByPatch.Clear();
+            sprayVisualSuppressionByPatch.Clear();
+            sprayVisualLastContactTimeByPatch.Clear();
 
             for (int i = 0; i < allPatches.Count; i++) {
                 MoldPatch patch = allPatches[i];
@@ -245,6 +256,8 @@ namespace FNaS.Entities.Mold {
         private void ResetToSourceOnlyState() {
             sprayBlockTimerByPatch.Clear();
             bloodTimerByPatch.Clear();
+            sprayVisualSuppressionByPatch.Clear();
+            sprayVisualLastContactTimeByPatch.Clear();
 
             for (int i = 0; i < allPatches.Count; i++) {
                 MoldPatch patch = allPatches[i];
@@ -278,6 +291,80 @@ namespace FNaS.Entities.Mold {
             RefreshAllPatchStatesAfterConnectivity();
             UpdateBloodTimers();
             RecountDebugStats();
+        }
+
+        private void UpdateSprayVisualSuppression() {
+            if (allPatches == null || allPatches.Count == 0) {
+                return;
+            }
+
+            sprayVisualKeysBuffer.Clear();
+
+            for (int i = 0; i < allPatches.Count; i++) {
+                MoldPatch patch = allPatches[i];
+                if (patch == null) continue;
+
+                sprayVisualKeysBuffer.Add(patch);
+            }
+
+            for (int i = 0; i < sprayVisualKeysBuffer.Count; i++) {
+                MoldPatch patch = sprayVisualKeysBuffer[i];
+                if (patch == null) continue;
+
+                // Clean or non-cleansable patches should never stay visually suppressed
+                if (!CanPatchBeCleansed(patch)) {
+                    if (sprayVisualSuppressionByPatch.ContainsKey(patch)) {
+                        sprayVisualSuppressionByPatch.Remove(patch);
+                    }
+
+                    if (sprayVisualLastContactTimeByPatch.ContainsKey(patch)) {
+                        sprayVisualLastContactTimeByPatch.Remove(patch);
+                    }
+
+                    patch.SetVisualSuppression01(0f);
+                    continue;
+                }
+
+                float suppression = 0f;
+                sprayVisualSuppressionByPatch.TryGetValue(patch, out suppression);
+
+                bool hasRecentContact = sprayVisualLastContactTimeByPatch.TryGetValue(patch, out float lastContactTime);
+                bool beingSprayedNow = hasRecentContact && Time.time <= lastContactTime + sprayVisualContactHoldTime;
+
+                float cleanseDuration = Mathf.Max(0.01f, GetCleanseDuration(patch));
+
+                if (beingSprayedNow) {
+                    // Shrink visually using the SAME duration as the real cleanse
+                    suppression = Mathf.MoveTowards(
+                        suppression,
+                        1f,
+                        Time.deltaTime / cleanseDuration
+                    );
+                }
+                else if (hasRecentContact && Time.time >= lastContactTime + sprayVisualRegrowDelay) {
+                    // Grow back faster than it was hidden
+                    suppression = Mathf.MoveTowards(
+                        suppression,
+                        0f,
+                        Time.deltaTime * sprayVisualRegrowSpeedMultiplier / cleanseDuration
+                    );
+                }
+
+                if (suppression <= 0.0001f) {
+                    suppression = 0f;
+
+                    // If there's no recent contact anymore, clean up bookkeeping
+                    if (!hasRecentContact || Time.time > lastContactTime + sprayVisualRegrowDelay + 1f) {
+                        sprayVisualSuppressionByPatch.Remove(patch);
+                        sprayVisualLastContactTimeByPatch.Remove(patch);
+                    }
+                }
+                else {
+                    sprayVisualSuppressionByPatch[patch] = suppression;
+                }
+
+                patch.SetVisualSuppression01(suppression);
+            }
         }
 
         private void SyncRoomsFromHierarchy() {
@@ -400,6 +487,15 @@ namespace FNaS.Entities.Mold {
             sprayBlockTimerByPatch[patch] = spraySpreadBlockSeconds;
             patch.NotifySprayContact();
 
+            // NEW: manager-owned visual suppression tracking
+            if (CanPatchBeCleansed(patch)) {
+                sprayVisualLastContactTimeByPatch[patch] = Time.time;
+
+                if (!sprayVisualSuppressionByPatch.ContainsKey(patch)) {
+                    sprayVisualSuppressionByPatch[patch] = 0f;
+                }
+            }
+
             if (verboseLogging) {
                 Debug.Log($"Spray block refreshed on patch: {patch.name}", this);
             }
@@ -512,6 +608,8 @@ namespace FNaS.Entities.Mold {
 
             patch.ForceClean();
             bloodTimerByPatch.Remove(patch);
+            sprayVisualSuppressionByPatch.Remove(patch);
+            sprayVisualLastContactTimeByPatch.Remove(patch);
 
             RecomputeConnectivity();
             RefreshAllPatchStatesAfterConnectivity();

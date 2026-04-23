@@ -62,6 +62,9 @@ namespace FNaS.Entities.Mold {
 
         private float lastSprayHitTime = -999f;
 
+        // NEW: purely visual suppression, controlled by MoldManager
+        [SerializeField, Range(0f, 1f)] private float visualSuppression01 = 0f;
+
         public string PatchId => patchId;
         public MoldSpreadState SpreadState => spreadState;
         public MoldCorruptionPhase CorruptionPhase => corruptionPhase;
@@ -124,6 +127,7 @@ namespace FNaS.Entities.Mold {
             switch (spreadState) {
                 case MoldSpreadState.Clean:
                     visualFill = 0f;
+                    visualSuppression01 = 0f;
                     break;
                 case MoldSpreadState.Active:
                 case MoldSpreadState.Isolated:
@@ -172,11 +176,21 @@ namespace FNaS.Entities.Mold {
             spreadState = MoldSpreadState.Clean;
             corruptionPhase = MoldCorruptionPhase.Normal;
             visualFill = 0f;
+            visualSuppression01 = 0f;
 
             ApplyGameplayEffects();
             ApplyVisualsImmediate();
             DisableBloodDrips();
             RefreshAmbience();
+        }
+
+        // NEW: manager-owned spray animation drives this
+        public void SetVisualSuppression01(float value) {
+            float clamped = Mathf.Clamp01(value);
+            if (Mathf.Approximately(visualSuppression01, clamped)) return;
+
+            visualSuppression01 = clamped;
+            ApplyVisualsImmediate();
         }
 
         public void NotifySprayContact() {
@@ -246,13 +260,15 @@ namespace FNaS.Entities.Mold {
                 mpb = new MaterialPropertyBlock();
             }
 
+            float shaderFill = visualFill * (1f - visualSuppression01);
+
             foreach (var rend in targetRenderers) {
                 if (rend == null) continue;
 
                 rend.GetPropertyBlock(mpb);
 
                 if (!string.IsNullOrWhiteSpace(fillProperty)) {
-                    mpb.SetFloat(fillProperty, visualFill);
+                    mpb.SetFloat(fillProperty, shaderFill);
                 }
 
                 if (!string.IsNullOrWhiteSpace(bloodBlendProperty)) {

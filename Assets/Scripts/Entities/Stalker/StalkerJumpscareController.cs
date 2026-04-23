@@ -10,6 +10,7 @@ namespace FNaS.Entities.Stalker {
         [SerializeField] private LoseState loseState;
         [SerializeField] private StalkerLookController lookController;
         [SerializeField] private PlayerWaypointController playerMovement;
+        [SerializeField] private ViewController viewController;
         [SerializeField] private Transform stalkerRoot;
         [SerializeField] private Transform jumpscareAnchor;
 
@@ -36,11 +37,13 @@ namespace FNaS.Entities.Stalker {
         private void Awake() {
             jumpscareLayer = LayerMask.NameToLayer(jumpscareLayerName);
 
-            if (stalkerVisualRoot != null)
+            if (stalkerVisualRoot != null) {
                 originalLayer = stalkerVisualRoot.layer;
+            }
 
-            if (jumpscareCamera != null)
+            if (jumpscareCamera != null) {
                 jumpscareCamera.enabled = false;
+            }
         }
 
         public void PlayJumpscare(string loseReason) {
@@ -51,12 +54,12 @@ namespace FNaS.Entities.Stalker {
         private IEnumerator PlayRoutine(string loseReason) {
             isPlaying = true;
 
-            if (jumpscareClip != null && Camera.main != null) {
-                AudioSource.PlayClipAtPoint(jumpscareClip, Camera.main.transform.position, jumpscareVolume);
-            }
-
             if (disableLookDuringJumpscare && lookController != null) {
                 lookController.enabled = false;
+            }
+
+            if (viewController != null) {
+                viewController.CancelActiveViewMovementImmediate();
             }
 
             if (playerMovement != null) {
@@ -75,6 +78,10 @@ namespace FNaS.Entities.Stalker {
 
             if (jumpscareCamera != null) {
                 jumpscareCamera.enabled = true;
+            }
+
+            if (jumpscareClip != null && Camera.main != null) {
+                AudioSource.PlayClipAtPoint(jumpscareClip, Camera.main.transform.position, jumpscareVolume);
             }
 
             if (animator != null) {

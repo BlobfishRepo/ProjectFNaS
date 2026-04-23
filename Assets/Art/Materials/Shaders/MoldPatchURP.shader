@@ -25,6 +25,12 @@ Shader "FNaS/MoldPatchGraphLikeURP"
 
         _BloodThresholdMin("Blood Threshold Min", Range(0,1)) = 0.10
         _BloodThresholdMax("Blood Threshold Max", Range(0,1)) = 0.70
+
+        _UVShrink("UV Shrink", Range(0,0.1)) = 0.02
+        _BloodClusterStrength("Blood Cluster Strength", Range(0,1)) = 0.45
+
+        _BloodMoldSparsity("Blood Mold Sparsity", Range(0,1)) = 0.45
+        _BloodNoiseBias("Blood Noise Bias", Range(0,1)) = 0.18
     }
 
     SubShader
@@ -98,6 +104,10 @@ Shader "FNaS/MoldPatchGraphLikeURP"
                 float _EdgeStrength;
                 float _BloodThresholdMin;
                 float _BloodThresholdMax;
+                float _UVShrink;
+                float _BloodClusterStrength;
+                float _BloodMoldSparsity;
+                float _BloodNoiseBias;
             CBUFFER_END
 
             Varyings vert(Attributes IN)
@@ -129,41 +139,49 @@ Shader "FNaS/MoldPatchGraphLikeURP"
 
             half4 frag(Varyings IN) : SV_Target
             {
-                float2 texUV   = IN.uv * _TextureTiling;
-                float2 noiseUV = IN.uv * _NoiseTiling;
+                float2 baseUV = IN.uv * (1.0 - _UVShrink) + (_UVShrink * 0.5);
+
+                float2 texUV   = baseUV * _TextureTiling;
+                float2 noiseUV = baseUV * _NoiseTiling;
 
                 float moldR  = SAMPLE_TEXTURE2D(_MoldTex, sampler_MoldTex, texUV).r;
                 float bloodR = SAMPLE_TEXTURE2D(_BloodTex, sampler_BloodTex, texUV).r;
                 float noiseR = SAMPLE_TEXTURE2D(_NoiseTex, sampler_NoiseTex, noiseUV).r;
 
-                // Growth reveal
                 float edge1 = 1.0 - _Fill;
                 float edge2 = edge1 + _GrowthSoftness;
                 float growthMask = smoothstep(edge1, edge2, noiseR);
 
-                // Blood softened so it feels less sparse / brittle
+                float edgeMask = ComputeEdgeMask(baseUV, _EdgeFeather, _EdgeStrength);
+
+                float moldPresence = lerp(1.0, moldR, 0.35);
+
                 float bloodMaskSoft = smoothstep(_BloodThresholdMin, _BloodThresholdMax, bloodR);
+                float clusteredBlood = saturate(lerp(bloodMaskSoft, max(bloodMaskSoft, moldR), _BloodClusterStrength));
 
-                // Edge fade so the patch doesn't read like a hard rectangle
-                float edgeMask = ComputeEdgeMask(IN.uv, _EdgeFeather, _EdgeStrength);
+                // NEW: blood phase makes mold break up more using noise
+                float bloodSparsityMask = 1.0 - (_BloodBlend * _BloodMoldSparsity);
+                float bloodNoiseCull = smoothstep(
+                    _BloodBlend * _BloodNoiseBias,
+                    _BloodBlend * _BloodNoiseBias + 0.20,
+                    noiseR
+                );
 
-                // Keep mold visible enough, but still shaped by the texture
-                float moldPresence = lerp(1.0, moldR, 0.5);
+                float visibleMoldMask = saturate(moldPresence * growthMask * bloodSparsityMask * bloodNoiseCull);
 
-                // Final visible region
-                float visibleMoldMask = saturate(moldPresence * growthMask);
-                float finalAlpha = saturate(visibleMoldMask * edgeMask * _AlphaStrength);
+                float moldAlpha = lerp(moldR, moldPresence, 0.35);
+                float bloodAlpha = clusteredBlood;
 
-                // Color
+                float texturePresence = lerp(moldAlpha, bloodAlpha, _BloodBlend);
+                float finalAlpha = saturate(texturePresence * growthMask * edgeMask * _AlphaStrength);
+
                 float3 moldColor = moldR * _MoldTint.rgb;
-                float3 bloodColor = bloodMaskSoft * _BloodTint.rgb;
+                float3 bloodColor = clusteredBlood * _BloodTint.rgb;
 
-                // Blood only really appears where mold already exists
-                float bloodInfluence = saturate(bloodMaskSoft * visibleMoldMask * _BloodBlend);
+                float bloodInfluence = saturate(_BloodBlend);
 
                 float3 baseColor = lerp(moldColor, bloodColor, bloodInfluence);
 
-                // Simple URP lit shading
                 float3 normalWS = normalize(IN.normalWS);
 
                 Light mainLight = GetMainLight(IN.shadowCoord);
