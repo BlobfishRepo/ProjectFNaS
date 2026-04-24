@@ -104,7 +104,11 @@ namespace FNaS.Systems {
                 return "Presentation Mode\n12:00 AM";
             }
 
-            return "Custom Night\n12:00 AM";
+            if (playMode == NightPlayMode.CustomNight) {
+                return "Custom Night\n12:00 AM";
+            }
+
+            return "Unity-Loaded\n12:00 AM";
         }
 
         public bool CanContinueCampaign() {

@@ -101,7 +101,7 @@ Material:
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
     - _BloodAmount: 0
-    - _BloodBlend: 1
+    - _BloodBlend: 0
     - _BloodClusterStrength: 0.45
     - _BloodMoldSparsity: 0.55
     - _BloodNoiseBias: 0.12
@@ -110,6 +110,7 @@ Material:
     - _BumpScale: 1
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
+    - _ColorStrength: 1
     - _Cull: 2
     - _Cutoff: 0.5
     - _DetailAlbedoMapScale: 1
@@ -126,6 +127,7 @@ Material:
     - _Growth: 1
     - _GrowthSoftness: 0.1
     - _Metallic: 0
+    - _MinBrightness: 0.04
     - _NoiseTiling: 2
     - _OcclusionStrength: 1
     - _Parallax: 0.005

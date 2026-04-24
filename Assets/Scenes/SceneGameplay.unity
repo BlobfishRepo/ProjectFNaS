@@ -521,7 +521,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5945648460963956995, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
       propertyPath: right.action
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5945648460963956995, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
       propertyPath: left.targetView
@@ -530,7 +530,7 @@ PrefabInstance:
     - target: {fileID: 5945648460963956995, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
       propertyPath: right.targetView
       value: 
-      objectReference: {fileID: 1946978405}
+      objectReference: {fileID: 0}
     - target: {fileID: 7080507458105243376, guid: c53ec3361657abe488f60e8593bf717b, type: 3}
       propertyPath: m_LocalPosition.x
       value: -8.93
@@ -8609,7 +8609,7 @@ AudioSource:
   m_GameObject: {fileID: 334268491}
   m_Enabled: 1
   serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 3819727424140154830, guid: fc71217f73bc5ab4882b66fc52e1f781, type: 2}
+  OutputAudioMixerGroup: {fileID: 4230494239477327363, guid: fc71217f73bc5ab4882b66fc52e1f781, type: 2}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 1
@@ -13147,7 +13147,7 @@ MonoBehaviour:
   sprayVisualRegrowDelay: 0.75
   sprayVisualRegrowSpeedMultiplier: 2.5
   allowBloodPhase: 1
-  bloodTransitionSeconds: 60
+  bloodTransitionSeconds: 5
   drawAdjacencyGizmos: 1
   drawPatchSpheres: 1
   adjacencyColor: {r: 0, g: 1, b: 1, a: 1}
@@ -14618,6 +14618,7 @@ GameObject:
   m_Component:
   - component: {fileID: 832575519}
   - component: {fileID: 832575518}
+  - component: {fileID: 832575520}
   m_Layer: 0
   m_Name: Global Volume
   m_TagString: Untagged
@@ -14657,6 +14658,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1057344726}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &832575520
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 832575517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a25ff7b7f3c2af4c92cfacb053ec072, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Systems.BrightnessSettingsApplier
+  volume: {fileID: 832575518}
+  basePostExposure: 0.7
+  maxExtraPostExposure: 2.5
 --- !u!1001 &864168166
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -14719,6 +14735,10 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3727086112891370332, guid: cd7aef88929daf34eb056f7b77ac9707, type: 3}
       propertyPath: m_Name
+      value: Bath_RandomClump
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766290584079867315, guid: cd7aef88929daf34eb056f7b77ac9707, type: 3}
+      propertyPath: patchId
       value: Bath_RandomClump
       objectReference: {fileID: 0}
     m_RemovedComponents: []
@@ -18317,52 +18337,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1243722194}
   m_CullTransparentMesh: 1
---- !u!1 &1249399226
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1249399227}
-  - component: {fileID: 1249399228}
-  m_Layer: 0
-  m_Name: _RuntimeSettings
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1249399227
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1249399226}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1359168516}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1249399228
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1249399226}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d3ea679b5b17ced46b50c572c120a475, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Settings.RuntimeGameSettings
-  debugMenuUnlocked: 0
-  playerSettingsDebugUnlocked: 0
 --- !u!1001 &1251003418
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -19878,7 +19852,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1249399227}
+  - {fileID: 2128506902}
   - {fileID: 2073274565}
   - {fileID: 1230656894}
   - {fileID: 1164606898}
@@ -20100,7 +20074,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FNaS.Systems.GlobalAITimerDebugDisplay
   textUI: {fileID: 1735067815}
   scheduler: {fileID: 1382129889}
-  showTimer: 1
+  showTimer: 0
   showTenths: 1
   prefix: 
   secondsRemaining: 0
@@ -20429,7 +20403,7 @@ MonoBehaviour:
   playerViewOrigin: {fileID: 297955388}
   playerObserveCamera: {fileID: 297955389}
   attentionState: {fileID: 428565957}
-  emergeLingerSeconds: 1
+  emergeLingerSeconds: 0.5
   activeChaseDurationSeconds: 10
   killDistance: 8
   requireLineOfSightForKill: 0
@@ -20460,7 +20434,7 @@ MonoBehaviour:
   audioSource: {fileID: 1426053295}
   sfxVolume: 1
   spawnInClip: {fileID: 8300000, guid: 9457bfcc1ef2849498bedd1c2208fa4a, type: 3}
-  stageProgressClip: {fileID: 8300000, guid: 0ba55ac548330284e869c5c369cc10f0, type: 3}
+  stageProgressClip: {fileID: 8300000, guid: 15f386ebfc80f1c4da54eabde35f559a, type: 3}
   activationClip: {fileID: 8300000, guid: a36a5c80952b39d47af91755ab2c69ed, type: 3}
   runStartClip: {fileID: 0}
   runningLoopClip: {fileID: 8300000, guid: eae4a56d3bd43e840b2038c9b857d8dd, type: 3}
@@ -25175,7 +25149,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5766290584079867315, guid: cd7aef88929daf34eb056f7b77ac9707, type: 3}
       propertyPath: patchId
-      value: Sink_LivingFloorClump
+      value: Living_FloorClump
       objectReference: {fileID: 0}
     - target: {fileID: 5766290584079867315, guid: cd7aef88929daf34eb056f7b77ac9707, type: 3}
       propertyPath: linkedLight
@@ -26695,7 +26669,7 @@ PrefabInstance:
       objectReference: {fileID: 1946978404}
     - target: {fileID: 7350970390456849531, guid: efa63d8e1e6b5284ba9e41f837f82fe6, type: 3}
       propertyPath: left.action
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7350970390456849531, guid: efa63d8e1e6b5284ba9e41f837f82fe6, type: 3}
       propertyPath: right.action
@@ -26704,7 +26678,7 @@ PrefabInstance:
     - target: {fileID: 7350970390456849531, guid: efa63d8e1e6b5284ba9e41f837f82fe6, type: 3}
       propertyPath: left.targetView
       value: 
-      objectReference: {fileID: 454079817}
+      objectReference: {fileID: 0}
     - target: {fileID: 7350970390456849531, guid: efa63d8e1e6b5284ba9e41f837f82fe6, type: 3}
       propertyPath: D.targetWaypoint
       value: 
@@ -26804,7 +26778,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5766290584079867315, guid: cd7aef88929daf34eb056f7b77ac9707, type: 3}
       propertyPath: patchId
-      value: Sink_WallFarClump (1)
+      value: Sink_WallFarClumpTop
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -29180,6 +29154,203 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72648dcce011741479782b866e312d25, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FNaS.Entities.Mold.MoldPatch
+--- !u!1 &2128506901
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2128506902}
+  - component: {fileID: 2128506907}
+  - component: {fileID: 2128506906}
+  - component: {fileID: 2128506905}
+  - component: {fileID: 2128506904}
+  - component: {fileID: 2128506903}
+  m_Layer: 0
+  m_Name: _RuntimeSettings
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2128506902
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2128506901}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1359168516}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!82 &2128506903
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2128506901}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 3819727424140154830, guid: fc71217f73bc5ab4882b66fc52e1f781, type: 2}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!114 &2128506904
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2128506901}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61541ef6f17747b4b88217d1e8ff5215, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Systems.AudioSettingsApplier
+  mixer: {fileID: 24100000, guid: fc71217f73bc5ab4882b66fc52e1f781, type: 2}
+--- !u!114 &2128506905
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2128506901}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73f3b19a9e0d73846a526971daeb56a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Systems.PresentationNightDirector
+  paperWinProgress: {fileID: 0}
+  runtimeSettingsApplier: {fileID: 0}
+  audioSource: {fileID: 2128506903}
+  thresholdClip: {fileID: 8300000, guid: b29e4726958277a4b8fd712eae314ae5, type: 3}
+  volume: 1
+  appliedStagePercent: -1
+  verboseLogging: 0
+--- !u!114 &2128506906
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2128506901}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 34e8fd81ee9d3904ca8954acd8e3ad26, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Systems.NightSessionManager
+  gameplaySceneName: SceneGameplay
+  introSceneName: SceneSettings
+  customNightStar2MinimumAI: 10
+  customNightStar3MinimumAI: 20
+  playMode: 0
+  currentCampaignNight: 1
+--- !u!114 &2128506907
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2128506901}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3ea679b5b17ced46b50c572c120a475, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Settings.RuntimeGameSettings
+  debugMenuUnlocked: 0
+  playerSettingsDebugUnlocked: 0
 --- !u!1 &2140246576
 GameObject:
   m_ObjectHideFlags: 0
@@ -29205,7 +29376,7 @@ Transform:
   m_GameObject: {fileID: 2140246576}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: -0.5, y: -2.75, z: 7.6}
+  m_LocalPosition: {x: -0.5, y: -2.82, z: 7.64}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

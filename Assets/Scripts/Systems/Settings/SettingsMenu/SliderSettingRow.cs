@@ -94,8 +94,16 @@ namespace FNaS.UI.Settings {
         }
 
         private string FormatValue(float value) {
+            int rounded = Mathf.RoundToInt(value);
+
+            if (labelText != null && labelText.text == "Brightness") {
+                if (rounded <= 0) return "Default";
+                if (rounded >= 10) return "Superbright";
+                return rounded.ToString();
+            }
+
             return wholeNumbers
-                ? Mathf.RoundToInt(value).ToString()
+                ? rounded.ToString()
                 : value.ToString("0.##");
         }
     }

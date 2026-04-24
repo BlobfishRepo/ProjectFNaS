@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using FNaS.Settings;
+using FNaS.Systems;
 using UnityEngine;
 
 namespace FNaS.UI.Settings {
@@ -67,6 +68,7 @@ namespace FNaS.UI.Settings {
                 value => {
                     runtimeSettings.SetFloat(def.key, value);
                     runtimeSettings.SaveToJson();
+                    ApplyRuntimeSettingsNow();
                 }
             );
             spawnedObjects.Add(row.gameObject);
@@ -83,6 +85,7 @@ namespace FNaS.UI.Settings {
                 value => {
                     runtimeSettings.SetInt(def.key, Mathf.RoundToInt(value));
                     runtimeSettings.SaveToJson();
+                    ApplyRuntimeSettingsNow();
                 }
             );
             spawnedObjects.Add(row.gameObject);
@@ -96,6 +99,7 @@ namespace FNaS.UI.Settings {
                 value => {
                     runtimeSettings.SetBool(def.key, value);
                     runtimeSettings.SaveToJson();
+                    ApplyRuntimeSettingsNow();
                 }
             );
             spawnedObjects.Add(row.gameObject);
@@ -110,6 +114,7 @@ namespace FNaS.UI.Settings {
                 value => {
                     runtimeSettings.SetInt(def.key, value);
                     runtimeSettings.SaveToJson();
+                    ApplyRuntimeSettingsNow();
                 }
             );
             spawnedObjects.Add(row.gameObject);
@@ -123,6 +128,13 @@ namespace FNaS.UI.Settings {
             }
 
             spawnedObjects.Clear();
+        }
+
+        private void ApplyRuntimeSettingsNow() {
+            RuntimeSettingsApplier applier = FindFirstObjectByType<RuntimeSettingsApplier>();
+            if (applier != null) {
+                applier.ApplyAllSettings();
+            }
         }
     }
 }

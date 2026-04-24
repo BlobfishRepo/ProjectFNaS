@@ -29,7 +29,8 @@ namespace FNaS.Settings {
         Paper,
         Flashlight,
         Systems,
-        AudioVideo,
+        Audio,
+        Video,
         Fun
     }
 
@@ -248,33 +249,87 @@ namespace FNaS.Settings {
                 min = 1f,
                 max = 240f
             },
-
             new SettingDefinition {
                 key = "video.brightness",
                 label = "Brightness",
-                category = SettingCategory.AudioVideo,
-                controlType = SettingControlType.FloatSlider,
+                category = SettingCategory.Video,
+                controlType = SettingControlType.IntSlider,
                 screens = SettingScreen.PlayerSettings,
                 affectsStarEligibility = false,
-                defaultFloat = 1f,
-                min = 0.25f,
-                max = 2f
+                defaultInt = 0,
+                min = 0,
+                max = 10
             },
             new SettingDefinition {
                 key = "audio.masterVolume",
                 label = "Master Volume",
-                category = SettingCategory.AudioVideo,
-                controlType = SettingControlType.FloatSlider,
+                category = SettingCategory.Audio,
+                controlType = SettingControlType.IntSlider,
                 screens = SettingScreen.PlayerSettings,
                 affectsStarEligibility = false,
-                defaultFloat = 1f,
-                min = 0f,
-                max = 1f
+                defaultInt = 100,
+                min = 0,
+                max = 100
+            },
+            new SettingDefinition {
+                key = "audio.ambienceVolume",
+                label = "Ambience Volume",
+                category = SettingCategory.Audio,
+                controlType = SettingControlType.IntSlider,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultInt = 100,
+                min = 0,
+                max = 100
+            },
+            new SettingDefinition {
+                key = "audio.sfxVolume",
+                label = "SFX Volume",
+                category = SettingCategory.Audio,
+                controlType = SettingControlType.IntSlider,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultInt = 100,
+                min = 0,
+                max = 100
+            },
+            new SettingDefinition {
+                key = "audio.uiVolume",
+                label = "UI Volume",
+                category = SettingCategory.Audio,
+                controlType = SettingControlType.IntSlider,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultInt = 100,
+                min = 0,
+                max = 100
+            },
+            new SettingDefinition {
+                key = "audio.monsterVolume",
+                label = "Monster Volume",
+                category = SettingCategory.Audio,
+                controlType = SettingControlType.IntSlider,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultInt = 100,
+                min = 0,
+                max = 100
+            },
+            new SettingDefinition {
+                key = "audio.monitorVolume",
+                label = "Monitor Volume",
+                category = SettingCategory.Audio,
+                controlType = SettingControlType.IntSlider,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultInt = 100,
+                min = 0,
+                max = 100
             },
             new SettingDefinition {
                 key = "player.disablePostItNotes",
                 label = "Disable Post-it Notes",
-                category = SettingCategory.AudioVideo,
+                category = SettingCategory.Player,
                 controlType = SettingControlType.Toggle,
                 screens = SettingScreen.PlayerSettings,
                 affectsStarEligibility = false,
@@ -364,7 +419,8 @@ namespace FNaS.Settings {
                 SettingCategory.Paper => "Paper",
                 SettingCategory.Flashlight => "Flashlight",
                 SettingCategory.Systems => "Systems",
-                SettingCategory.AudioVideo => "Audio / Video",
+                SettingCategory.Audio => "Audio",
+                SettingCategory.Video => "Video",
                 SettingCategory.Fun => "Fun",
                 _ => category.ToString()
             };

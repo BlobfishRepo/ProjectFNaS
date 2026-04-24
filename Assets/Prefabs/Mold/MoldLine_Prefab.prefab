@@ -88,21 +88,25 @@ MonoBehaviour:
   ambienceSource: {fileID: 4131499243023665512}
   spreadClip: {fileID: 8300000, guid: bf6abd379299b874cbd0856ad587bb4c, type: 3}
   sprayHitClip: {fileID: 8300000, guid: bf6abd379299b874cbd0856ad587bb4c, type: 3}
+  cleanClip: {fileID: 8300000, guid: f4e22223b6069c24b995a9c5ec97f587, type: 3}
   bloodTransitionClip: {fileID: 8300000, guid: 00bf34acd7d8fb944903e2879c6193f1, type: 3}
   ambienceClip: {fileID: 8300000, guid: bf6abd379299b874cbd0856ad587bb4c, type: 3}
   bloodAmbienceClip: {fileID: 8300000, guid: 37cb6b79427a27043825ea3db0ae9e5d, type: 3}
   spreadVolume: 1
   sprayHitVolume: 0.6
+  cleanVolume: 0.8
   bloodTransitionVolume: 1
   ambienceVolume: 0.25
   bloodAmbienceVolume: 0.35
   sprayHitCooldown: 0.2
+  bloodCleanDuration: 0.4
   useDebugColors: 0
   cleanColor: {r: 0, g: 0, b: 0, a: 0}
   markedColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   activeColor: {r: 0.12, g: 0.25, b: 0.08, a: 1}
   isolatedColor: {r: 0, g: 0, b: 0.8, a: 1}
   bloodTint: {r: 0.35, g: 0.03, b: 0.03, a: 1}
+  visualSuppression01: 0
 --- !u!82 &4131499243023665512
 AudioSource:
   m_ObjectHideFlags: 0

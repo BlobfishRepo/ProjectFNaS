@@ -1,4 +1,15 @@
 # Changelog
+## April 24
+### Added
+- Implemented functionality for Audio and Brightness sliders.
+- More audio sliders added corresponding to different types of audio sources.
+
+### Changed
+- Changed some sound effects of Mold and Lost Girl.
+
+### Fixed
+- Fixed lack of color in Mold texture.
+
 ## April 22
 ### Added
 - Added models for pen and security camera.

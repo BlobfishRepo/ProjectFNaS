@@ -17,9 +17,6 @@ Shader "FNaS/MoldPatchGraphLikeURP"
         _TextureTiling("Texture Tiling", Float) = 1
         _AlphaStrength("Alpha Strength", Range(0,4)) = 1.25
 
-        _RoughnessMold("Roughness Mold", Range(0,1)) = 0.85
-        _RoughnessBlood("Roughness Blood", Range(0,1)) = 0.55
-
         _EdgeFeather("Edge Feather", Range(0.001,0.25)) = 0.10
         _EdgeStrength("Edge Strength", Range(0,1)) = 1.0
 
@@ -31,6 +28,9 @@ Shader "FNaS/MoldPatchGraphLikeURP"
 
         _BloodMoldSparsity("Blood Mold Sparsity", Range(0,1)) = 0.45
         _BloodNoiseBias("Blood Noise Bias", Range(0,1)) = 0.18
+
+        _MinBrightness("Minimum Brightness", Range(0,1)) = 0.35
+        _ColorStrength("Color Strength", Range(0,2)) = 1.0
     }
 
     SubShader
@@ -49,7 +49,7 @@ Shader "FNaS/MoldPatchGraphLikeURP"
 
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
-            Cull Back
+            Cull Off
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -98,8 +98,6 @@ Shader "FNaS/MoldPatchGraphLikeURP"
                 float _NoiseTiling;
                 float _TextureTiling;
                 float _AlphaStrength;
-                float _RoughnessMold;
-                float _RoughnessBlood;
                 float _EdgeFeather;
                 float _EdgeStrength;
                 float _BloodThresholdMin;
@@ -108,6 +106,8 @@ Shader "FNaS/MoldPatchGraphLikeURP"
                 float _BloodClusterStrength;
                 float _BloodMoldSparsity;
                 float _BloodNoiseBias;
+                float _MinBrightness;
+                float _ColorStrength;
             CBUFFER_END
 
             Varyings vert(Attributes IN)
@@ -154,12 +154,11 @@ Shader "FNaS/MoldPatchGraphLikeURP"
 
                 float edgeMask = ComputeEdgeMask(baseUV, _EdgeFeather, _EdgeStrength);
 
-                float moldPresence = lerp(1.0, moldR, 0.35);
+                float moldPresence = smoothstep(0.12, 0.65, moldR);
 
                 float bloodMaskSoft = smoothstep(_BloodThresholdMin, _BloodThresholdMax, bloodR);
                 float clusteredBlood = saturate(lerp(bloodMaskSoft, max(bloodMaskSoft, moldR), _BloodClusterStrength));
 
-                // NEW: blood phase makes mold break up more using noise
                 float bloodSparsityMask = 1.0 - (_BloodBlend * _BloodMoldSparsity);
                 float bloodNoiseCull = smoothstep(
                     _BloodBlend * _BloodNoiseBias,
@@ -169,25 +168,28 @@ Shader "FNaS/MoldPatchGraphLikeURP"
 
                 float visibleMoldMask = saturate(moldPresence * growthMask * bloodSparsityMask * bloodNoiseCull);
 
-                float moldAlpha = lerp(moldR, moldPresence, 0.35);
-                float bloodAlpha = clusteredBlood;
+                float moldAlpha = saturate(visibleMoldMask * moldPresence);
+                float bloodAlpha = saturate(clusteredBlood * growthMask);
 
                 float texturePresence = lerp(moldAlpha, bloodAlpha, _BloodBlend);
-                float finalAlpha = saturate(texturePresence * growthMask * edgeMask * _AlphaStrength);
+                float finalAlpha = saturate(texturePresence * edgeMask * _AlphaStrength);
 
-                float3 moldColor = moldR * _MoldTint.rgb;
-                float3 bloodColor = clusteredBlood * _BloodTint.rgb;
+                // Important fix:
+                // Do NOT multiply tint by raw texture value directly, because dark texture pixels become black.
+                float moldDetail = lerp(0.75, 1.2, moldR);
+                float bloodDetail = lerp(0.55, 1.25, clusteredBlood);
 
-                float bloodInfluence = saturate(_BloodBlend);
+                float3 moldColor = _MoldTint.rgb * moldDetail;
+                float3 bloodColor = _BloodTint.rgb * bloodDetail;
 
-                float3 baseColor = lerp(moldColor, bloodColor, bloodInfluence);
+                float3 baseColor = lerp(moldColor, bloodColor, saturate(_BloodBlend)) * _ColorStrength;
 
                 float3 normalWS = normalize(IN.normalWS);
 
                 Light mainLight = GetMainLight(IN.shadowCoord);
                 float NdotL = saturate(dot(normalWS, mainLight.direction));
-                float3 diffuse = baseColor * mainLight.color * NdotL * mainLight.shadowAttenuation;
 
+                float3 diffuse = baseColor * mainLight.color * NdotL * mainLight.shadowAttenuation;
                 float3 ambient = SampleSH(normalWS) * baseColor;
 
                 #ifdef _ADDITIONAL_LIGHTS
@@ -200,7 +202,11 @@ Shader "FNaS/MoldPatchGraphLikeURP"
                 }
                 #endif
 
-                float3 finalColor = ambient + diffuse;
+                float3 litColor = ambient + diffuse;
+
+                // Keeps mold readable in dark rooms without making it fully unlit.
+                float3 minLitColor = baseColor * _MinBrightness;
+                float3 finalColor = max(litColor, minLitColor);
 
                 return half4(finalColor, finalAlpha);
             }
