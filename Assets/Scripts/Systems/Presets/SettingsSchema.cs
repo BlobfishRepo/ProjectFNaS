@@ -191,9 +191,9 @@ namespace FNaS.Settings {
                 controlType = SettingControlType.FloatSlider,
                 screens = SettingScreen.DevGameplay,
                 affectsStarEligibility = true,
-                defaultFloat = 60f,
+                defaultFloat = 240f,
                 min = 1f,
-                max = 300f
+                max = 360f
             },
             new SettingDefinition {
                 key = "paper.glyphScale",
@@ -213,7 +213,7 @@ namespace FNaS.Settings {
                 controlType = SettingControlType.Dropdown,
                 screens = SettingScreen.DevGameplay,
                 affectsStarEligibility = true,
-                defaultInt = 0,
+                defaultInt = 7,
                 dropdownOptions = new[] {
                     "Night 1",
                     "Night 2",

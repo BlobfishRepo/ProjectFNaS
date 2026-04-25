@@ -5,10 +5,15 @@ namespace FNaS.Systems {
         public static void Apply(RuntimeGameSettings settings) {
             if (settings == null) return;
 
-            // Fixed hidden paper values for now, outside player control.
-            settings.SetFloat("paper.secondsToWin", 120f);
-            settings.SetFloat("paper.glyphScale", 0.4f);
-            settings.SetInt("paper.textPreset", 0);
+            // Preserve current values from dev/settings menu
+            float secondsToWin = settings.GetFloat("paper.secondsToWin");
+            float glyphScale = settings.GetFloat("paper.glyphScale");
+            int textPreset = settings.GetInt("paper.textPreset");
+
+            // Re-apply them (instead of overwriting with fixed values)
+            settings.SetFloat("paper.secondsToWin", secondsToWin);
+            settings.SetFloat("paper.glyphScale", glyphScale);
+            settings.SetInt("paper.textPreset", textPreset);
 
             settings.SaveToJson();
         }

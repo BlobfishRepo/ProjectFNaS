@@ -26,7 +26,7 @@
     },
     {
       "id": "mimic",
-      "body": "Every now and then, you'll hear faint laughing and notice an object that should not be there.\nMake sure to use your flashlight to clear the anomaly in time, before the anomaly comes for you.",
+      "body": "Every now and then, you'll hear faint laughing and notice an object that should not be there.\nMake sure to use your flashlight to clear the mimic in time, before the mimic comes for you.",
       "campaignNights": [2],
       "presentationUnlockPercent": 20
     },

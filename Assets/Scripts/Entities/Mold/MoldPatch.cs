@@ -181,7 +181,7 @@ namespace FNaS.Entities.Mold {
             ApplyVisualsImmediate();
         }
 
-        public void ForceClean() {
+        public void ForceClean(bool playCleanSound = true) {
             bool wasMoldPresent = IsMoldPresent;
 
             spreadState = MoldSpreadState.Clean;
@@ -195,7 +195,7 @@ namespace FNaS.Entities.Mold {
             DisableBloodDrips();
             RefreshAmbience();
 
-            if (wasMoldPresent) {
+            if (playCleanSound && wasMoldPresent) {
                 PlayOneShot(cleanClip, cleanVolume);
             }
         }

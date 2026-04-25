@@ -1,4 +1,14 @@
 # Changelog
+## April 25
+### Added
+- Added final placeholder assignment text presets.
+
+### Changed
+- Slightly increased size of input fields in the settings page.
+
+### Fixed
+- Fixed bug where Mold would play sound effect right when spawning in.
+
 ## April 24
 ### Added
 - Implemented functionality for Audio and Brightness sliders.

@@ -246,7 +246,7 @@ namespace FNaS.Entities.Mold {
                 MoldPatch patch = allPatches[i];
                 if (patch == null) continue;
 
-                patch.ForceClean();
+                patch.ForceClean(playCleanSound: false);
             }
 
             connectedSet.Clear();
@@ -263,7 +263,7 @@ namespace FNaS.Entities.Mold {
                 MoldPatch patch = allPatches[i];
                 if (patch == null) continue;
 
-                patch.ForceClean();
+                patch.ForceClean(playCleanSound: false);
             }
 
             for (int i = 0; i < sourcePatches.Count; i++) {
