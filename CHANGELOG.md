@@ -2,12 +2,20 @@
 ## April 25
 ### Added
 - Added final placeholder assignment text presets.
+- Added skybox.
+- Added textures to floor and ceiling.
 
 ### Changed
+- Changed layout of the apartment.
+  - Windows added to the living room and the bedrooms.
+  - Decoration added around the apartment.
+- Altered position of Lost Girl in the bedroom to match window.
+- Adjusted view range of some views.
 - Slightly increased size of input fields in the settings page.
 
 ### Fixed
 - Fixed bug where Mold would play sound effect right when spawning in.
+- Fixed bug where Lost Girl didn't spawn when coming from the main bedroom.
 
 ## April 24
 ### Added
