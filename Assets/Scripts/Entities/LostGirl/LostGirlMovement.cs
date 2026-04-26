@@ -86,7 +86,7 @@ namespace FNaS.Entities.LostGirl {
             agent.speed = moveSpeed;
             agent.stoppingDistance = stoppingDistance;
             agent.updateRotation = true;
-            agent.autoBraking = true;
+            agent.autoBraking = false;
         }
 
         public bool WarpToSpawnPoint(Transform spawnPoint) {

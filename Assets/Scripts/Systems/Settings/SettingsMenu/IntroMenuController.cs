@@ -41,6 +41,9 @@ namespace FNaS.UI {
         [SerializeField] private GameObject star2Object;
         [SerializeField] private GameObject star3Object;
 
+        [Header("Background")]
+        [SerializeField] private GameObject stalkerBackground;
+
         [Header("Indicators")]
         [SerializeField] private GameObject devSettingsChangedIndicator;
         [SerializeField] private GameObject funSettingsEnabledIndicator;
@@ -204,6 +207,8 @@ namespace FNaS.UI {
             if (playerSettingsPanel != null) playerSettingsPanel.SetActive(panel == TitlePanel.PlayerSettings);
             if (presentationSettingsPanel != null) presentationSettingsPanel.SetActive(panel == TitlePanel.PresentationSettings);
             if (devGameplayPanel != null) devGameplayPanel.SetActive(panel == TitlePanel.DevGameplay);
+            if (stalkerBackground != null)
+                stalkerBackground.SetActive(panel == TitlePanel.MainMenu);
         }
 
         private void RebuildCurrentPanel() {
@@ -221,7 +226,7 @@ namespace FNaS.UI {
                     if (playerSettingsMenuBuilder != null) {
                         SettingScreen playerScreens = SettingScreen.PlayerSettings;
                         if (runtimeSettings.PlayerSettingsDebugUnlocked) {
-                            playerScreens |= SettingScreen.PlayerSettingsDebug;
+                            playerScreens |= SettingScreen.PlayerSettingsFun;
                         }
 
                         playerSettingsMenuBuilder.Rebuild(runtimeSettings, false, playerScreens);
@@ -232,7 +237,7 @@ namespace FNaS.UI {
                     if (presentationSettingsMenuBuilder != null) {
                         SettingScreen presentationScreens = SettingScreen.PlayerSettings;
                         if (runtimeSettings.PlayerSettingsDebugUnlocked) {
-                            presentationScreens |= SettingScreen.PlayerSettingsDebug;
+                            presentationScreens |= SettingScreen.PlayerSettingsFun;
                         }
 
                         presentationSettingsMenuBuilder.Rebuild(runtimeSettings, false, presentationScreens);
@@ -260,9 +265,47 @@ namespace FNaS.UI {
                 return;
             }
 
-            // Opening Custom Night from the main menu should start from defaults.
+            // Opening Custom Night from the main menu should start from defaults,
+            // but preserve all fun.* settings.
             if (runtimeSettings != null) {
+                var preservedFunFloats = new System.Collections.Generic.Dictionary<string, float>();
+                var preservedFunInts = new System.Collections.Generic.Dictionary<string, int>();
+                var preservedFunBools = new System.Collections.Generic.Dictionary<string, bool>();
+
+                foreach (var def in SettingsSchema.Definitions) {
+                    if (def == null || string.IsNullOrWhiteSpace(def.key)) continue;
+                    if (def.category != SettingCategory.Fun) continue;
+
+                    switch (def.controlType) {
+                        case SettingControlType.FloatSlider:
+                            preservedFunFloats[def.key] = runtimeSettings.GetFloat(def.key);
+                            break;
+
+                        case SettingControlType.IntSlider:
+                        case SettingControlType.Dropdown:
+                            preservedFunInts[def.key] = runtimeSettings.GetInt(def.key);
+                            break;
+
+                        case SettingControlType.Toggle:
+                            preservedFunBools[def.key] = runtimeSettings.GetBool(def.key);
+                            break;
+                    }
+                }
+
                 runtimeSettings.ResetToDefaults();
+
+                foreach (var kvp in preservedFunFloats) {
+                    runtimeSettings.SetFloat(kvp.Key, kvp.Value);
+                }
+
+                foreach (var kvp in preservedFunInts) {
+                    runtimeSettings.SetInt(kvp.Key, kvp.Value);
+                }
+
+                foreach (var kvp in preservedFunBools) {
+                    runtimeSettings.SetBool(kvp.Key, kvp.Value);
+                }
+
                 runtimeSettings.SaveToJson();
             }
 
@@ -270,7 +313,7 @@ namespace FNaS.UI {
             RefreshAll();
         }
 
-        private void ShowCustomNightPreserveCurrent() {
+        public void ShowCustomNightPreserveCurrent() {
             ResolveReferences();
             if (nightSessionManager == null || !nightSessionManager.IsCustomNightUnlocked()) {
                 return;

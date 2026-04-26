@@ -47,9 +47,32 @@ namespace FNaS.Gameplay {
         [SerializeField] private LoseState loseState;
         [SerializeField] private StalkerJumpscareController stalkerJumpscare;
 
+        [Header("External Locks (read-only)")]
+        [SerializeField] private bool externalInputLocked;
+        [SerializeField] private bool externalLookLocked;
+
         public Waypoint CurrentWaypoint => currentWaypoint;
         public View CurrentView => currentView;
         public Direction? ActiveMoveDir => activeMoveDir;
+
+        public bool RequiresLeftClickToPan => requireLeftClickToPan;
+        public bool IsPanHeld =>
+            Mouse.current != null && Mouse.current.leftButton.isPressed;
+
+        public bool CanPanCurrentView {
+            get {
+                if (mover == null || mover.viewPivot == null) return false;
+                if (currentView == null) return false;
+                if (!currentView.HasPanRange) return false;
+                if (mover.IsMoving) return false;
+                if (externalInputLocked || externalLookLocked) return false;
+                if (loseState != null && loseState.hasLost) return false;
+                if (stalkerJumpscare != null && stalkerJumpscare.IsPlaying) return false;
+                return true;
+            }
+        }
+
+        public bool ShouldShowPanIndicator => requireLeftClickToPan && CanPanCurrentView;
 
         public System.Action OnEnteredWaypointOrView;
 
@@ -64,6 +87,8 @@ namespace FNaS.Gameplay {
         private Vector3 waypointBaseRigPos;
         private Vector3 targetRigPos;
         private bool hasWaypointBaseRigPos;
+
+        private bool suppressPendingMoveCompletion;
 
         private void Awake() {
             if (player == null) player = GetComponent<PlayerEntity>();
@@ -87,6 +112,49 @@ namespace FNaS.Gameplay {
             EnterWaypoint(mover.CurrentWaypoint, fromWaypoint: null, incomingYaw, incomingPitch);
         }
 
+        public void SetExternalInputLocked(bool locked) {
+            externalInputLocked = locked;
+
+            if (locked) {
+                activeMoveDir = null;
+            }
+        }
+
+        public void SetExternalLookLocked(bool locked, bool snapToCurrent = true) {
+            externalLookLocked = locked;
+
+            if (locked && snapToCurrent) {
+                targetYaw = GetCurrentCameraYaw();
+                targetPitch = GetCurrentCameraPitch();
+
+                if (mover != null && mover.viewPivot != null) {
+                    mover.viewPivot.rotation = Quaternion.Euler(targetPitch, targetYaw, 0f);
+                }
+            }
+        }
+
+        public void CancelActiveViewMovementImmediate() {
+            suppressPendingMoveCompletion = true;
+
+            activeMoveDir = null;
+            cooldownTimer = 0f;
+            edgeLockoutTimer = 0f;
+            verticalLookDelayTimer = 0f;
+
+            externalInputLocked = true;
+            externalLookLocked = true;
+
+            if (mover != null && mover.viewPivot != null) {
+                targetYaw = GetCurrentCameraYaw();
+                targetPitch = GetCurrentCameraPitch();
+                mover.viewPivot.rotation = Quaternion.Euler(targetPitch, targetYaw, 0f);
+            }
+
+            if (mover != null) {
+                currentWaypoint = mover.CurrentWaypoint;
+            }
+        }
+
         private void Update() {
             if (mover == null || mover.rigTransform == null || mover.viewPivot == null) return;
             if (mover.IsMoving) return;
@@ -94,9 +162,16 @@ namespace FNaS.Gameplay {
             if (stalkerJumpscare != null && stalkerJumpscare.IsPlaying) return;
 
             SyncWaypointFromMover();
-            UpdateLookInput();
-            UpdateEdgeSwitching();
-            UpdateNodeMovementInput();
+
+            if (!externalInputLocked) {
+                UpdateLookInput();
+                UpdateEdgeSwitching();
+                UpdateNodeMovementInput();
+            }
+            else {
+                activeMoveDir = null;
+            }
+
             UpdateViewRotation();
             UpdateRigOffset();
         }
@@ -110,6 +185,7 @@ namespace FNaS.Gameplay {
         }
 
         private void UpdateLookInput() {
+            if (externalLookLocked) return;
             if (currentView == null || inputController == null) return;
 
             if (verticalLookDelayTimer > 0f) {
@@ -255,18 +331,15 @@ namespace FNaS.Gameplay {
         private View FindBestEntryView(Waypoint waypoint, Waypoint fromWaypoint, float incomingYaw, float incomingPitch) {
             if (waypoint == null) return null;
 
-            // 1. Explicit default view takes priority.
             if (waypoint.defaultView != null) {
                 return waypoint.defaultView;
             }
 
-            // 2. Legacy entry-rule fallback can still take priority over nearest-angle if desired.
             View ruleView = waypoint.GetEntryRuleView(fromWaypoint);
             if (ruleView != null) {
                 return ruleView;
             }
 
-            // 3. Otherwise use nearest-angle selection.
             View[] views = waypoint.GetViews();
             Vector3 origin = GetViewOrigin();
 
@@ -367,6 +440,8 @@ namespace FNaS.Gameplay {
         }
 
         private IEnumerator MoveAndApplyEntry(WaypointTransition transition, View forcedEnterView) {
+            suppressPendingMoveCompletion = false;
+
             Waypoint fromWaypoint = mover.CurrentWaypoint;
 
             bool started = mover.BeginTransition(transition);
@@ -376,7 +451,19 @@ namespace FNaS.Gameplay {
             }
 
             while (mover.IsMoving) {
+                if (suppressPendingMoveCompletion) {
+                    activeMoveDir = null;
+                    yield break;
+                }
+
                 yield return null;
+            }
+
+            if (suppressPendingMoveCompletion ||
+                (stalkerJumpscare != null && stalkerJumpscare.IsPlaying) ||
+                (loseState != null && loseState.hasLost)) {
+                activeMoveDir = null;
+                yield break;
             }
 
             float incomingYaw = GetCurrentCameraYaw();
@@ -405,6 +492,7 @@ namespace FNaS.Gameplay {
 
                 bool preserveAngles = forcedEnterView.ContainsAngles(GetViewOrigin(), incomingYaw, incomingPitch);
                 SetView(forcedEnterView, pushHistory: false, snap: snapOnEnter, preserveAngles: preserveAngles);
+
                 activeMoveDir = null;
                 yield break;
             }

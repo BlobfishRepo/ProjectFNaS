@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using FNaS.Settings;
+using UnityEngine.UI;
 
 namespace FNaS.Systems {
     public class FlashlightTool : MonoBehaviour, IRuntimeSettingsConsumer {
@@ -10,6 +11,14 @@ namespace FNaS.Systems {
         [Header("Indicator (optional)")]
         public Light flashlightLight;
         public GameObject indicatorObject;
+
+        [Header("Battery UI")]
+        public Image batteryImage;
+
+        public Sprite spriteFull;
+        public Sprite spriteMedium;
+        public Sprite spriteLow;
+        public Sprite spriteEmpty;
 
         [Header("Audio")]
         public AudioSource uiSource;
@@ -96,6 +105,7 @@ namespace FNaS.Systems {
         private void OnDisable() {
             input.Player.Flashlight.performed -= OnFlashlightPressed;
             input.Player.Disable();
+            ForceOff();
         }
 
         private void Start() {
@@ -125,6 +135,7 @@ namespace FNaS.Systems {
 
             AimBeam();
             DrainBattery();
+            UpdateBatteryUI();
             UpdateLowBatteryFlicker();
         }
 
@@ -171,8 +182,41 @@ namespace FNaS.Systems {
 
         private void ApplyIndicator(bool forceOff) {
             bool on = isOn && !forceOff;
-            if (flashlightLight != null) flashlightLight.enabled = on;
-            if (indicatorObject != null) indicatorObject.SetActive(on);
+
+            if (flashlightLight != null)
+                flashlightLight.enabled = on;
+
+            if (indicatorObject != null)
+                indicatorObject.SetActive(true); // always visible (important change)
+
+            UpdateBatteryUI();
+        }
+
+        private void UpdateBatteryUI() {
+            if (batteryImage == null) return;
+
+            float pct = (maxBatterySeconds > 0f)
+                ? batteryRemaining / maxBatterySeconds
+                : 0f;
+
+            Sprite target;
+
+            if (pct <= 0f) {
+                target = spriteEmpty;
+            }
+            else if (pct < 0.20f) {
+                target = spriteLow;
+            }
+            else if (pct < 0.65f) {
+                target = spriteMedium;
+            }
+            else {
+                target = spriteFull;
+            }
+
+            if (batteryImage.sprite != target) {
+                batteryImage.sprite = target;
+            }
         }
 
         private void AimBeam() {

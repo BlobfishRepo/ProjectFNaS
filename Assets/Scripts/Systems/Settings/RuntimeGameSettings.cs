@@ -19,6 +19,7 @@ namespace FNaS.Settings {
 
     public class RuntimeGameSettings : MonoBehaviour {
         public static RuntimeGameSettings Instance { get; private set; }
+        public event System.Action OnSettingsChanged;
 
         public static string SettingsPath =>
             Path.Combine(Application.persistentDataPath, "runtime_game_settings.json");
@@ -220,14 +221,17 @@ namespace FNaS.Settings {
 
         public void SetFloat(string key, float value) {
             floatValues[key] = value;
+            OnSettingsChanged?.Invoke();
         }
 
         public void SetInt(string key, int value) {
             intValues[key] = value;
+            OnSettingsChanged?.Invoke();
         }
 
         public void SetBool(string key, bool value) {
             boolValues[key] = value;
+            OnSettingsChanged?.Invoke();
         }
 
         public PlayerMovementMode GetPlayerMovementMode() {
@@ -302,7 +306,7 @@ namespace FNaS.Settings {
 
         public bool HasNonDefaultFunSettingsEnabled() {
             foreach (var def in SettingsSchema.Definitions) {
-                if ((def.screens & SettingScreen.PlayerSettingsDebug) == 0)
+                if ((def.screens & SettingScreen.PlayerSettingsFun) == 0)
                     continue;
 
                 switch (def.controlType) {

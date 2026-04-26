@@ -1,16 +1,104 @@
 # Changelog
-# April 15
+## April 25
+### Added
+- Added final placeholder assignment text presets.
+
+### Changed
+- Slightly increased size of input fields in the settings page.
+
+### Fixed
+- Fixed bug where Mold would play sound effect right when spawning in.
+
+## April 24
+### Added
+- Implemented functionality for Audio and Brightness sliders.
+- More audio sliders added corresponding to different types of audio sources.
+
+### Changed
+- Changed some sound effects of Mold and Lost Girl.
+
+### Fixed
+- Fixed lack of color in Mold texture.
+
+## April 22
+### Added
+- Added models for pen and security camera.
+- Added mold patches throughout the apartment.
+- Added render of Stalker to the Main Menu.
+
+### Changed
+- Stalker's model has been adjusted to add more detail. 
+- Stalker AI adjusted:
+  - Stalker no longer moves through the TV node.
+  - Stalker can now be stalled by cameras again.
+  - Stalker now jumpscares you if you stay at the same node for too long. The exact time ranges from 3-10 seconds depending on AI value.
+- Pen no longer teleports, but moves around to relevant positions on desk or on paper.
+- Tweaked positions of some preexisting mold patches to fit new layout.
+- Adjusted some nodes' fields-of-vision and connections to other nodes.
+
+### Fixed
+- Fixed Stalker's jumpscare position being ruined if the player triggered a jumpscare while moving the camera.
+
+## April 20
+### Added
+- Added Mold texture & blood texture.
+
+### Changed
+- Static noise on main menu turned down.
+
+## April 19
+### Added
+- After getting jumpscared by the Mimic, there is now a pulsing effect for a few seconds.
+- Added a flashlight battery indicator to the UI. Updated flashlight sound to not have a delay at the beginning.
+- Added Lost Girl models to the anchors.
+- Added updated sounds to the Mold.
+
+### Changed
+- Tweaked some view nodes with incorrect movement options.
+- Tweaked position of the Mimic spawn in the pantry to avoid bad flashlight collision.
+- Mimic jumpscare made more visible.
+- Lost Girl anchor is now hidden
+
+### Issues
+- Mold texture is WIP.
+
+## April 18
+### Added
+- Added model and jumpscare animation for the Lost Girl.
+- Added full sound cues for Lost Girl.
+- Added two more models for the Mimic.
+- Added an indicator for when you can pan around in a view.
+
+### Changed
+- Altered Mimic spawn points to match new models.
+- Made most views dynamic throughout the apartment.
+
+### Fixed
+- Fixed bugs in the Custom Night menu, where the Go Back button took you to the Main Menu.
+
+## April 16
+### Added
+- Added post-it note system to explain game mechanics in-game.
+- Added another text preset for the assignment.
+
+### Changed
+- Made the Monitor display slightly larger to match the model.
+- Tweaked values for Nights 1-5 and Presentation Night.
+- Adjusted fun settings.
+- Mimic's AI value now controls spawn chance instead of duration.
+
+## April 15
 ### Added
 - Added full main settings screen.
 - Added a hidden fun setting :)
 - Added presentation mode to progressively show the animatronics throughout the night, with AI values changing as the night progresses.
-- Added stars indicating progress.
+- Added stars indicating progress. Note that a red exclamation mark from changing dev settings indicates a star cannot be earned.
 
 ### Changed
 - Most text across the game (that aren't settings) now uses the font VCR OSD Mono.
 - Former setting page moved to a hidden dev screen, accessible using the Shift key on the Custom Night menu.
 
-# April 14
+## April 14
 ### Added
 - Certain views now support moving camera freely within a bounding box.
 
@@ -20,7 +108,7 @@
 - Updated button stylings on camera minimap.
 - Moved Move Compass to bottom-right corner and made unavailable movement options brighter.
 
-# April 13
+## April 13
 ### Added
 - Added a Jumpscare animation to the Mimic.
 

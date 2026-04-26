@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace FNaS.Entities.Mold {
@@ -32,6 +33,7 @@ namespace FNaS.Entities.Mold {
         [Space]
         public AudioClip spreadClip;
         public AudioClip sprayHitClip;
+        public AudioClip cleanClip;
         public AudioClip bloodTransitionClip;
         public AudioClip ambienceClip;
         public AudioClip bloodAmbienceClip;
@@ -39,6 +41,7 @@ namespace FNaS.Entities.Mold {
         [Space]
         [Range(0f, 1f)] public float spreadVolume = 1f;
         [Range(0f, 1f)] public float sprayHitVolume = 0.6f;
+        [Range(0f, 1f)] public float cleanVolume = 0.8f;
         [Range(0f, 1f)] public float bloodTransitionVolume = 1f;
         [Range(0f, 1f)] public float ambienceVolume = 0.25f;
         [Range(0f, 1f)] public float bloodAmbienceVolume = 0.35f;
@@ -61,6 +64,11 @@ namespace FNaS.Entities.Mold {
         private bool cachedLightBase;
 
         private float lastSprayHitTime = -999f;
+
+        [SerializeField, Range(0f, 1f)] private float visualSuppression01 = 0f;
+
+        private Coroutine bloodCleanRoutine;
+        private float bloodBlendOverride = -1f;
 
         public string PatchId => patchId;
         public MoldSpreadState SpreadState => spreadState;
@@ -124,7 +132,11 @@ namespace FNaS.Entities.Mold {
             switch (spreadState) {
                 case MoldSpreadState.Clean:
                     visualFill = 0f;
+                    visualSuppression01 = 0f;
+                    corruptionPhase = MoldCorruptionPhase.Normal;
+                    bloodBlendOverride = -1f;
                     break;
+
                 case MoldSpreadState.Active:
                 case MoldSpreadState.Isolated:
                     visualFill = 1f;
@@ -145,6 +157,7 @@ namespace FNaS.Entities.Mold {
         public void SetCorruptionPhase(MoldCorruptionPhase newPhase) {
             MoldCorruptionPhase previousPhase = corruptionPhase;
             corruptionPhase = newPhase;
+            bloodBlendOverride = -1f;
 
             ApplyGameplayEffects();
             ApplyVisualsImmediate();
@@ -168,15 +181,31 @@ namespace FNaS.Entities.Mold {
             ApplyVisualsImmediate();
         }
 
-        public void ForceClean() {
+        public void ForceClean(bool playCleanSound = true) {
+            bool wasMoldPresent = IsMoldPresent;
+
             spreadState = MoldSpreadState.Clean;
             corruptionPhase = MoldCorruptionPhase.Normal;
             visualFill = 0f;
+            visualSuppression01 = 0f;
+            bloodBlendOverride = -1f;
 
             ApplyGameplayEffects();
             ApplyVisualsImmediate();
             DisableBloodDrips();
             RefreshAmbience();
+
+            if (playCleanSound && wasMoldPresent) {
+                PlayOneShot(cleanClip, cleanVolume);
+            }
+        }
+
+        public void SetVisualSuppression01(float value) {
+            float clamped = Mathf.Clamp01(value);
+            if (Mathf.Approximately(visualSuppression01, clamped)) return;
+
+            visualSuppression01 = clamped;
+            ApplyVisualsImmediate();
         }
 
         public void NotifySprayContact() {
@@ -221,21 +250,11 @@ namespace FNaS.Entities.Mold {
             }
 
             if (cameraObstruction != null) {
-                bool show =
-                    spreadState == MoldSpreadState.Marked ||
-                    spreadState == MoldSpreadState.Active ||
-                    spreadState == MoldSpreadState.Isolated;
-
-                cameraObstruction.SetActive(show);
+                cameraObstruction.SetActive(IsMoldPresent);
             }
 
             if (floorSlowZone != null) {
-                bool active =
-                    spreadState == MoldSpreadState.Marked ||
-                    spreadState == MoldSpreadState.Active ||
-                    spreadState == MoldSpreadState.Isolated;
-
-                floorSlowZone.enabled = active;
+                floorSlowZone.enabled = IsMoldPresent;
             }
         }
 
@@ -246,18 +265,23 @@ namespace FNaS.Entities.Mold {
                 mpb = new MaterialPropertyBlock();
             }
 
+            float shaderFill = visualFill * (1f - visualSuppression01);
+
             foreach (var rend in targetRenderers) {
                 if (rend == null) continue;
 
                 rend.GetPropertyBlock(mpb);
 
                 if (!string.IsNullOrWhiteSpace(fillProperty)) {
-                    mpb.SetFloat(fillProperty, visualFill);
+                    mpb.SetFloat(fillProperty, shaderFill);
                 }
 
                 if (!string.IsNullOrWhiteSpace(bloodBlendProperty)) {
                     float bloodBlend =
-                        (corruptionPhase == MoldCorruptionPhase.Blood && spreadState != MoldSpreadState.Clean) ? 1f : 0f;
+                        bloodBlendOverride >= 0f
+                            ? bloodBlendOverride
+                            : (corruptionPhase == MoldCorruptionPhase.Blood && spreadState != MoldSpreadState.Clean ? 1f : 0f);
+
                     mpb.SetFloat(bloodBlendProperty, bloodBlend);
                 }
 
@@ -271,8 +295,13 @@ namespace FNaS.Entities.Mold {
                         case MoldSpreadState.Isolated: c = isolatedColor; break;
                     }
 
-                    if (corruptionPhase == MoldCorruptionPhase.Blood && spreadState != MoldSpreadState.Clean) {
-                        c = Color.Lerp(c, bloodTint, 0.85f);
+                    float debugBloodBlend =
+                        bloodBlendOverride >= 0f
+                            ? bloodBlendOverride
+                            : (corruptionPhase == MoldCorruptionPhase.Blood && spreadState != MoldSpreadState.Clean ? 1f : 0f);
+
+                    if (debugBloodBlend > 0f && spreadState != MoldSpreadState.Clean) {
+                        c = Color.Lerp(c, bloodTint, 0.85f * debugBloodBlend);
                     }
 
                     mpb.SetColor("_BaseColor", c);

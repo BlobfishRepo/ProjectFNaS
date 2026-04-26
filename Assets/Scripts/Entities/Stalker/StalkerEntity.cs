@@ -19,6 +19,15 @@ namespace FNaS.Entities.Stalker {
         [Header("Door Loss")]
         [Min(1)] public int doorKillTicks = 2;
 
+        [Tooltip("If true, the stalker can only enter the final door node while the player is at the required room node.")]
+        public bool requirePlayerAtDoorRoomToEnterDoor = true;
+        public MasterNode requiredPlayerNodeForDoor;
+
+        [Header("Same Node Loss")]
+        public bool enableSameNodeKill = true;
+        [Min(1)] public float sameNodeKillSecondsAtMaxAI = 3f;
+        [Min(1)] public float sameNodeKillSecondsAtMinAI = 6f;
+
         [Header("Stun")]
         [Min(1)] public int stunTicksAfterPushback = 1;
 
@@ -83,23 +92,19 @@ namespace FNaS.Entities.Stalker {
 
         private StalkerMovementBase movement;
 
-        // Local runtime
         private float flashlightHoldTimer;
+        private float sameNodeKillTimer;
 
-        // Tick-based runtime state
         private int stunnedUntilTick = -1;
         private int doorEnterTick = -1;
         private int reappearOnOrAfterTick = -1;
 
-        // Shared flashlight stall mechanic
         private bool flashlightTouchedSinceLastEligibleTick;
 
-        // Random groans
         private float nextGroanTime;
         private bool doorGroanPlayedOnce;
         private float doorGroanTimer;
 
-        // Same node groan
         private bool wasSameNodeLastFrame;
         private float sameNodeGroanCooldownTimer;
 
@@ -113,9 +118,9 @@ namespace FNaS.Entities.Stalker {
         private MasterNode lastCameraPulseNode;
 
         public bool IsThreatActive => isActiveAndEnabled && !aiDisabled && !isVanished && ai > 0;
-
         public MasterNode CurrentMasterNode => IsThreatActive && movement != null ? movement.CurrentMasterNode : null;
         public bool AtDoor => IsThreatActive && movement != null && movement.AtDoor;
+
         private bool IsPlayerMoving() => player != null && player.IsMoving;
 
         public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
@@ -132,7 +137,6 @@ namespace FNaS.Entities.Stalker {
             if (roamMovement == null) roamMovement = GetComponent<StalkerRoamMovement>();
 
             movement = ResolveMovementFromSettings();
-
             if (movement == null) {
                 Debug.LogError("StalkerEntity: No valid movement driver found.", this);
                 enabled = false;
@@ -168,6 +172,7 @@ namespace FNaS.Entities.Stalker {
             if (!IsThreatActive) {
                 movement?.ClearOccupancy();
                 SetBurning(false);
+                sameNodeKillTimer = 0f;
                 return;
             }
 
@@ -179,6 +184,7 @@ namespace FNaS.Entities.Stalker {
             HandleFlashlightPushback();
             HandleGroans();
             HandleSameNodeGroan();
+            HandleSameNodeKill();
 
             movement.TickMovementVisuals();
         }
@@ -210,6 +216,7 @@ namespace FNaS.Entities.Stalker {
             isVanished = false;
 
             flashlightHoldTimer = 0f;
+            sameNodeKillTimer = 0f;
             flashlightTouchedSinceLastEligibleTick = false;
             stunnedUntilTick = -1;
             doorEnterTick = -1;
@@ -226,6 +233,7 @@ namespace FNaS.Entities.Stalker {
             SetVisible(true);
             doorEnterTick = -1;
             stunnedUntilTick = -1;
+            sameNodeKillTimer = 0f;
             flashlightTouchedSinceLastEligibleTick = false;
 
             movement?.RefreshOccupancy();
@@ -288,9 +296,20 @@ namespace FNaS.Entities.Stalker {
             if (opportunityIntervalTicks < 1) opportunityIntervalTicks = 1;
             if (tick % opportunityIntervalTicks != 0) return;
 
+            if (AtDoor) {
+                return;
+            }
+
             if (IsPlayerMoving()) return;
             if (IsStunnedAtTick(tick)) return;
             if (IsFrozen()) return;
+
+            MasterNode playerNode = player != null ? player.CurrentMasterNode : null;
+
+            if (!CanAdvanceThisTick(playerNode)) {
+                flashlightTouchedSinceLastEligibleTick = false;
+                return;
+            }
 
             if (flashlightTouchedSinceLastEligibleTick) {
                 flashlightTouchedSinceLastEligibleTick = false;
@@ -300,7 +319,6 @@ namespace FNaS.Entities.Stalker {
             int roll = Random.Range(0, 21);
             if (roll > ai) return;
 
-            MasterNode playerNode = player != null ? player.CurrentMasterNode : null;
             bool moved = movement.TryAdvance(playerNode, allowShareNodeWithPlayer);
             if (moved) OnChangedNode(tick);
         }
@@ -314,23 +332,34 @@ namespace FNaS.Entities.Stalker {
             var scheduler = GlobalAIScheduler.Instance;
             if (scheduler == null) return;
 
-            if (AtDoor) {
-                if (doorEnterTick < 0) {
-                    doorEnterTick = scheduler.CurrentTick;
-                }
-
-                if (doorKillTicks < 1) doorKillTicks = 1;
-
-                if (scheduler.CurrentTick - doorEnterTick >= doorKillTicks) {
-                    if (jumpscareController != null)
-                        jumpscareController.PlayJumpscare("Stalker waited at the door too long.");
-                    else
-                        loseState?.TriggerLose("Stalker waited at the door too long.");
-                }
-            }
-            else {
+            if (!AtDoor) {
                 doorEnterTick = -1;
+                return;
             }
+
+            if (doorEnterTick < 0) {
+                doorEnterTick = scheduler.CurrentTick;
+            }
+
+            if (!CanDoorKillNow(scheduler.CurrentTick)) {
+                return;
+            }
+
+            if (IsCurrentlyBurning()) {
+                return;
+            }
+
+            TriggerDoorLoss();
+        }
+
+        private bool CanDoorKillNow(int tick) {
+            if (!AtDoor) return false;
+            if (doorEnterTick < 0) return false;
+            return tick - doorEnterTick >= Mathf.Max(1, doorKillTicks);
+        }
+
+        private void TriggerDoorLoss() {
+            TriggerStalkerJumpscare("Stalker waited at the door too long.");
         }
 
         private bool IsStunnedAtTick(int tick) {
@@ -338,19 +367,7 @@ namespace FNaS.Entities.Stalker {
         }
 
         private void HandleFlashlightPushback() {
-            if (aiDisabled) {
-                flashlightHoldTimer = 0f;
-                SetBurning(false);
-                return;
-            }
-
-            if (!flashlightIsOnlyPushback) {
-                flashlightHoldTimer = 0f;
-                SetBurning(false);
-                return;
-            }
-
-            if (isVanished) {
+            if (aiDisabled || !flashlightIsOnlyPushback || isVanished) {
                 flashlightHoldTimer = 0f;
                 SetBurning(false);
                 return;
@@ -363,7 +380,6 @@ namespace FNaS.Entities.Stalker {
             }
 
             bool affecting = flashlight.IsIlluminating(transform);
-
             if (affecting) {
                 flashlightTouchedSinceLastEligibleTick = true;
             }
@@ -379,6 +395,7 @@ namespace FNaS.Entities.Stalker {
 
             if (flashlightHoldTimer >= flashlightHoldSecondsToPush) {
                 flashlightHoldTimer = 0f;
+                sameNodeKillTimer = 0f;
 
                 if (flashlightCausesVanish) {
                     VanishForTicks(vanishTicks);
@@ -409,20 +426,32 @@ namespace FNaS.Entities.Stalker {
             if (currentNode == null) return false;
 
             if (freezeIfSeenOnCamera && attentionState != null && attentionState.isCameraActive) {
-                if (attentionState.activeCameraNode != null && attentionState.activeCameraNode == currentNode)
+                if (attentionState.activeCameraNode != null &&
+                    attentionState.activeCameraNode.Guid == currentNode.Guid) {
                     return true;
+                }
             }
 
             if (freezeIfSeenInPerson && player != null && player.CurrentMasterNode != null) {
-                if (player.CurrentMasterNode == currentNode)
+                if (player.CurrentMasterNode.Guid == currentNode.Guid) {
                     return true;
+                }
             }
 
             return false;
         }
 
+        private bool CanAdvanceThisTick(MasterNode playerNode) {
+            if (!requirePlayerAtDoorRoomToEnterDoor) return true;
+            if (requiredPlayerNodeForDoor == null) return true;
+            if (nodeMovement == null) return true;
+            if (!nodeMovement.IsNextStepDoor()) return true;
+            return playerNode != null && playerNode.Guid == requiredPlayerNodeForDoor.Guid;
+        }
+
         private void OnChangedNode(int tick) {
             PlayFootstep();
+            sameNodeKillTimer = 0f;
 
             if (!AtDoor) {
                 doorGroanPlayedOnce = false;
@@ -455,7 +484,7 @@ namespace FNaS.Entities.Stalker {
 
         private void HandleGroans() {
             if (AtDoor) {
-                AudioClip clip = (doorGroanClip != null) ? doorGroanClip : groanClip;
+                AudioClip clip = doorGroanClip != null ? doorGroanClip : groanClip;
 
                 if (doorGroanRepeatSeconds <= 0f) {
                     if (!doorGroanPlayedOnce) {
@@ -514,10 +543,11 @@ namespace FNaS.Entities.Stalker {
             if (attentionState == null || !attentionState.isCameraActive) return;
             if (attentionState.activeCameraNode == null) return;
 
-            var now = CurrentMasterNode;
+            MasterNode now = CurrentMasterNode;
             if (now == null) return;
 
-            if (attentionState.activeCameraNode == now && lastCameraPulseNode != now) {
+            if (attentionState.activeCameraNode.Guid == now.Guid &&
+                (lastCameraPulseNode == null || lastCameraPulseNode.Guid != now.Guid)) {
                 cameraFader?.Pulse();
             }
 
@@ -529,11 +559,11 @@ namespace FNaS.Entities.Stalker {
             if (audioSource == null || groanClip == null) return;
             if (player == null || player.CurrentMasterNode == null || CurrentMasterNode == null) return;
 
-            if (sameNodeGroanCooldownTimer > 0f)
+            if (sameNodeGroanCooldownTimer > 0f) {
                 sameNodeGroanCooldownTimer -= Time.deltaTime;
+            }
 
-            bool same = (player.CurrentMasterNode == CurrentMasterNode);
-
+            bool same = player.CurrentMasterNode.Guid == CurrentMasterNode.Guid;
             if (same && !wasSameNodeLastFrame && sameNodeGroanCooldownTimer <= 0f) {
                 PlayGroan(groanClip);
                 sameNodeGroanCooldownTimer = Mathf.Max(0f, sameNodeGroanCooldownSeconds);
@@ -542,12 +572,57 @@ namespace FNaS.Entities.Stalker {
             wasSameNodeLastFrame = same;
         }
 
-        private void SetVisible(bool visible) {
-            if (cachedRenderers != null)
-                foreach (var r in cachedRenderers) r.enabled = visible;
+        private void HandleSameNodeKill() {
+            if (!enableSameNodeKill) {
+                sameNodeKillTimer = 0f;
+                return;
+            }
 
-            if (cachedColliders != null)
-                foreach (var c in cachedColliders) c.enabled = visible;
+            if (!IsThreatActive || player == null || player.CurrentMasterNode == null || CurrentMasterNode == null) {
+                sameNodeKillTimer = 0f;
+                return;
+            }
+
+            // If the player has successfully started moving away, stop same-node kill pressure.
+            // Forward escape should already be handled separately by BlockerRegistry / movement denial.
+            if (player.IsMoving) {
+                sameNodeKillTimer = 0f;
+                return;
+            }
+
+            if (player.CurrentMasterNode.Guid != CurrentMasterNode.Guid) {
+                sameNodeKillTimer = 0f;
+                return;
+            }
+
+            if (IsCurrentlyBurning()) {
+                return;
+            }
+
+            sameNodeKillTimer += Time.deltaTime;
+
+            if (sameNodeKillTimer >= GetSameNodeKillSeconds()) {
+                TriggerStalkerJumpscare("Stayed on the same node as the stalker too long.");
+            }
+        }
+
+        private float GetSameNodeKillSeconds() {
+            float t = Mathf.InverseLerp(1f, 20f, Mathf.Clamp(ai, 1, 20));
+            return Mathf.Lerp(sameNodeKillSecondsAtMinAI, sameNodeKillSecondsAtMaxAI, t);
+        }
+
+        private void SetVisible(bool visible) {
+            if (cachedRenderers != null) {
+                foreach (Renderer r in cachedRenderers) {
+                    if (r != null) r.enabled = visible;
+                }
+            }
+
+            if (cachedColliders != null) {
+                foreach (Collider c in cachedColliders) {
+                    if (c != null) c.enabled = visible;
+                }
+            }
         }
 
         private void VanishForTicks(int ticks) {
@@ -560,10 +635,10 @@ namespace FNaS.Entities.Stalker {
 
             isVanished = true;
             flashlightHoldTimer = 0f;
+            sameNodeKillTimer = 0f;
             flashlightTouchedSinceLastEligibleTick = false;
             stunnedUntilTick = -1;
             doorEnterTick = -1;
-
             reappearOnOrAfterTick = scheduler.CurrentTick + ticks;
 
             SetVisible(false);
@@ -582,9 +657,32 @@ namespace FNaS.Entities.Stalker {
 
             stunnedUntilTick = tick + 1;
             doorEnterTick = -1;
+            sameNodeKillTimer = 0f;
 
-            if (audioSource != null && footstepClip != null)
+            if (audioSource != null && footstepClip != null) {
                 audioSource.PlayOneShot(footstepClip, sfxVolume);
+            }
+        }
+
+        private bool IsCurrentlyBurning() {
+            return flashlightIsOnlyPushback &&
+                   flashlight != null &&
+                   flashlight.isOn &&
+                   flashlight.IsIlluminating(transform);
+        }
+
+        private void TriggerStalkerJumpscare(string reason) {
+            if (player != null) {
+                player.CancelActiveMovementImmediate();
+                player.enabled = false;
+            }
+
+            if (jumpscareController != null) {
+                jumpscareController.PlayJumpscare(reason);
+            }
+            else {
+                loseState?.TriggerLose(reason);
+            }
         }
     }
 }
