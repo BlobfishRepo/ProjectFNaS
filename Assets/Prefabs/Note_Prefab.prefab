@@ -17,7 +17,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2146707647520374206
 Transform:
   m_ObjectHideFlags: 0
@@ -103,6 +103,7 @@ GameObject:
   - component: {fileID: 9189577179291179521}
   - component: {fileID: 7077194967287084699}
   - component: {fileID: 4606381251948154233}
+  - component: {fileID: 1463626833763086068}
   m_Layer: 8
   m_Name: Note_Prefab
   m_TagString: Untagged
@@ -143,7 +144,7 @@ MonoBehaviour:
   - {fileID: 7077194967287084699}
   clickColliders:
   - {fileID: 4606381251948154233}
-  glowRoot: {fileID: 1546421605608714906}
+  pulseDriver: {fileID: 1463626833763086068}
 --- !u!33 &9189577179291179521
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -178,6 +179,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: 90efa244568124149aa146729a191c77, type: 2}
+  - {fileID: 2100000, guid: b9f5b9808341a82488e54ca8fb50e862, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -222,3 +224,21 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1463626833763086068
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6461067287585303977}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c122de7392aad348bbebb747b3df1ba, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FNaS.Visuals.WhitePulseMaterialDriver
+  renderers: []
+  pulseEnabled: 1
+  pulseSpeed: 3
+  minStrength: 0
+  maxStrength: 0.35
+  pulseStrengthProperty: _PulseStrength

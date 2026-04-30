@@ -377,6 +377,11 @@ namespace FNaS.Entities.Mimic {
             }
 
             phase = Phase.Punishing;
+            if (flashlight != null) {
+                flashlight.DrainPercent(batteryDrainPercent);
+                flashlight.ForceOff();
+                flashlight.enabled = false;
+            }
 
             if (punishAnchor != null) {
                 transform.SetPositionAndRotation(punishAnchor.position, punishAnchor.rotation);
@@ -458,16 +463,26 @@ namespace FNaS.Entities.Mimic {
                 viewController.SetExternalInputLocked(false);
             }
 
+            float postEffectDuration = 0f;
+
             if (doPostPunishPulse && screenFader != null) {
-                float postEffectDuration =
+                postEffectDuration =
                     postPunishPulseCount * (screenFader.fadeIn + screenFader.hold + screenFader.fadeOut) +
-                    Mathf.Max(0, postPunishPulseCount - 1) * postPunishPulseGap;
+                    Mathf.Max(0, postPunishPulseCount - 1) * postPunishPulseGap +
+                    2f; // safety buffer so flashlight stays disabled until pulses visually finish
 
                 if (monitorUsageTracker != null) {
                     monitorUsageTracker.SuppressMonitorAttentionForSeconds(postEffectDuration);
                 }
 
                 screenFader.PulseRepeated(postPunishPulseCount, postPunishPulseGap);
+
+                yield return new WaitForSeconds(postEffectDuration);
+            }
+
+            if (flashlight != null) {
+                flashlight.enabled = true;
+                flashlight.ForceOff();
             }
 
             punishCoroutine = null;

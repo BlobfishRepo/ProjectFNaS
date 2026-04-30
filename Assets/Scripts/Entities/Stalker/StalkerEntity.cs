@@ -89,6 +89,8 @@ namespace FNaS.Entities.Stalker {
 
         [Header("Jumpscare")]
         [SerializeField] private StalkerJumpscareController jumpscareController;
+        [Tooltip("Optional. Door to force open when the stalker kills from waiting at the door.")]
+        public Door jumpscareDoor;
 
         private StalkerMovementBase movement;
 
@@ -359,6 +361,10 @@ namespace FNaS.Entities.Stalker {
         }
 
         private void TriggerDoorLoss() {
+            if (jumpscareDoor != null) {
+                jumpscareDoor.SetTraversalOpen(true);
+            }
+
             TriggerStalkerJumpscare("Stalker waited at the door too long.");
         }
 
@@ -672,6 +678,12 @@ namespace FNaS.Entities.Stalker {
         }
 
         private void TriggerStalkerJumpscare(string reason) {
+            // Do not trigger the jumpscare while the player is physically moving between nodes.
+            // Door/same-node checks will keep evaluating and trigger once movement stops.
+            if (player != null && player.IsMoving) {
+                return;
+            }
+
             if (player != null) {
                 player.CancelActiveMovementImmediate();
                 player.enabled = false;
@@ -683,6 +695,28 @@ namespace FNaS.Entities.Stalker {
             else {
                 loseState?.TriggerLose(reason);
             }
+        }
+
+        public bool ShouldPunishForwardMoveAtDoor(MasterNode playerFromNode) {
+            if (!IsThreatActive) return false;
+            if (!AtDoor) return false;
+            if (loseState != null && loseState.hasLost) return false;
+
+            // If assigned, only punish forward movement from the door-room node.
+            if (requiredPlayerNodeForDoor != null) {
+                if (playerFromNode == null) return false;
+                if (playerFromNode.Guid != requiredPlayerNodeForDoor.Guid) return false;
+            }
+
+            return true;
+        }
+
+        public void TriggerForwardDoorJumpscare() {
+            if (jumpscareDoor != null) {
+                jumpscareDoor.SetTraversalOpen(true);
+            }
+
+            TriggerStalkerJumpscare("Walked forward while the stalker was at the door.");
         }
     }
 }

@@ -1,4 +1,28 @@
 # Changelog
+## April 29
+### Added
+- Added a toggleable option that adds a short delay every time the player reaches a node.
+- Added a battery pack on certain nights, which allows the player to refill battery when low.
+
+### Changed
+- Presentation mode difficulty significantly reduced, with first 20% having no entities present.
+- Made flashing effect for post-it notes and battery pack more obvious by using a shader that makes the whole texture glow when relevant.
+- Made Jumpscares more visible in general. 
+- Stalker:
+  - Stalker model made slightly brighter. 
+  - Increased minimum time for Stalker to kill at same node from 3 to 5 seconds.
+  - Stalker footsteps made distinct from player footsteps.
+  - Moving into Stalker at door results in a loss.
+- Mimic power drain on jumpscare increased from 10% to 15%. Mimic now prevents usage of flashlight upon punishing the player.
+- Flashlight red and yellow battery ranges tweaked, with the red portion accounting for a larger portion of the overall percentage.
+
+### Removed
+- Stalker model no longer has base emission.
+
+### Fixed
+- Stalker only jumpscares player while player is not moving to make jumpscare animation consistent.
+- Custom Night (Locked) now fits within the button.
+
 ## April 25
 ### Added
 - Added final placeholder assignment text presets.

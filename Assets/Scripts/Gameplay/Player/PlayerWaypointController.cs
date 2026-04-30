@@ -19,6 +19,7 @@ namespace FNaS.Gameplay {
 
         [Header("Movement")]
         public float moveSpeed = 6.0f;
+        private bool cachedInitialFootstepVolume;
 
         [Header("View Bob")]
         [Tooltip("Enable subtle bobbing while moving between waypoints.")]
@@ -36,6 +37,12 @@ namespace FNaS.Gameplay {
         [Tooltip("How quickly the viewPivot returns to neutral after movement.")]
         public float bobReturnSpeed = 14f;
 
+        [Header("Move Delay")]
+        public bool useMoveDelay = true;
+        public float moveDelaySeconds = 0.5f;
+
+        private float nextAllowedMoveTime;
+
         [Header("State (read-only)")]
         public Waypoint CurrentWaypoint;
 
@@ -51,6 +58,7 @@ namespace FNaS.Gameplay {
 
         [Header("Stalker")]
         [SerializeField] private StalkerJumpscareController stalkerJumpscare;
+        [SerializeField] private StalkerEntity stalkerEntity;
 
         [SerializeField] private MasterNode currentMasterNode;
         public override MasterNode CurrentMasterNode => currentMasterNode;
@@ -103,16 +111,25 @@ namespace FNaS.Gameplay {
             }
 
             moveSpeed = settings.GetFloat("player.moveSpeed");
+            useMoveDelay = settings.GetBool("player.useMoveDelay");
         }
 
         public bool BeginTransition(WaypointTransition tr) {
             if (GameplayPauseManager.IsPausedGlobal) return false;
             if (isMoving) return false;
+            if (useMoveDelay && Time.time < nextAllowedMoveTime) return false;
             if (tr == null || tr.target == null) return false;
             if (loseState != null && loseState.hasLost) return false;
 
             MasterNode fromMaster = ResolveMasterNode(CurrentWaypoint);
             MasterNode toMaster = ResolveMasterNode(tr.target);
+
+            if (tr.tag == TransitionTag.Forward &&
+                stalkerEntity != null &&
+                stalkerEntity.ShouldPunishForwardMoveAtDoor(fromMaster)) {
+                stalkerEntity.TriggerForwardDoorJumpscare();
+                return false;
+            }
 
             if (tr.tag == TransitionTag.Forward && blockerRegistry != null && fromMaster != null) {
                 if (blockerRegistry.IsForwardExitBlockedAt(fromMaster)) {
@@ -226,6 +243,9 @@ namespace FNaS.Gameplay {
 
                 StopFootstepsSoft();
                 isMoving = false;
+                if (useMoveDelay) {
+                    nextAllowedMoveTime = Time.time + Mathf.Max(0f, moveDelaySeconds);
+                }
                 RestoreViewPivotBobImmediate();
 
                 if (transitionDoor != null) {
@@ -352,6 +372,9 @@ namespace FNaS.Gameplay {
 
             StopFootstepsSoft();
             isMoving = false;
+            if (useMoveDelay) {
+                nextAllowedMoveTime = Time.time + Mathf.Max(0f, moveDelaySeconds);
+            }
             RestoreViewPivotBobImmediate();
 
             if (transitionDoor != null) {
@@ -426,6 +449,9 @@ namespace FNaS.Gameplay {
             movementPaused = false;
             footstepsWerePlayingBeforePause = false;
             isMoving = false;
+            if (useMoveDelay) {
+                nextAllowedMoveTime = Time.time + Mathf.Max(0f, moveDelaySeconds);
+            }
             RestoreViewPivotBobImmediate();
         }
 
@@ -482,12 +508,16 @@ namespace FNaS.Gameplay {
         private void StartFootstepsLoop() {
             if (sfxSource == null || footstepClip == null) return;
 
+            if (!cachedInitialFootstepVolume) {
+                cachedSfxBaseVolume = sfxSource.volume;
+                cachedInitialFootstepVolume = true;
+            }
+
             if (footstepFadeRoutine != null) {
                 StopCoroutine(footstepFadeRoutine);
                 footstepFadeRoutine = null;
             }
 
-            cachedSfxBaseVolume = sfxSource.volume;
             sfxSource.volume = cachedSfxBaseVolume;
             sfxSource.clip = footstepClip;
             sfxSource.loop = true;

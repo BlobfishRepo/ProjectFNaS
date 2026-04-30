@@ -1,14 +1,14 @@
 using UnityEngine;
+using FNaS.Visuals;
 
 namespace FNaS.Systems {
     public class PostItNoteHotspot : MonoBehaviour {
         public string noteId;
         public Renderer[] worldRenderers;
         public Collider[] clickColliders;
-        public GameObject glowRoot;
 
-        private Vector3 baseScale;
-        private Renderer glowRenderer;
+        [Header("Pulse")]
+        public WhitePulseMaterialDriver pulseDriver;
 
         private void Awake() {
             if (worldRenderers == null || worldRenderers.Length == 0) {
@@ -19,19 +19,13 @@ namespace FNaS.Systems {
                 clickColliders = GetComponentsInChildren<Collider>(true);
             }
 
-            if (glowRoot != null) {
-                glowRenderer = glowRoot.GetComponent<Renderer>();
+            if (pulseDriver == null) {
+                pulseDriver = GetComponentInChildren<WhitePulseMaterialDriver>(true);
             }
-        }
 
-        private void Update() {
-            if (glowRenderer == null || !glowRoot.activeSelf) return;
-
-            float t = Mathf.Sin(Time.time * 3f) * 0.5f + 0.5f;
-
-            Color c = glowRenderer.material.color;
-            c.a = Mathf.Lerp(0.3f, 1f, t);
-            glowRenderer.material.color = c;
+            if (pulseDriver != null) {
+                pulseDriver.SetPulseEnabled(false);
+            }
         }
 
         public void SetPresentation(bool visible, bool glowing) {
@@ -51,8 +45,8 @@ namespace FNaS.Systems {
                 }
             }
 
-            if (glowRoot != null) {
-                glowRoot.SetActive(visible && glowing);
+            if (pulseDriver != null) {
+                pulseDriver.SetPulseEnabled(visible && glowing);
             }
         }
     }

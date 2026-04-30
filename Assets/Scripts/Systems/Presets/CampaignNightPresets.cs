@@ -15,6 +15,8 @@ namespace FNaS.Systems {
                     settings.SetInt("mimic.ai", 0);
                     settings.SetInt("mold.ai", 0);
 
+                    settings.SetBool("batteryPack.enabled", true);
+
                     settings.SetFloat("paper.secondsToWin", 120f);
                     settings.SetFloat("paper.glyphScale", 0.40f);
                     settings.SetInt("paper.textPreset", 0);
@@ -25,6 +27,8 @@ namespace FNaS.Systems {
                     settings.SetInt("lostGirl.ai", 0);
                     settings.SetInt("mimic.ai", 4);
                     settings.SetInt("mold.ai", 5);
+
+                    settings.SetBool("batteryPack.enabled", true);
 
                     settings.SetFloat("paper.secondsToWin", 150f);
                     settings.SetFloat("paper.glyphScale", 0.40f);
@@ -37,6 +41,8 @@ namespace FNaS.Systems {
                     settings.SetInt("mimic.ai", 3);
                     settings.SetInt("mold.ai", 8);
 
+                    settings.SetBool("batteryPack.enabled", false);
+
                     settings.SetFloat("paper.secondsToWin", 180f);
                     settings.SetFloat("paper.glyphScale", 0.40f);
                     settings.SetInt("paper.textPreset", 2);
@@ -48,6 +54,8 @@ namespace FNaS.Systems {
                     settings.SetInt("mimic.ai", 8);
                     settings.SetInt("mold.ai", 10);
 
+                    settings.SetBool("batteryPack.enabled", false);
+
                     settings.SetFloat("paper.secondsToWin", 210f);
                     settings.SetFloat("paper.glyphScale", 0.40f);
                     settings.SetInt("paper.textPreset", 3);
@@ -58,6 +66,8 @@ namespace FNaS.Systems {
                     settings.SetInt("lostGirl.ai", 10);
                     settings.SetInt("mimic.ai", 10);
                     settings.SetInt("mold.ai", 16);
+
+                    settings.SetBool("batteryPack.enabled", false);
 
                     settings.SetFloat("paper.secondsToWin", 240f);
                     settings.SetFloat("paper.glyphScale", 0.40f);

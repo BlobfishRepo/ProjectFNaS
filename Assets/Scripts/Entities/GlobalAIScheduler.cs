@@ -41,6 +41,8 @@ namespace FNaS.Systems {
         }
 
         private void Update() {
+            if (GameplayPauseManager.IsPausedGlobal) return;
+
             timer += Time.deltaTime;
 
             while (timer >= baseIntervalSeconds) {

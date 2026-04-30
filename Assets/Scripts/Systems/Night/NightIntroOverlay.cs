@@ -14,6 +14,8 @@ namespace FNaS.Systems {
         public float fadeOutSeconds = 0.8f;
         public float maxWaitForPrewarmSeconds = 10f;
 
+        public GameplayPauseManager pauseManager;
+
         private void Awake() {
             ShowImmediate();
         }
@@ -21,6 +23,15 @@ namespace FNaS.Systems {
         private IEnumerator Start() {
             if (prewarmLoader == null) {
                 prewarmLoader = FindFirstObjectByType<GameplayPrewarmLoader>();
+            }
+
+            if (pauseManager == null) {
+                pauseManager = GameplayPauseManager.Instance ?? FindFirstObjectByType<GameplayPauseManager>();
+            }
+
+            // START PAUSE HERE
+            if (pauseManager != null) {
+                pauseManager.PushPause();
             }
 
             float waited = 0f;
@@ -48,6 +59,11 @@ namespace FNaS.Systems {
 
             if (titleText != null) {
                 titleText.enabled = false;
+            }
+
+            // END PAUSE HERE (AFTER FADE)
+            if (pauseManager != null) {
+                pauseManager.PopPause();
             }
         }
 

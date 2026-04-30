@@ -29,10 +29,12 @@ namespace FNaS.Systems {
         }
 
         private static void ApplyStage0(RuntimeGameSettings settings) {
-            settings.SetInt("stalker.ai", 12);
+            settings.SetInt("stalker.ai", 0);
             settings.SetInt("lostGirl.ai", 0);
             settings.SetInt("mimic.ai", 0);
             settings.SetInt("mold.ai", 0);
+
+            settings.SetBool("batteryPack.enabled", true);
 
             // Presentation-specific paper setup.
             settings.SetFloat("paper.secondsToWin", 180f);
@@ -41,31 +43,33 @@ namespace FNaS.Systems {
         }
 
         private static void ApplyStage20(RuntimeGameSettings settings) {
-            settings.SetInt("stalker.ai", 8);
+            settings.SetInt("stalker.ai", 3);
             settings.SetInt("lostGirl.ai", 0);
-            settings.SetInt("mimic.ai", 5);
-            settings.SetInt("mold.ai", 10);
+            settings.SetInt("mimic.ai", 0);
+            settings.SetInt("mold.ai", 0);
+
+            settings.SetBool("batteryPack.enabled", false);
         }
 
         private static void ApplyStage40(RuntimeGameSettings settings) {
-            settings.SetInt("stalker.ai", 12);
-            settings.SetInt("lostGirl.ai", 4);
-            settings.SetInt("mimic.ai", 8);
-            settings.SetInt("mold.ai", 12);
+            settings.SetInt("stalker.ai", 4);
+            settings.SetInt("lostGirl.ai", 0);
+            settings.SetInt("mimic.ai", 0);
+            settings.SetInt("mold.ai", 6);
         }
 
         private static void ApplyStage60(RuntimeGameSettings settings) {
-            settings.SetInt("stalker.ai", 12);
-            settings.SetInt("lostGirl.ai", 8);
-            settings.SetInt("mimic.ai", 10);
-            settings.SetInt("mold.ai", 14);
+            settings.SetInt("stalker.ai", 5);
+            settings.SetInt("lostGirl.ai", 0);
+            settings.SetInt("mimic.ai", 6);
+            settings.SetInt("mold.ai", 6);
         }
 
         private static void ApplyStage80(RuntimeGameSettings settings) {
-            settings.SetInt("stalker.ai", 18);
-            settings.SetInt("lostGirl.ai", 12);
-            settings.SetInt("mimic.ai", 12);
-            settings.SetInt("mold.ai", 16);
+            settings.SetInt("stalker.ai", 7);
+            settings.SetInt("lostGirl.ai", 7);
+            settings.SetInt("mimic.ai", 7);
+            settings.SetInt("mold.ai", 7);
         }
     }
 }

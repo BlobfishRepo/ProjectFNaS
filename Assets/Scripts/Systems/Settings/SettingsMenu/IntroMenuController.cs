@@ -254,6 +254,57 @@ namespace FNaS.UI {
             RefreshIndicators();
         }
 
+        private void ResetGameplayDefaultsPreservingPlayerSettings() {
+            if (runtimeSettings == null) return;
+
+            var preservedFloats = new System.Collections.Generic.Dictionary<string, float>();
+            var preservedInts = new System.Collections.Generic.Dictionary<string, int>();
+            var preservedBools = new System.Collections.Generic.Dictionary<string, bool>();
+
+            foreach (var def in SettingsSchema.Definitions) {
+                if (def == null || string.IsNullOrWhiteSpace(def.key)) continue;
+
+                bool preserve =
+                    def.category == SettingCategory.Fun ||
+                    (def.screens & SettingScreen.PlayerSettings) != 0 ||
+                    def.key.Contains("volume") ||
+                    def.key.Contains("brightness");
+
+                if (!preserve) continue;
+
+                switch (def.controlType) {
+                    case SettingControlType.FloatSlider:
+                        preservedFloats[def.key] = runtimeSettings.GetFloat(def.key);
+                        break;
+
+                    case SettingControlType.IntSlider:
+                    case SettingControlType.Dropdown:
+                        preservedInts[def.key] = runtimeSettings.GetInt(def.key);
+                        break;
+
+                    case SettingControlType.Toggle:
+                        preservedBools[def.key] = runtimeSettings.GetBool(def.key);
+                        break;
+                }
+            }
+
+            runtimeSettings.ResetToDefaults();
+
+            foreach (var kvp in preservedFloats) {
+                runtimeSettings.SetFloat(kvp.Key, kvp.Value);
+            }
+
+            foreach (var kvp in preservedInts) {
+                runtimeSettings.SetInt(kvp.Key, kvp.Value);
+            }
+
+            foreach (var kvp in preservedBools) {
+                runtimeSettings.SetBool(kvp.Key, kvp.Value);
+            }
+
+            runtimeSettings.SaveToJson();
+        }
+
         public void ShowMainMenu() {
             SetActivePanel(TitlePanel.MainMenu);
             RefreshAll();
@@ -265,48 +316,8 @@ namespace FNaS.UI {
                 return;
             }
 
-            // Opening Custom Night from the main menu should start from defaults,
-            // but preserve all fun.* settings.
             if (runtimeSettings != null) {
-                var preservedFunFloats = new System.Collections.Generic.Dictionary<string, float>();
-                var preservedFunInts = new System.Collections.Generic.Dictionary<string, int>();
-                var preservedFunBools = new System.Collections.Generic.Dictionary<string, bool>();
-
-                foreach (var def in SettingsSchema.Definitions) {
-                    if (def == null || string.IsNullOrWhiteSpace(def.key)) continue;
-                    if (def.category != SettingCategory.Fun) continue;
-
-                    switch (def.controlType) {
-                        case SettingControlType.FloatSlider:
-                            preservedFunFloats[def.key] = runtimeSettings.GetFloat(def.key);
-                            break;
-
-                        case SettingControlType.IntSlider:
-                        case SettingControlType.Dropdown:
-                            preservedFunInts[def.key] = runtimeSettings.GetInt(def.key);
-                            break;
-
-                        case SettingControlType.Toggle:
-                            preservedFunBools[def.key] = runtimeSettings.GetBool(def.key);
-                            break;
-                    }
-                }
-
-                runtimeSettings.ResetToDefaults();
-
-                foreach (var kvp in preservedFunFloats) {
-                    runtimeSettings.SetFloat(kvp.Key, kvp.Value);
-                }
-
-                foreach (var kvp in preservedFunInts) {
-                    runtimeSettings.SetInt(kvp.Key, kvp.Value);
-                }
-
-                foreach (var kvp in preservedFunBools) {
-                    runtimeSettings.SetBool(kvp.Key, kvp.Value);
-                }
-
-                runtimeSettings.SaveToJson();
+                ResetGameplayDefaultsPreservingPlayerSettings();
             }
 
             SetActivePanel(TitlePanel.CustomNight);
@@ -379,8 +390,7 @@ namespace FNaS.UI {
             ResolveReferences();
             if (runtimeSettings == null) return;
 
-            runtimeSettings.ResetToDefaults();
-            runtimeSettings.SaveToJson();
+            ResetGameplayDefaultsPreservingPlayerSettings();
             RefreshAll();
         }
     }

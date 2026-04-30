@@ -225,7 +225,6 @@ namespace FNaS.Settings {
                     "Presentation"
                 }
             },
-
             new SettingDefinition {
                 key = "globalAI.baseIntervalSeconds",
                 label = "Global AI Tick Interval",
@@ -248,6 +247,15 @@ namespace FNaS.Settings {
                 defaultFloat = 120f,
                 min = 1f,
                 max = 240f
+            },
+            new SettingDefinition {
+                key = "batteryPack.enabled",
+                label = "Battery Pack Enabled",
+                category = SettingCategory.Flashlight,
+                controlType = SettingControlType.Toggle,
+                screens = SettingScreen.DevGameplay,
+                affectsStarEligibility = true,
+                defaultBool = false
             },
             new SettingDefinition {
                 key = "video.brightness",
@@ -334,6 +342,15 @@ namespace FNaS.Settings {
                 screens = SettingScreen.PlayerSettings,
                 affectsStarEligibility = false,
                 defaultBool = false
+            },
+            new SettingDefinition {
+                key = "player.useMoveDelay",
+                label = "Movement Delay",
+                category = SettingCategory.Player,
+                controlType = SettingControlType.Toggle,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultBool = true
             },
             new SettingDefinition {
                 key = "fun.paperWritingSoundMode",
