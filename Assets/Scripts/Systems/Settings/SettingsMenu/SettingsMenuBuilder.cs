@@ -5,6 +5,8 @@ using UnityEngine;
 
 namespace FNaS.UI.Settings {
     public class SettingsMenuBuilder : MonoBehaviour {
+        [SerializeField] private float sectionSpacing = 10f;
+
         [Header("References")]
         [SerializeField] private Transform contentRoot;
         [SerializeField] private SettingsSectionHeader sectionHeaderPrefab;
@@ -27,6 +29,10 @@ namespace FNaS.UI.Settings {
                     continue;
 
                 if (lastCategory != def.category) {
+                    if (lastCategory.HasValue) {
+                        CreateSpacer(sectionSpacing);
+                    }
+
                     CreateSectionHeader(SettingsSchema.GetCategoryLabel(def.category));
                     lastCategory = def.category;
                 }
@@ -49,6 +55,17 @@ namespace FNaS.UI.Settings {
                         break;
                 }
             }
+        }
+
+        private void CreateSpacer(float height) {
+            GameObject spacer = new GameObject("Section Spacer", typeof(RectTransform), typeof(UnityEngine.UI.LayoutElement));
+            spacer.transform.SetParent(contentRoot, false);
+
+            var layout = spacer.GetComponent<UnityEngine.UI.LayoutElement>();
+            layout.preferredHeight = Mathf.Max(0f, height);
+            layout.minHeight = Mathf.Max(0f, height);
+
+            spawnedObjects.Add(spacer);
         }
 
         private void CreateSectionHeader(string title) {

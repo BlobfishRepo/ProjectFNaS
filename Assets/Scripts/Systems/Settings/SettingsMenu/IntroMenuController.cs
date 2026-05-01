@@ -25,6 +25,7 @@ namespace FNaS.UI {
         [SerializeField] private GameObject playerSettingsPanel;
         [SerializeField] private GameObject presentationSettingsPanel;
         [SerializeField] private GameObject devGameplayPanel;
+        [SerializeField] private GameObject hintsPanel;
 
         [Header("Buttons")]
         [SerializeField] private Button continueCampaignButton;
@@ -56,7 +57,8 @@ namespace FNaS.UI {
             CustomNight,
             PlayerSettings,
             PresentationSettings,
-            DevGameplay
+            DevGameplay,
+            Hints
         }
 
         private TitlePanel currentPanel = TitlePanel.MainMenu;
@@ -187,7 +189,10 @@ namespace FNaS.UI {
 
             if (runtimeSettings != null) {
                 showDevChanged = runtimeSettings.HasNonDefaultStarRelevantDevGameplaySettings();
-                showFunEnabled = runtimeSettings.HasNonDefaultFunSettingsEnabled();
+
+                showFunEnabled =
+                    runtimeSettings.HasNonDefaultFunSettingsEnabled() ||
+                    runtimeSettings.GetBool("debug.showGlobalAITimer");
             }
 
             if (devSettingsChangedIndicator != null) {
@@ -209,6 +214,7 @@ namespace FNaS.UI {
             if (devGameplayPanel != null) devGameplayPanel.SetActive(panel == TitlePanel.DevGameplay);
             if (stalkerBackground != null)
                 stalkerBackground.SetActive(panel == TitlePanel.MainMenu);
+            if (hintsPanel != null) hintsPanel.SetActive(panel == TitlePanel.Hints);
         }
 
         private void RebuildCurrentPanel() {
@@ -227,6 +233,7 @@ namespace FNaS.UI {
                         SettingScreen playerScreens = SettingScreen.PlayerSettings;
                         if (runtimeSettings.PlayerSettingsDebugUnlocked) {
                             playerScreens |= SettingScreen.PlayerSettingsFun;
+                            playerScreens |= SettingScreen.PlayerSettingsDebug;
                         }
 
                         playerSettingsMenuBuilder.Rebuild(runtimeSettings, false, playerScreens);
@@ -236,8 +243,10 @@ namespace FNaS.UI {
                 case TitlePanel.PresentationSettings:
                     if (presentationSettingsMenuBuilder != null) {
                         SettingScreen presentationScreens = SettingScreen.PlayerSettings;
+
                         if (runtimeSettings.PlayerSettingsDebugUnlocked) {
                             presentationScreens |= SettingScreen.PlayerSettingsFun;
+                            presentationScreens |= SettingScreen.PlayerSettingsDebug;
                         }
 
                         presentationSettingsMenuBuilder.Rebuild(runtimeSettings, false, presentationScreens);
@@ -252,6 +261,14 @@ namespace FNaS.UI {
             }
 
             RefreshIndicators();
+        }
+
+        public void OnQuitPressed() {
+            #if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+            #else
+                Application.Quit();
+            #endif
         }
 
         private void ResetGameplayDefaultsPreservingPlayerSettings() {
@@ -316,10 +333,6 @@ namespace FNaS.UI {
                 return;
             }
 
-            if (runtimeSettings != null) {
-                ResetGameplayDefaultsPreservingPlayerSettings();
-            }
-
             SetActivePanel(TitlePanel.CustomNight);
             RefreshAll();
         }
@@ -350,6 +363,11 @@ namespace FNaS.UI {
             }
 
             SetActivePanel(TitlePanel.DevGameplay);
+            RefreshAll();
+        }
+
+        public void ShowHints() {
+            SetActivePanel(TitlePanel.Hints);
             RefreshAll();
         }
 

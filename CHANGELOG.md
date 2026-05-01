@@ -1,4 +1,16 @@
 # Changelog
+## April 30
+### Added
+- Added Quit and Hints (WIP) buttons to the Main Menu.
+- Added scroll bar to long settings pages.
+
+### Changed
+- **IMPORTANT**: Changed company to FNaSTeam, which changed where the default files are stored to "LocalLow>FNaSTeam>Five Nights at Silvers".
+- Changed sizes of buttons to indicate importance. Settings button changed to a gear icon.
+- General UI tweaks across menu, with changes to text color and size in particular.
+- Opening Custom Night no longer resets settings, but added a Reset to Default setting.
+- Added a debug setting to show movement opportunity timer.
+
 ## April 29
 ### Added
 - Added a toggleable option that adds a short delay every time the player reaches a node.
@@ -10,7 +22,8 @@
 - Made Jumpscares more visible in general. 
 - Stalker:
   - Stalker model made slightly brighter. 
-  - Increased minimum time for Stalker to kill at same node from 3 to 5 seconds.
+  - Increased minimum time for Stalker to kill 
+  at same node from 3 to 5 seconds.
   - Stalker footsteps made distinct from player footsteps.
   - Moving into Stalker at door results in a loss.
 - Mimic power drain on jumpscare increased from 10% to 15%. Mimic now prevents usage of flashlight upon punishing the player.

@@ -1,8 +1,9 @@
 using TMPro;
 using UnityEngine;
+using FNaS.Settings;
 
 namespace FNaS.Systems {
-    public class GlobalAITimerDebugDisplay : MonoBehaviour {
+    public class GlobalAITimerDebugDisplay : MonoBehaviour, IRuntimeSettingsConsumer {
         [Header("References")]
         public TMP_Text textUI;
         public GlobalAIScheduler scheduler;
@@ -14,6 +15,12 @@ namespace FNaS.Systems {
 
         [Header("Runtime (read-only)")]
         [SerializeField] private float secondsRemaining;
+
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            if (settings == null) return;
+            showTimer = settings.GetBool("debug.showGlobalAITimer");
+            ApplyVisibility();
+        }
 
         private void Awake() {
             if (textUI == null) {

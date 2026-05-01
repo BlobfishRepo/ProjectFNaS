@@ -46,7 +46,8 @@ namespace FNaS.Settings {
         DevGameplay = 1 << 2,
         PlayerSettingsFun = 1 << 3,
 
-        Hidden = 1 << 4
+        Hidden = 1 << 4,
+        PlayerSettingsDebug = 1 << 5
     }
 
     [Serializable]
@@ -381,6 +382,16 @@ namespace FNaS.Settings {
                 defaultFloat = 1f,
                 min = 0.5f,
                 max = 2f
+            },
+            new SettingDefinition {
+                key = "debug.showGlobalAITimer",
+                label = "Show AI Timer",
+                category = SettingCategory.Systems,
+                controlType = SettingControlType.Toggle,
+                debugOnly = false,
+                screens = SettingScreen.PlayerSettingsDebug,
+                affectsStarEligibility = false,
+                defaultBool = false
             },
             new SettingDefinition {
                 key = "debug.playerMovementMode",
