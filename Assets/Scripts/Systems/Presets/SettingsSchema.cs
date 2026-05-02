@@ -16,7 +16,8 @@ namespace FNaS.Settings {
         FloatSlider,
         IntSlider,
         Toggle,
-        Dropdown
+        Dropdown,
+        TextInput
     }
 
     public enum SettingCategory {
@@ -47,7 +48,8 @@ namespace FNaS.Settings {
         PlayerSettingsFun = 1 << 3,
 
         Hidden = 1 << 4,
-        PlayerSettingsDebug = 1 << 5
+        PlayerSettingsDebug = 1 << 5,
+        PresentationSettings = 1 << 6
     }
 
     [Serializable]
@@ -179,7 +181,7 @@ namespace FNaS.Settings {
                 category = SettingCategory.Mold,
                 controlType = SettingControlType.IntSlider,
                 screens = SettingScreen.CustomNight | SettingScreen.DevGameplay,
-                affectsStarEligibility = true,
+                affectsStarEligibility = false,
                 defaultInt = 0,
                 min = 0,
                 max = 20
@@ -263,7 +265,7 @@ namespace FNaS.Settings {
                 label = "Brightness",
                 category = SettingCategory.Video,
                 controlType = SettingControlType.IntSlider,
-                screens = SettingScreen.PlayerSettings,
+                screens = SettingScreen.PlayerSettings | SettingScreen.PresentationSettings,
                 affectsStarEligibility = false,
                 defaultInt = 0,
                 min = 0,
@@ -353,6 +355,38 @@ namespace FNaS.Settings {
                 affectsStarEligibility = false,
                 defaultBool = true
             },
+            new SettingDefinition {
+                key = "paper.presentationShortNight",
+                label = "Short Night",
+                category = SettingCategory.Paper,
+                controlType = SettingControlType.Toggle,
+                screens = SettingScreen.PresentationSettings,
+                affectsStarEligibility = false,
+                defaultBool = false
+            },
+
+            new SettingDefinition {
+                key = "paper.presentationGlyphScale",
+                label = "Text Size",
+                category = SettingCategory.Paper,
+                controlType = SettingControlType.FloatSlider,
+                screens = SettingScreen.PresentationSettings,
+                affectsStarEligibility = false,
+                defaultFloat = 0.3f,
+                min = 0.2f,
+                max = 1.2f
+            },
+
+            new SettingDefinition {
+                key = "paper.presentationCustomText",
+                label = "Custom Text",
+                category = SettingCategory.Paper,
+                controlType = SettingControlType.TextInput,
+                screens = SettingScreen.PresentationSettings,
+                affectsStarEligibility = false,
+                defaultInt = 0
+            },
+
             new SettingDefinition {
                 key = "fun.paperWritingSoundMode",
                 label = "Writing Sound",

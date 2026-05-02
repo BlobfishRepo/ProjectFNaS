@@ -91,6 +91,12 @@ namespace FNaS.Entities.Mimic {
         [Tooltip("Use this for laughs / spawn / banish / punish one-shots.")]
         public AudioSource audioSource;
 
+        [Header("Flashlight Burning SFX")]
+        public AudioClip burningLoopClip;
+        [Range(0f, 1f)] public float burningVolume = 0.8f;
+
+        private AudioSource burningSource;
+
         public AudioClip spawnClip;
         public AudioClip laughClip;
         public AudioClip banishClip;
@@ -161,6 +167,15 @@ namespace FNaS.Entities.Mimic {
             if (jumpscareCamera != null) {
                 jumpscareCamera.enabled = false;
             }
+            if (audioSource == null) {
+                audioSource = GetComponent<AudioSource>();
+                if (audioSource == null) {
+                    audioSource = gameObject.AddComponent<AudioSource>();
+                }
+            }
+
+            audioSource.playOnAwake = false;
+            audioSource.loop = false;
 
             ResetIlluminationCache();
         }
@@ -184,6 +199,7 @@ namespace FNaS.Entities.Mimic {
             if (jumpscareCamera != null) {
                 jumpscareCamera.enabled = false;
             }
+            SetBurning(false);
         }
 
         private void Update() {
@@ -283,6 +299,11 @@ namespace FNaS.Entities.Mimic {
 
         private void UpdateActive() {
             bool illuminated = GetCachedIlluminated();
+            SetBurning(illuminated);
+
+            if (verboseLogging) {
+                Debug.Log($"Mimic illuminated={illuminated}, banish={banishTimer:F2}, laugh={laughTimer:F2}", this);
+            }
 
             if (illuminated) {
                 banishTimer += Time.deltaTime;
@@ -336,6 +357,7 @@ namespace FNaS.Entities.Mimic {
 
             HideAllVariants();
 
+            SetBurning(false);
             currentAnchor = null;
             currentVariant = null;
             banishTimer = 0f;
@@ -357,6 +379,7 @@ namespace FNaS.Entities.Mimic {
             if (phase == Phase.Punishing) return;
             if (punishCoroutine != null) return;
 
+            SetBurning(false);
             punishCoroutine = StartCoroutine(PunishRoutine());
         }
 
@@ -515,6 +538,7 @@ namespace FNaS.Entities.Mimic {
             laughTimer = 0f;
             currentAnchor = null;
             currentVariant = null;
+            SetBurning(false);
             ResetIlluminationCache();
 
             transform.SetPositionAndRotation(startPosition, startRotation);
@@ -628,6 +652,34 @@ namespace FNaS.Entities.Mimic {
         private float GetSpawnChancePercent() {
             if (ai <= 0) return 0f;
             return Mathf.Clamp(ai * 5f, 0f, 100f);
+        }
+
+        private void EnsureBurningSource() {
+            if (burningSource != null) return;
+
+            burningSource = gameObject.AddComponent<AudioSource>();
+            burningSource.playOnAwake = false;
+            burningSource.loop = true;
+            burningSource.spatialBlend = 0f;
+            burningSource.volume = burningVolume;
+        }
+
+        private void SetBurning(bool on) {
+            EnsureBurningSource();
+
+            if (burningLoopClip == null) {
+                if (burningSource.isPlaying) burningSource.Stop();
+                return;
+            }
+
+            if (on) {
+                if (burningSource.clip != burningLoopClip) burningSource.clip = burningLoopClip;
+                burningSource.volume = burningVolume;
+                if (!burningSource.isPlaying) burningSource.Play();
+            }
+            else {
+                if (burningSource.isPlaying) burningSource.Stop();
+            }
         }
 
         [ContextMenu("Refresh Anchor Cache")]

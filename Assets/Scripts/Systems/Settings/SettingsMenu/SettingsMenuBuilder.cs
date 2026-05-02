@@ -13,6 +13,7 @@ namespace FNaS.UI.Settings {
         [SerializeField] private SliderSettingRow sliderRowPrefab;
         [SerializeField] private ToggleSettingRow toggleRowPrefab;
         [SerializeField] private DropdownSettingRow dropdownRowPrefab;
+        [SerializeField] private TextInputSettingRow textInputRowPrefab;
 
         private readonly List<GameObject> spawnedObjects = new();
 
@@ -52,6 +53,10 @@ namespace FNaS.UI.Settings {
 
                     case SettingControlType.Dropdown:
                         CreateDropdown(def, runtimeSettings);
+                        break;
+
+                    case SettingControlType.TextInput:
+                        CreateTextInput(def, runtimeSettings);
                         break;
                 }
             }
@@ -132,6 +137,19 @@ namespace FNaS.UI.Settings {
                     runtimeSettings.SetInt(def.key, value);
                     runtimeSettings.SaveToJson();
                     ApplyRuntimeSettingsNow();
+                }
+            );
+            spawnedObjects.Add(row.gameObject);
+        }
+
+        private void CreateTextInput(SettingDefinition def, RuntimeGameSettings runtimeSettings) {
+            var row = Instantiate(textInputRowPrefab, contentRoot);
+            row.Setup(
+                def.label,
+                runtimeSettings.GetString(def.key),
+                value => {
+                    runtimeSettings.SetString(def.key, value);
+                    runtimeSettings.SaveToJson();
                 }
             );
             spawnedObjects.Add(row.gameObject);

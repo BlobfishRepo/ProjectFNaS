@@ -1,4 +1,26 @@
 # Changelog
+## May 1
+### Added
+- Added 2 more entities that can appear on the Main Menu.
+- Added Hints page, with detailed notes on the behavior on each entity and other mechanics.
+- Added information pop-ups to the Main Menu and Presentation Menus.
+- Presentation Menu now has a field to add custom text to write on the paper. 
+- Lost Girl now has a sound effect upon despawning.
+- Added burning sound effect to Mimic.
+
+### Changed
+- Presentation Menu settings tweaked, with most of the settings now only accessible through the Settings menu.
+- Paper now displays total amount of lines in the text at the top.
+- Lost Girl movement tweaked slightly.
+- Slightly reduced volume of some of the loader noises (Jumpscare, Lost Girl appear in apartment).
+- Adjusted position of special settings indicators.
+- Updated text, particularly hints and some of the post-it notes.
+- Adjusted AI values for Campaign nights.
+
+### Fixed
+- Added box colliders to some walls to mitigate flashlights going through walls.
+- Fixed dev setting indicator incorrectly showing when Mold AI was changed.
+
 ## April 30
 ### Added
 - Added Quit and Hints (WIP) buttons to the Main Menu.

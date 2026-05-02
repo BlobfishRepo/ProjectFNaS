@@ -53,6 +53,7 @@ namespace FNaS.Gameplay {
         }
 
         private void Start() {
+            used = false;
             ApplyRuntimeSettings(RuntimeGameSettings.Instance);
         }
 
@@ -60,7 +61,7 @@ namespace FNaS.Gameplay {
             if (settings == null) return;
 
             bool enabled = settings.GetBool(enabledSettingKey);
-            gameObject.SetActive(enabled);
+            gameObject.SetActive(enabled && !used);
         }
 
         private void Update() {

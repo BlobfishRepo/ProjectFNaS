@@ -27,6 +27,7 @@ namespace FNaS.Settings {
         private readonly Dictionary<string, float> floatValues = new();
         private readonly Dictionary<string, int> intValues = new();
         private readonly Dictionary<string, bool> boolValues = new();
+        private readonly Dictionary<string, string> stringValues = new();
 
         [SerializeField] private bool debugMenuUnlocked;
         [SerializeField] private bool playerSettingsDebugUnlocked;
@@ -58,6 +59,7 @@ namespace FNaS.Settings {
             floatValues.Clear();
             intValues.Clear();
             boolValues.Clear();
+            stringValues.Clear();
 
             foreach (var def in SettingsSchema.Definitions) {
                 switch (def.controlType) {
@@ -72,6 +74,10 @@ namespace FNaS.Settings {
 
                     case SettingControlType.Toggle:
                         boolValues[def.key] = def.defaultBool;
+                        break;
+
+                    case SettingControlType.TextInput:
+                        stringValues[def.key] = "";
                         break;
                 }
             }
@@ -129,6 +135,10 @@ namespace FNaS.Settings {
                                 boolValues[entry.key] = boolValue;
                             }
                             break;
+
+                        case SettingControlType.TextInput:
+                            stringValues[entry.key] = entry.value ?? "";
+                            break;
                     }
                 }
             }
@@ -178,6 +188,13 @@ namespace FNaS.Settings {
                         entries.Add(new SettingValueEntry {
                             key = def.key,
                             value = GetBool(def.key).ToString()
+                        });
+                        break;
+
+                    case SettingControlType.TextInput:
+                        entries.Add(new SettingValueEntry {
+                            key = def.key,
+                            value = GetString(def.key)
                         });
                         break;
                 }
@@ -231,6 +248,18 @@ namespace FNaS.Settings {
 
         public void SetBool(string key, bool value) {
             boolValues[key] = value;
+            OnSettingsChanged?.Invoke();
+        }
+
+        public string GetString(string key) {
+            if (stringValues.TryGetValue(key, out string value))
+                return value;
+
+            return "";
+        }
+
+        public void SetString(string key, string value) {
+            stringValues[key] = value ?? "";
             OnSettingsChanged?.Invoke();
         }
 

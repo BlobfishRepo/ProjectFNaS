@@ -2,31 +2,31 @@
   "notes": [
     {
       "id": "control_post",
-      "body": "Each post-it note contains basic information about the game.\n [Left Click] hides a post-it note.\nUse [A] and [D] to quickly look between active post-it notes. If you want to permanently hide a post-it note, use [R]",
+      "body": "The entities won't move while you're reading this, so feel free to understand each note without pressure.\nEach post-it note contains basic information about the game.\n[Left Click] hides a post-it note.\nUse [A] and [D] to quickly look between active post-it notes. If you want to permanently hide a post-it note, use [R].",
       "campaignNights": [1],
       "presentationUnlockPercent": 0
     },
     {
       "id": "control_main",
-      "body": "[WASD] lets you move throughout the apartment. Moving the mouse to the edges of the screen changes your view point, and holding [Left Click] at some views lets you look around more.\nHitting [R] lets you interact with doors and work on your assignment while at the desk.\n\nFinish your assignment before the end of the night while not succumbing to nightmares in the apartment.",
+      "body": "[WASD] lets you move throughout the apartment. Moving the mouse to the edges of the screen changes your view point, and holding [Left Click] when there is a blue eye icon in the bottom-right lets you look around more.\nHitting [R] lets you keep doors open and work on your assignment while at the desk.\n\nFinish your assignment before the end of the night while not succumbing to the nightmares in the apartment.",
       "campaignNights": [1, 2, 3, 4, 5],
       "presentationUnlockPercent": 0
     },
     {
       "id": "stalker",
-      "body": "The Stalker appears in the darkest parts of the apartment and slowly approaches your bedroom.\nUse your flashlight [F] to push it back, but avoid overusing it as your flashlight is running low on battery.",
+      "body": "The Stalker appears in the darkest parts of the apartment and slowly approaches your bedroom.\nKeep your flashlight [F] aimed at it for a few seconds to push it back, but avoid overusing it as your flashlight is running low on battery.\nIf you hear a growling sound, the Stalker might be about to attack. Check the door or look around you, and flash it in time to survive.",
       "campaignNights": [1],
       "presentationUnlockPercent": 0
     },
     {
       "id": "lost_girl",
-      "body": "Sometimes, you can see a girl appearing outside your window or TV. She is shy and doesn't like being looked at, although she will try to emerge out from her glass and come for you.\nTry to block her path with a door before she gets you.",
+      "body": "Sometimes, you can see a girl appearing outside your window or TV. She retreats if she is looked at, although she will try to emerge out from her glass and come for you.\nIf you are very fast, you may be able to reach a door in time and block her.",
       "campaignNights": [3],
       "presentationUnlockPercent": 40
     },
     {
       "id": "mimic",
-      "body": "Every now and then, you'll hear faint laughing and notice an object that should not be there.\nMake sure to use your flashlight to clear the mimic in time, before the mimic comes for you.",
+      "body": "Every now and then, you'll hear faint laughing and notice an object that should not be there.\nCheck the cameras to find any new objects and keep your flashlight [F] pointed at it to clear the mimic in time, before the mimic comes for you.",
       "campaignNights": [2],
       "presentationUnlockPercent": 20
     },

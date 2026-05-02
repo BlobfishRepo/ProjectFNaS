@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FNaS.Settings;
 using FNaS.Systems;
 using FNaS.UI.Settings;
@@ -43,11 +44,21 @@ namespace FNaS.UI {
         [SerializeField] private GameObject star3Object;
 
         [Header("Background")]
-        [SerializeField] private GameObject stalkerBackground;
+        [SerializeField] private GameObject backgroundObject;
+        [SerializeField] private Image backgroundImage;
+        [SerializeField] private Sprite defaultStalkerBackground;
+        [SerializeField] private List<Sprite> randomMainMenuBackgrounds = new();
+
+        [Header("Info Popup")]
+        [SerializeField] private InfoPopupOverlay infoPopup;
+        [SerializeField, TextArea(4, 12)] private string mainMenuInfoText;
+        [SerializeField, TextArea(4, 12)] private string presentationInfoText;
 
         [Header("Indicators")]
         [SerializeField] private GameObject devSettingsChangedIndicator;
         [SerializeField] private GameObject funSettingsEnabledIndicator;
+
+        private static bool hasShownTitleOnceThisRun;
 
         private RuntimeGameSettings runtimeSettings;
         private PlayerInputActions inputActions;
@@ -107,15 +118,52 @@ namespace FNaS.UI {
 
         private void Start() {
             ResolveReferences();
+
+            bool firstTitleLoadThisRun = !hasShownTitleOnceThisRun;
+            hasShownTitleOnceThisRun = true;
+
+            PickMainMenuBackground(forceRandom: !firstTitleLoadThisRun);
+
             ShowMainMenu();
             RefreshAll();
+            TryShowMainMenuInfoFirstTime();
+        }
+
+        private void TryShowMainMenuInfoFirstTime() {
+            if (infoPopup == null) return;
+            if (NightProgressSave.HasSeenMainMenuInfoPopup()) return;
+
+            NightProgressSave.MarkMainMenuInfoPopupSeen();
+            infoPopup.Show(mainMenuInfoText);
+        }
+
+        private void TryShowPresentationInfoFirstTime() {
+            if (infoPopup == null) return;
+            if (NightProgressSave.HasSeenPresentationInfoPopup()) return;
+
+            NightProgressSave.MarkPresentationInfoPopupSeen();
+            infoPopup.Show(presentationInfoText);
+        }
+
+        public void ShowMainMenuInfoPopupManual() {
+            if (infoPopup == null) return;
+            infoPopup.Show(mainMenuInfoText);
+        }
+
+        public void ShowPresentationInfoPopupManual() {
+            if (infoPopup == null) return;
+            infoPopup.Show(presentationInfoText);
         }
 
         private void OnToggleDebug(InputAction.CallbackContext ctx) {
             ResolveReferences();
             if (runtimeSettings == null) return;
 
-            if (currentPanel == TitlePanel.PlayerSettings || currentPanel == TitlePanel.PresentationSettings) {
+            if (currentPanel == TitlePanel.PresentationSettings) {
+                return;
+            }
+
+            if (currentPanel == TitlePanel.PlayerSettings) {
                 runtimeSettings.PlayerSettingsDebugUnlocked = !runtimeSettings.PlayerSettingsDebugUnlocked;
                 runtimeSettings.SaveToJson();
                 RebuildCurrentPanel();
@@ -212,9 +260,46 @@ namespace FNaS.UI {
             if (playerSettingsPanel != null) playerSettingsPanel.SetActive(panel == TitlePanel.PlayerSettings);
             if (presentationSettingsPanel != null) presentationSettingsPanel.SetActive(panel == TitlePanel.PresentationSettings);
             if (devGameplayPanel != null) devGameplayPanel.SetActive(panel == TitlePanel.DevGameplay);
-            if (stalkerBackground != null)
-                stalkerBackground.SetActive(panel == TitlePanel.MainMenu);
             if (hintsPanel != null) hintsPanel.SetActive(panel == TitlePanel.Hints);
+
+            if (backgroundObject != null) {
+                backgroundObject.SetActive(panel == TitlePanel.MainMenu);
+            }
+        }
+
+        private void SetDefaultMainMenuBackground() {
+            if (backgroundImage == null || defaultStalkerBackground == null) return;
+
+            backgroundImage.sprite = defaultStalkerBackground;
+            backgroundImage.enabled = true;
+        }
+
+        private void SetRandomMainMenuBackground() {
+            if (backgroundImage == null) return;
+
+            if (randomMainMenuBackgrounds == null || randomMainMenuBackgrounds.Count == 0) {
+                SetDefaultMainMenuBackground();
+                return;
+            }
+
+            Sprite chosen = randomMainMenuBackgrounds[Random.Range(0, randomMainMenuBackgrounds.Count)];
+
+            if (chosen == null) {
+                SetDefaultMainMenuBackground();
+                return;
+            }
+
+            backgroundImage.sprite = chosen;
+            backgroundImage.enabled = true;
+        }
+
+        private void PickMainMenuBackground(bool forceRandom) {
+            if (forceRandom) {
+                SetRandomMainMenuBackground();
+            }
+            else {
+                SetDefaultMainMenuBackground();
+            }
         }
 
         private void RebuildCurrentPanel() {
@@ -231,6 +316,7 @@ namespace FNaS.UI {
                 case TitlePanel.PlayerSettings:
                     if (playerSettingsMenuBuilder != null) {
                         SettingScreen playerScreens = SettingScreen.PlayerSettings;
+
                         if (runtimeSettings.PlayerSettingsDebugUnlocked) {
                             playerScreens |= SettingScreen.PlayerSettingsFun;
                             playerScreens |= SettingScreen.PlayerSettingsDebug;
@@ -242,12 +328,7 @@ namespace FNaS.UI {
 
                 case TitlePanel.PresentationSettings:
                     if (presentationSettingsMenuBuilder != null) {
-                        SettingScreen presentationScreens = SettingScreen.PlayerSettings;
-
-                        if (runtimeSettings.PlayerSettingsDebugUnlocked) {
-                            presentationScreens |= SettingScreen.PlayerSettingsFun;
-                            presentationScreens |= SettingScreen.PlayerSettingsDebug;
-                        }
+                        SettingScreen presentationScreens = SettingScreen.PresentationSettings;
 
                         presentationSettingsMenuBuilder.Rebuild(runtimeSettings, false, presentationScreens);
                     }
@@ -264,19 +345,19 @@ namespace FNaS.UI {
         }
 
         public void OnQuitPressed() {
-            #if UNITY_EDITOR
+#if UNITY_EDITOR
                 UnityEditor.EditorApplication.isPlaying = false;
-            #else
-                Application.Quit();
-            #endif
+#else
+            Application.Quit();
+#endif
         }
 
         private void ResetGameplayDefaultsPreservingPlayerSettings() {
             if (runtimeSettings == null) return;
 
-            var preservedFloats = new System.Collections.Generic.Dictionary<string, float>();
-            var preservedInts = new System.Collections.Generic.Dictionary<string, int>();
-            var preservedBools = new System.Collections.Generic.Dictionary<string, bool>();
+            var preservedFloats = new Dictionary<string, float>();
+            var preservedInts = new Dictionary<string, int>();
+            var preservedBools = new Dictionary<string, bool>();
 
             foreach (var def in SettingsSchema.Definitions) {
                 if (def == null || string.IsNullOrWhiteSpace(def.key)) continue;
@@ -323,12 +404,19 @@ namespace FNaS.UI {
         }
 
         public void ShowMainMenu() {
+            bool returningFromAnotherMenu = currentPanel != TitlePanel.MainMenu;
+
+            if (returningFromAnotherMenu) {
+                PickMainMenuBackground(forceRandom: true);
+            }
+
             SetActivePanel(TitlePanel.MainMenu);
             RefreshAll();
         }
 
         public void ShowCustomNight() {
             ResolveReferences();
+
             if (nightSessionManager == null || !nightSessionManager.IsCustomNightUnlocked()) {
                 return;
             }
@@ -339,6 +427,7 @@ namespace FNaS.UI {
 
         public void ShowCustomNightPreserveCurrent() {
             ResolveReferences();
+
             if (nightSessionManager == null || !nightSessionManager.IsCustomNightUnlocked()) {
                 return;
             }
@@ -355,6 +444,7 @@ namespace FNaS.UI {
         public void ShowPresentationSettings() {
             SetActivePanel(TitlePanel.PresentationSettings);
             RefreshAll();
+            TryShowPresentationInfoFirstTime();
         }
 
         public void ShowDevGameplay() {

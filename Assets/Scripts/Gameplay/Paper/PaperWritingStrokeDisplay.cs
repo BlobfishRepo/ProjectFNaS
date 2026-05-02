@@ -67,6 +67,11 @@ APARTMENT";
         public float wordSpacing = 0.18f;
         public float glyphScale = 1f;
 
+        [Header("Assignment Header")]
+        public bool drawAssignmentHeader = true;
+        public string assignmentHeaderFormat = "Today's Assignment: {0} Lines";
+        public bool uppercaseAssignmentHeader = false;
+
         [Header("Safety")]
         [Min(1)] public int maxCharacters = 1000;
 
@@ -121,6 +126,7 @@ APARTMENT";
         [SerializeField] private bool forcePitch;
         [SerializeField] private float forcedPitch = 1f;
         [SerializeField] private bool resumeWritingAudioFromLastPosition;
+        [SerializeField] private float prewrittenHeaderLength;
 
         private readonly List<BuiltLine> builtLines = new();
         private readonly List<Vector2Int> brushOffsets = new();
@@ -158,13 +164,26 @@ APARTMENT";
             if (settings == null) return;
 
             glyphScale = settings.GetFloat("paper.glyphScale");
-            textToWrite = PaperTextPresets.ResolveText(settings.GetInt("paper.textPreset"));
+
+            // NEW: check for presentation custom text first
+            string customText = settings.GetString("paper.presentationCustomText");
+
+            if (!string.IsNullOrWhiteSpace(customText)) {
+                textToWrite = FilterToSupportedGlyphs(customText);
+            }
+            else {
+                textToWrite = PaperTextPresets.ResolveText(settings.GetInt("paper.textPreset"));
+            }
+
             activeWritingSoundMode = (WritingSoundMode)Mathf.Clamp(settings.GetInt("fun.paperWritingSoundMode"), 0, 1);
             forcePitch = settings.GetBool("fun.paperWritingForcePitch");
             forcedPitch = settings.GetFloat("fun.paperWritingForcedPitch");
             resumeWritingAudioFromLastPosition = activeWritingSoundMode == WritingSoundMode.Fun;
 
             RefreshWritingAudioConfig();
+
+            // IMPORTANT: rebuild after changing text
+            Rebuild();
         }
 
         private void Update() {
@@ -188,8 +207,15 @@ APARTMENT";
             }
 
             resolvedTextPreview = ResolveWorkingText();
+            resolvedTextPreview = AddAssignmentHeaderToText(resolvedTextPreview);
+
             BuildTextGeometry(Tokenize(resolvedTextPreview));
             builtSegmentCount = CountSegments();
+
+            prewrittenHeaderLength = CalculateHeaderLength();
+            DrawRangeAcrossLines(0f, prewrittenHeaderLength);
+            UploadInkTexture();
+
             UpdateOverlayVisibility();
 
             if (verboseLogging) {
@@ -199,6 +225,12 @@ APARTMENT";
                     this
                 );
             }
+        }
+
+        private float CalculateHeaderLength() {
+            if (!drawAssignmentHeader || builtLines.Count == 0) return 0f;
+
+            return builtLines[0].globalEndLength;
         }
 
         private void ResetBuildState() {
@@ -211,6 +243,7 @@ APARTMENT";
             revealCursorLineIndex = 0;
             revealCursorSegmentIndex = 0;
             nextInkApplyTime = 0f;
+            prewrittenHeaderLength = 0f;
         }
 
         private string ResolveWorkingText() {
@@ -227,6 +260,66 @@ APARTMENT";
             return text;
         }
 
+        private int EstimateWrittenLineCount(string text) {
+            if (string.IsNullOrWhiteSpace(text)) return 0;
+
+            List<TextToken> tokens = Tokenize(text);
+
+            float unitsPerGlyphHeight = lineHeight * glyphScale;
+            float lineAdvance = lineHeight * lineSpacingMultiplier;
+            float z = pageOrigin.y;
+            float x = pageOrigin.x + lineHeight;
+            int lineCount = 1;
+
+            void AdvanceLine() {
+                z = pageOrigin.y;
+                x += lineAdvance;
+                lineCount++;
+            }
+
+            for (int i = 0; i < tokens.Count; i++) {
+                TextToken token = tokens[i];
+
+                if (token.type == TokenType.Newline) {
+                    AdvanceLine();
+                    continue;
+                }
+
+                float wordWidth = MeasureWordWidth(token.text, unitsPerGlyphHeight);
+                bool atLineStart = Mathf.Abs(z - pageOrigin.y) < 0.0001f;
+
+                if (!atLineStart && z + wordWidth > pageOrigin.y + pageSize.y) {
+                    AdvanceLine();
+                }
+
+                if (x > pageOrigin.x + pageSize.x) {
+                    break;
+                }
+
+                z += wordWidth;
+
+                bool hasNextWord = i + 1 < tokens.Count && tokens[i + 1].type == TokenType.Word;
+                if (hasNextWord) {
+                    z += wordSpacing * unitsPerGlyphHeight;
+                }
+            }
+
+            return Mathf.Max(1, lineCount);
+        }
+
+        private string AddAssignmentHeaderToText(string bodyText) {
+            if (!drawAssignmentHeader) return bodyText;
+
+            int estimatedLines = EstimateWrittenLineCount(bodyText);
+            string header = string.Format(assignmentHeaderFormat, estimatedLines);
+
+            if (uppercaseAssignmentHeader) {
+                header = header.ToUpperInvariant();
+            }
+
+            return header + "\n" + bodyText;
+        }
+
         private int CountSegments() {
             int count = 0;
             for (int i = 0; i < builtLines.Count; i++) {
@@ -237,13 +330,18 @@ APARTMENT";
 
         private void UpdateReveal() {
             float progress01 = paperProgress != null ? paperProgress.GetProgress01() : 0f;
-            currentRevealLength = totalLength * Mathf.Clamp01(progress01);
+
+            float writableLength = Mathf.Max(0f, totalLength - prewrittenHeaderLength);
+            currentRevealLength = prewrittenHeaderLength + writableLength * Mathf.Clamp01(progress01);
 
             if (currentRevealLength < lastRevealLength - 0.0001f) {
                 ClearInkTexture();
+
                 revealCursorLineIndex = 0;
                 revealCursorSegmentIndex = 0;
-                DrawRangeAcrossLines(0f, currentRevealLength);
+
+                DrawRangeAcrossLines(0f, prewrittenHeaderLength);
+                DrawRangeAcrossLines(prewrittenHeaderLength, currentRevealLength);
             }
             else if (currentRevealLength > lastRevealLength + 0.0001f) {
                 DrawRangeAcrossLines(lastRevealLength, currentRevealLength);
@@ -458,6 +556,7 @@ APARTMENT";
         private void BuildTextGeometry(List<TextToken> tokens) {
             float unitsPerGlyphHeight = lineHeight * glyphScale;
             float lineAdvance = lineHeight * lineSpacingMultiplier;
+
             float z = pageOrigin.y;
             float x = pageOrigin.x + lineHeight;
             BuiltLine currentLine = new();
@@ -818,6 +917,45 @@ APARTMENT";
 
             Vector2 pagePos = GetPagePointAtGlobalLength(currentRevealLength);
             return transform.TransformPoint(new Vector3(pagePos.x, localSurfaceOffset, pagePos.y));
+        }
+
+        private string FilterToSupportedGlyphs(string input) {
+            if (string.IsNullOrEmpty(input)) return "";
+
+            // Convert typed "\n" into real newlines too.
+            input = input.Replace("\\n", "\n").Replace("\\t", " ");
+
+            if (glyphLibrary == null) return input;
+
+            var sb = new System.Text.StringBuilder();
+
+            foreach (char c in input) {
+                if (c == '\r') continue;
+
+                if (c == '\n') {
+                    sb.Append('\n');
+                    continue;
+                }
+
+                if (char.IsWhiteSpace(c)) {
+                    sb.Append(' ');
+                    continue;
+                }
+
+                // Try exact character first (preserve uppercase)
+                if (glyphLibrary.TryGetGlyph(c, out _)) {
+                    sb.Append(c);
+                    continue;
+                }
+
+                // Fallback: lowercase if uppercase glyph doesn't exist
+                char lower = char.ToLowerInvariant(c);
+                if (glyphLibrary.TryGetGlyph(lower, out _)) {
+                    sb.Append(lower);
+                }
+            }
+
+            return sb.ToString();
         }
 
         public int GetCurrentLineIndex() {

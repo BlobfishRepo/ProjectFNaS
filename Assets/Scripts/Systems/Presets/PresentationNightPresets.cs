@@ -37,8 +37,13 @@ namespace FNaS.Systems {
             settings.SetBool("batteryPack.enabled", true);
 
             // Presentation-specific paper setup.
-            settings.SetFloat("paper.secondsToWin", 180f);
-            settings.SetFloat("paper.glyphScale", 0.30f);
+            float duration = settings.GetBool("paper.presentationShortNight") ? 60f : 120f;
+            settings.SetFloat("paper.secondsToWin", duration);
+
+            settings.SetFloat(
+                "paper.glyphScale",
+                settings.GetFloat("paper.presentationGlyphScale")
+            );
             settings.SetInt("paper.textPreset", 7);
         }
 
@@ -47,8 +52,6 @@ namespace FNaS.Systems {
             settings.SetInt("lostGirl.ai", 0);
             settings.SetInt("mimic.ai", 0);
             settings.SetInt("mold.ai", 0);
-
-            settings.SetBool("batteryPack.enabled", false);
         }
 
         private static void ApplyStage40(RuntimeGameSettings settings) {

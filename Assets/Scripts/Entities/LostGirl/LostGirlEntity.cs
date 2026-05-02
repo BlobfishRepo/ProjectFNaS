@@ -50,6 +50,7 @@ namespace FNaS.Entities.LostGirl {
         public Transform playerRegionProbe;
         public List<LostGirlRegionVolume> playerRegionVolumes = new();
         public List<LostGirlGlassAnchor> anchors = new();
+        public bool requireSameRegionForKill = true;
 
         [Header("References")]
         public LoseState loseState;
@@ -71,6 +72,7 @@ namespace FNaS.Entities.LostGirl {
         public AudioClip activationClip;
         public AudioClip runStartClip;
         public AudioClip runningLoopClip;
+        public AudioClip despawnClip;
         [Range(0f, 1f)] public float runningLoopVolume = 0.9f;
 
         [Header("Debug")]
@@ -303,7 +305,17 @@ namespace FNaS.Entities.LostGirl {
 
             for (int i = 0; i < trackedDoors.Count; i++) {
                 Door door = trackedDoors[i];
-                if (door != null && door.isOpen) {
+                if (door == null || !door.isOpen) continue;
+
+                Vector3 a = transform.position;
+                Vector3 b = door.transform.position;
+
+                a.y = 0f;
+                b.y = 0f;
+
+                float openDoorKillDistance = Mathf.Max(0.75f, killDistance);
+
+                if (Vector3.Distance(a, b) <= openDoorKillDistance) {
                     TriggerJumpscare("The Lost Girl reached the open door.");
                     return true;
                 }
@@ -315,11 +327,26 @@ namespace FNaS.Entities.LostGirl {
         private bool CheckPlayerKill() {
             if (playerTarget == null) return false;
 
-            Vector3 a = transform.position; a.y = 0f;
-            Vector3 b = playerTarget.position; b.y = 0f;
+            if (requireSameRegionForKill) {
+                LostGirlRegionId lostGirlRegion = GetRegionForPosition(transform.position);
+                LostGirlRegionId playerRegion = GetCurrentPlayerRegion();
+
+                if (lostGirlRegion == LostGirlRegionId.None) return false;
+                if (playerRegion == LostGirlRegionId.None) return false;
+                if (lostGirlRegion != playerRegion) return false;
+            }
+
+            Vector3 a = transform.position;
+            Vector3 b = playerTarget.position;
+
+            a.y = 0f;
+            b.y = 0f;
 
             if (Vector3.Distance(a, b) > killDistance) return false;
-            if (requireLineOfSightForKill && !HasLineOfSight(GetKillOrigin(), GetKillTarget())) return false;
+
+            if (requireLineOfSightForKill && !HasLineOfSight(GetKillOrigin(), GetKillTarget())) {
+                return false;
+            }
 
             TriggerJumpscare("The Lost Girl caught the player.");
             return true;
@@ -453,9 +480,17 @@ namespace FNaS.Entities.LostGirl {
 
             if (!float.IsFinite(probePos.x)) return LostGirlRegionId.None;
 
+            return GetRegionForPosition(probePos);
+        }
+
+        private LostGirlRegionId GetRegionForPosition(Vector3 worldPosition) {
+            if (playerRegionVolumes == null) return LostGirlRegionId.None;
+
             for (int i = 0; i < playerRegionVolumes.Count; i++) {
                 LostGirlRegionVolume v = playerRegionVolumes[i];
-                if (v != null && v.Contains(probePos)) return v.Region;
+                if (v != null && v.Contains(worldPosition)) {
+                    return v.Region;
+                }
             }
 
             return LostGirlRegionId.None;
@@ -489,8 +524,16 @@ namespace FNaS.Entities.LostGirl {
         }
 
         public void ResetToPreSpawn() {
+            bool wasActive =
+                phase == LostGirlPhase.Emerging ||
+                phase == LostGirlPhase.Chasing;
+
             if (currentAnchor != null) {
                 lastUsedAnchor = currentAnchor;
+            }
+
+            if (wasActive) {
+                PlayOneShot(despawnClip);
             }
 
             phase = LostGirlPhase.PreSpawn;

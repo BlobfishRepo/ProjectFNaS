@@ -810,7 +810,7 @@ MonoBehaviour:
   panHeldAlpha: 0.95
   panUnavailableAlpha: 0
   availableAlpha: 0.95
-  unavailableAlpha: 0.4
+  unavailableAlpha: 0.05
   movingMultiplier: 0.25
   fadeSpeed: 18
 --- !u!1001 &110905790
@@ -10369,13 +10369,16 @@ MonoBehaviour:
   paperView: {fileID: 0}
   paperViewNameFallback: Paper
   onlyRenderOverlayOnPaperView: 1
-  pageOrigin: {x: -0.44, y: -0.45}
-  pageSize: {x: 0.88, y: 0.9}
+  pageOrigin: {x: -0.44, y: -0.4}
+  pageSize: {x: 0.88, y: 0.83}
   lineHeight: 0.06
   lineSpacingMultiplier: 0.9
   characterSpacing: 0.05
   wordSpacing: 0.5
   glyphScale: 0.6
+  drawAssignmentHeader: 1
+  assignmentHeaderFormat: 'Today''s Assignment: {0} Lines'
+  uppercaseAssignmentHeader: 0
   maxCharacters: 1000
   localSurfaceOffset: 5
   textureWidth: 512
@@ -10415,6 +10418,7 @@ MonoBehaviour:
   forcePitch: 0
   forcedPitch: 1
   resumeWritingAudioFromLastPosition: 1
+  prewrittenHeaderLength: 0
 --- !u!82 &480117186
 AudioSource:
   m_ObjectHideFlags: 0
@@ -13306,7 +13310,7 @@ MonoBehaviour:
   sprayVisualRegrowDelay: 0.75
   sprayVisualRegrowSpeedMultiplier: 2.5
   allowBloodPhase: 1
-  bloodTransitionSeconds: 5
+  bloodTransitionSeconds: 60
   drawAdjacencyGizmos: 1
   drawPatchSpheres: 1
   adjacencyColor: {r: 0, g: 1, b: 1, a: 1}
@@ -17948,10 +17952,12 @@ MonoBehaviour:
   jumpscareCamera: {fileID: 730304183}
   jumpscareLayerName: Jumpscare
   audioSource: {fileID: 1165119250}
+  burningLoopClip: {fileID: 8300000, guid: d77e3db5ae5baf1418af2741a100473d, type: 3}
+  burningVolume: 0.8
   spawnClip: {fileID: 8300000, guid: 995a5641178e59244ba9624ac8d3a386, type: 3}
   laughClip: {fileID: 8300000, guid: 995a5641178e59244ba9624ac8d3a386, type: 3}
   banishClip: {fileID: 8300000, guid: 2252bbf9b9fc8fe4abf13f203baf7a73, type: 3}
-  punishClip: {fileID: 8300000, guid: 33b676a91239dec44b4a25a6c130d111, type: 3}
+  punishClip: {fileID: 8300000, guid: 0c9d12d21369a534e80bdd09bacf03c2, type: 3}
   spawnVolume: 1
   laughVolume: 1
   banishVolume: 1
@@ -20537,6 +20543,8 @@ MonoBehaviour:
   destinationSampleDistance: 1.25
   repathInterval: 0.1
   invalidPathGraceSeconds: 0.2
+  runBrieflyBeforeInvalidPathFail: 1
+  invalidPathBonkRunSeconds: 0.75
   spawnSnapDistance: 1.5
   stuckCheckInterval: 0.35
   minProgressDistance: 0.05
@@ -20571,7 +20579,7 @@ MonoBehaviour:
   playerViewOrigin: {fileID: 297955388}
   playerObserveCamera: {fileID: 297955389}
   attentionState: {fileID: 428565957}
-  emergeLingerSeconds: 0.5
+  emergeLingerSeconds: 1
   activeChaseDurationSeconds: 10
   killDistance: 8
   requireLineOfSightForKill: 0
@@ -20591,6 +20599,7 @@ MonoBehaviour:
   anchors:
   - {fileID: 1915305959}
   - {fileID: 1995889996}
+  requireSameRegionForKill: 1
   loseState: {fileID: 428565956}
   movement: {fileID: 1426053291}
   activeVisualRoot: {fileID: 1384249540}
@@ -20603,9 +20612,10 @@ MonoBehaviour:
   sfxVolume: 1
   spawnInClip: {fileID: 8300000, guid: 9457bfcc1ef2849498bedd1c2208fa4a, type: 3}
   stageProgressClip: {fileID: 8300000, guid: 15f386ebfc80f1c4da54eabde35f559a, type: 3}
-  activationClip: {fileID: 8300000, guid: a36a5c80952b39d47af91755ab2c69ed, type: 3}
+  activationClip: {fileID: 8300000, guid: 06c42b6b59c3b234eb77899581736aab, type: 3}
   runStartClip: {fileID: 0}
   runningLoopClip: {fileID: 8300000, guid: eae4a56d3bd43e840b2038c9b857d8dd, type: 3}
+  despawnClip: {fileID: 8300000, guid: 25433f83f53882747b8b77e8c3989525, type: 3}
   runningLoopVolume: 0.9
   verboseLogging: 1
   phase: 0
@@ -20638,7 +20648,7 @@ MonoBehaviour:
   playerLookTarget: {fileID: 24923310}
   triggerName: JumpscareTrigger
   jumpscareDelayBeforeLose: 0.5
-  jumpscareClip: {fileID: 8300000, guid: 33b676a91239dec44b4a25a6c130d111, type: 3}
+  jumpscareClip: {fileID: 8300000, guid: 0c9d12d21369a534e80bdd09bacf03c2, type: 3}
   jumpscareVolume: 1
 --- !u!195 &1426053294
 NavMeshAgent:
@@ -20649,7 +20659,7 @@ NavMeshAgent:
   m_GameObject: {fileID: 1426053289}
   m_Enabled: 1
   m_AgentTypeID: 0
-  m_Radius: 3
+  m_Radius: 3.5
   m_Speed: 20
   m_Acceleration: 80
   avoidancePriority: 50
@@ -24833,7 +24843,7 @@ MonoBehaviour:
   triggerName: JumpscareTrigger
   jumpscareDelayBeforeLose: 1.2
   disableLookDuringJumpscare: 1
-  jumpscareClip: {fileID: 8300000, guid: 33b676a91239dec44b4a25a6c130d111, type: 3}
+  jumpscareClip: {fileID: 8300000, guid: 0c9d12d21369a534e80bdd09bacf03c2, type: 3}
   jumpscareVolume: 1
 --- !u!114 &1782984182
 MonoBehaviour:
@@ -39694,6 +39704,7 @@ GameObject:
   - component: {fileID: 2320646283796865844}
   - component: {fileID: 4647554761114585797}
   - component: {fileID: 6232054111112178889}
+  - component: {fileID: 6232054111112178890}
   m_Layer: 0
   m_Name: Wall3
   m_TagString: Untagged
@@ -40198,6 +40209,7 @@ GameObject:
   - component: {fileID: 450268905717663199}
   - component: {fileID: 156037623725802405}
   - component: {fileID: 814374069668035117}
+  - component: {fileID: 3031515998487722934}
   m_Layer: 0
   m_Name: Wall3.002
   m_TagString: Untagged
@@ -40205,6 +40217,27 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!65 &3031515998487722934
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3031515998487722933}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.008653594, y: 0.59989417, z: 0.26218477}
+  m_Center: {x: -0.0056732316, y: 0.01044485, z: 0.13109237}
 --- !u!4 &3044063265752085543
 Transform:
   m_ObjectHideFlags: 0
@@ -40768,6 +40801,7 @@ GameObject:
   - component: {fileID: 8073670339341681506}
   - component: {fileID: 5564948154930107811}
   - component: {fileID: 7491302810974048753}
+  - component: {fileID: 8073670339341681507}
   m_Layer: 0
   m_Name: Wall4.002
   m_TagString: Untagged
@@ -50213,6 +50247,27 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &6232054111112178890
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2722156897590942106}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.008653582, y: 0.49308404, z: 0.26218477}
+  m_Center: {x: -0.0056732376, y: 0.063849956, z: 0.13109237}
 --- !u!4 &6243232690401444106
 Transform:
   m_ObjectHideFlags: 0
@@ -56689,6 +56744,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 7607462266073205293}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &8073670339341681507
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3194939010629640799}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.020000027, y: 0.40820622, z: 0.26218474}
+  m_Center: {x: -0.000000006291865, y: 0.02141106, z: 0.13109237}
 --- !u!33 &8086299696650022773
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -56787,6 +56863,7 @@ GameObject:
   - component: {fileID: 504167618920422962}
   - component: {fileID: 7573048596620445216}
   - component: {fileID: 4782254868176441309}
+  - component: {fileID: 8135009133159520351}
   m_Layer: 0
   m_Name: Wall4.005
   m_TagString: Untagged
@@ -56794,6 +56871,27 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!65 &8135009133159520351
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8135009133159520350}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.020000013, y: 0.38036817, z: 0.26218474}
+  m_Center: {x: -0.0000000015865035, y: 0.00749206, z: 0.13109237}
 --- !u!33 &8136353512175047498
 MeshFilter:
   m_ObjectHideFlags: 0
