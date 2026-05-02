@@ -161,6 +161,11 @@ namespace FNaS.Gameplay {
             if (loseState != null && loseState.hasLost) return;
             if (stalkerJumpscare != null && stalkerJumpscare.IsPlaying) return;
 
+            if (GameplayPauseManager.IsPausedGlobal) {
+                activeMoveDir = null;
+                return;
+            }
+
             SyncWaypointFromMover();
 
             if (!externalInputLocked) {
@@ -405,6 +410,8 @@ namespace FNaS.Gameplay {
         }
 
         private void TryMove(Direction dir) {
+            if (GameplayPauseManager.IsPausedGlobal) return;
+
             if (mover == null || mover.IsMoving) return;
             if (mover.CurrentWaypoint == null) return;
 

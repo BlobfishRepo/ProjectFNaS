@@ -975,7 +975,11 @@ MonoBehaviour:
 
     There are
     more settings in the Settings Gear, including brightness, volume, and control
-    tweaks. '
+    tweaks.
+
+
+    Click on this info box to close. You can bring it up again using
+    the info button on the bottom-left. '
   presentationInfoText: 'Presentation Night has the following settings:
 
     1. Doing
@@ -991,16 +995,19 @@ MonoBehaviour:
 
     In order
     to progress, use [R] at the desk to write on the paper. Post-it notes will appear
-    throughout the night. While you are reading a post-it note, you cannot die, so
-    make sure to understand what the note is saying.
+    throughout the night, and you should [Left Click] to view hints. While you are
+    reading a post-it note, you cannot die, so make sure to understand what the note
+    is saying.
 
 
-    There is also a field
-    to input custom text to show off the rendering. Ideally, use a large block of
-    text.
+    There is also a field to input custom text to show off the rendering.
+    Ideally, use a large block of text.
 
 
-    Good luck. '
+    Click on this info box to close.
+
+    Good
+    luck. '
   devSettingsChangedIndicator: {fileID: 1806962397}
   funSettingsEnabledIndicator: {fileID: 1596655531}
 --- !u!1 &144485305
@@ -1895,9 +1902,9 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 960, y: -150}
+  m_AnchoredPosition: {x: 80, y: -100}
   m_SizeDelta: {x: 1760, y: 50}
-  m_Pivot: {x: 0.5, y: 1}
+  m_Pivot: {x: 0, y: 1}
 --- !u!114 &319711296
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3773,6 +3780,70 @@ MonoBehaviour:
   hoverVolume: 1
   clickVolume: 1
   onlyWhenInteractable: 1
+--- !u!1 &572136338
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 572136339}
+  - component: {fileID: 572136340}
+  m_Layer: 5
+  m_Name: IndicatorRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &572136339
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 572136338}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1596655532}
+  - {fileID: 1806962398}
+  m_Father: {fileID: 646627842}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0, y: 1}
+--- !u!114 &572136340
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 572136338}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
+  m_Padding:
+    m_Left: 10
+    m_Right: 0
+    m_Top: 10
+    m_Bottom: 0
+  m_ChildAlignment: 0
+  m_Spacing: 0
+  m_ChildForceExpandWidth: 1
+  m_ChildForceExpandHeight: 1
+  m_ChildControlWidth: 0
+  m_ChildControlHeight: 0
+  m_ChildScaleWidth: 0
+  m_ChildScaleHeight: 0
+  m_ReverseArrangement: 0
 --- !u!1 &577577336
 GameObject:
   m_ObjectHideFlags: 0
@@ -4210,7 +4281,7 @@ RectTransform:
   - {fileID: 380655519}
   - {fileID: 1150219466}
   - {fileID: 441616321}
-  - {fileID: 1596655532}
+  - {fileID: 572136339}
   - {fileID: 120604941}
   - {fileID: 740079462}
   m_Father: {fileID: 1688604171}
@@ -4258,7 +4329,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 0, y: -77.5}
+  m_AnchoredPosition: {x: 30, y: -67.5}
   m_SizeDelta: {x: 280, y: 45}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &670475035
@@ -4539,10 +4610,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
   m_Padding:
-    m_Left: 0
+    m_Left: 30
     m_Right: 0
     m_Top: 0
-    m_Bottom: 0
+    m_Bottom: 20
   m_ChildAlignment: 4
   m_Spacing: 20
   m_ChildForceExpandWidth: 1
@@ -4571,7 +4642,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &740079462
 RectTransform:
   m_ObjectHideFlags: 0
@@ -6488,7 +6559,6 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 356060752}
-  - {fileID: 1806962398}
   - {fileID: 462283647}
   - {fileID: 1131674577}
   m_Father: {fileID: 120604941}
@@ -8358,6 +8428,7 @@ GameObject:
   - component: {fileID: 1596655532}
   - component: {fileID: 1596655534}
   - component: {fileID: 1596655533}
+  - component: {fileID: 1596655535}
   m_Layer: 5
   m_Name: FunEnabledIndicator
   m_TagString: Untagged
@@ -8377,12 +8448,12 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 646627842}
+  m_Father: {fileID: 572136339}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 60, y: -20}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 50, y: 100}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1596655533
 MonoBehaviour:
@@ -8422,6 +8493,26 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1596655531}
   m_CullTransparentMesh: 1
+--- !u!114 &1596655535
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1596655531}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.LayoutElement
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: 50
+  m_PreferredHeight: -1
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1 &1605064075
 GameObject:
   m_ObjectHideFlags: 0
@@ -9852,6 +9943,7 @@ GameObject:
   - component: {fileID: 1806962398}
   - component: {fileID: 1806962400}
   - component: {fileID: 1806962399}
+  - component: {fileID: 1806962401}
   m_Layer: 5
   m_Name: StarsDisabledIndicator
   m_TagString: Untagged
@@ -9871,12 +9963,12 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1173661758}
+  m_Father: {fileID: 572136339}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: -860, y: 485}
-  m_SizeDelta: {x: 100, y: 100}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 50, y: 100}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1806962399
 MonoBehaviour:
@@ -9916,6 +10008,26 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1806962397}
   m_CullTransparentMesh: 1
+--- !u!114 &1806962401
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1806962397}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 306cc8c2b49d7114eaa3623786fc2126, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.LayoutElement
+  m_IgnoreLayout: 0
+  m_MinWidth: -1
+  m_MinHeight: -1
+  m_PreferredWidth: 50
+  m_PreferredHeight: -1
+  m_FlexibleWidth: -1
+  m_FlexibleHeight: -1
+  m_LayoutPriority: 1
 --- !u!1 &1835528293
 GameObject:
   m_ObjectHideFlags: 0

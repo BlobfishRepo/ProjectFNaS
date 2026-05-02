@@ -244,7 +244,9 @@ namespace FNaS.UI {
             }
 
             if (devSettingsChangedIndicator != null) {
-                devSettingsChangedIndicator.SetActive(showDevChanged);
+                devSettingsChangedIndicator.SetActive(
+                    currentPanel == TitlePanel.CustomNight && showDevChanged
+                );
             }
 
             if (funSettingsEnabledIndicator != null) {
@@ -417,9 +419,20 @@ namespace FNaS.UI {
         public void ShowCustomNight() {
             ResolveReferences();
 
+            if (runtimeSettings == null) return;
+
             if (nightSessionManager == null || !nightSessionManager.IsCustomNightUnlocked()) {
                 return;
             }
+
+            ResetKeysToDefault(
+                "paper.textPreset",
+                "paper.glyphScale",
+                "paper.secondsToWin",
+                "batteryPack.enabled"
+            );
+
+            runtimeSettings.SaveToJson();
 
             SetActivePanel(TitlePanel.CustomNight);
             RefreshAll();
@@ -500,6 +513,31 @@ namespace FNaS.UI {
 
             ResetGameplayDefaultsPreservingPlayerSettings();
             RefreshAll();
+        }
+
+        private void ResetKeysToDefault(params string[] keys) {
+            foreach (var key in keys) {
+                if (!SettingsSchema.TryGetDefinition(key, out var def)) continue;
+
+                switch (def.controlType) {
+                    case SettingControlType.FloatSlider:
+                        runtimeSettings.SetFloat(key, def.defaultFloat);
+                        break;
+
+                    case SettingControlType.IntSlider:
+                    case SettingControlType.Dropdown:
+                        runtimeSettings.SetInt(key, def.defaultInt);
+                        break;
+
+                    case SettingControlType.Toggle:
+                        runtimeSettings.SetBool(key, def.defaultBool);
+                        break;
+
+                    case SettingControlType.TextInput:
+                        runtimeSettings.SetString(key, "");
+                        break;
+                }
+            }
         }
     }
 }

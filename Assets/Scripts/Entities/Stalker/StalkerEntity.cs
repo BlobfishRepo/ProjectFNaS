@@ -86,6 +86,7 @@ namespace FNaS.Entities.Stalker {
         [Header("Movement Drivers")]
         [SerializeField] private StalkerNodeMovement nodeMovement;
         [SerializeField] private StalkerRoamMovement roamMovement;
+        [SerializeField] private float doorDangerVisualTimer;
 
         [Header("Jumpscare")]
         [SerializeField] private StalkerJumpscareController jumpscareController;
@@ -203,6 +204,7 @@ namespace FNaS.Entities.Stalker {
         private bool HandleAIDisabledState() {
             if (ai <= 0) {
                 if (!aiDisabled) EnterAIDisabledState();
+                doorDangerVisualTimer = 0f;
                 return true;
             }
 
@@ -233,6 +235,7 @@ namespace FNaS.Entities.Stalker {
             aiDisabled = false;
 
             SetVisible(true);
+            doorDangerVisualTimer = 0f;
             doorEnterTick = -1;
             stunnedUntilTick = -1;
             sameNodeKillTimer = 0f;
@@ -328,6 +331,7 @@ namespace FNaS.Entities.Stalker {
         private void HandleDoorLoss() {
             if (!IsThreatActive) {
                 doorEnterTick = -1;
+                doorDangerVisualTimer = 0f;
                 return;
             }
 
@@ -336,18 +340,22 @@ namespace FNaS.Entities.Stalker {
 
             if (!AtDoor) {
                 doorEnterTick = -1;
+                doorDangerVisualTimer = 0f;
                 return;
             }
 
             if (doorEnterTick < 0) {
                 doorEnterTick = scheduler.CurrentTick;
-            }
-
-            if (!CanDoorKillNow(scheduler.CurrentTick)) {
-                return;
+                doorDangerVisualTimer = 0f;
             }
 
             if (IsCurrentlyBurning()) {
+                return;
+            }
+
+            doorDangerVisualTimer += Time.deltaTime;
+
+            if (!CanDoorKillNow(scheduler.CurrentTick)) {
                 return;
             }
 
@@ -463,6 +471,7 @@ namespace FNaS.Entities.Stalker {
                 doorGroanPlayedOnce = false;
                 doorGroanTimer = 0f;
                 doorEnterTick = -1;
+                doorDangerVisualTimer = 0f;
             }
             else if (doorEnterTick < 0) {
                 doorEnterTick = tick;
@@ -717,6 +726,30 @@ namespace FNaS.Entities.Stalker {
             }
 
             TriggerStalkerJumpscare("Walked forward while the stalker was at the door.");
+        }
+
+        public float DangerPressure01 {
+            get {
+                float sameNodePressure = 0f;
+                float doorPressure = 0f;
+
+                if (enableSameNodeKill && IsThreatActive && player != null &&
+                    player.CurrentMasterNode != null && CurrentMasterNode != null &&
+                    player.CurrentMasterNode.Guid == CurrentMasterNode.Guid) {
+                    sameNodePressure = Mathf.Clamp01(sameNodeKillTimer / Mathf.Max(0.01f, GetSameNodeKillSeconds()));
+                }
+
+                if (IsThreatActive && AtDoor && doorEnterTick >= 0) {
+                    float tickSeconds = GlobalAIScheduler.Instance != null
+                        ? GlobalAIScheduler.Instance.baseIntervalSeconds
+                        : 5f;
+
+                    float estimatedDoorKillSeconds = Mathf.Max(0.01f, doorKillTicks * tickSeconds);
+                    doorPressure = Mathf.Clamp01(doorDangerVisualTimer / estimatedDoorKillSeconds);
+                }
+
+                return Mathf.Max(sameNodePressure, doorPressure);
+            }
         }
     }
 }

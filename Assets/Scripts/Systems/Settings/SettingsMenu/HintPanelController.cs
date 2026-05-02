@@ -71,6 +71,14 @@ namespace FNaS.UI {
         }
 
         private void OnEnable() {
+            if (hints.Count == 0) {
+                LoadHints();
+            }
+
+            if (imagesById.Count == 0) {
+                BuildImageLookup();
+            }
+
             RebuildButtons();
 
             if (hints.Count > 0) {

@@ -7,19 +7,24 @@
 - Presentation Menu now has a field to add custom text to write on the paper. 
 - Lost Girl now has a sound effect upon despawning.
 - Added burning sound effect to Mimic.
+- Stalker now makes screen red as he is getting closer to killing you.
 
 ### Changed
 - Presentation Menu settings tweaked, with most of the settings now only accessible through the Settings menu.
 - Paper now displays total amount of lines in the text at the top.
 - Lost Girl movement tweaked slightly.
 - Slightly reduced volume of some of the loader noises (Jumpscare, Lost Girl appear in apartment).
-- Adjusted position of special settings indicators.
+- General UI tweaks to avoid clipping of UI elements depending on the aspect ratio. Adjusted position of special settings indicators.
 - Updated text, particularly hints and some of the post-it notes.
 - Adjusted AI values for Campaign nights.
+- Stalker now kills at 2 door ticks instead of 1.
+- Backend: removed all unused assets
 
 ### Fixed
 - Added box colliders to some walls to mitigate flashlights going through walls.
 - Fixed dev setting indicator incorrectly showing when Mold AI was changed.
+- Prevented player from moving while in post-it screen.
+- Fixed Post-it dimmer not hiding full screen.
 
 ## April 30
 ### Added

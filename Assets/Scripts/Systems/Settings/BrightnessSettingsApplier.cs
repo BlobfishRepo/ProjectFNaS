@@ -49,6 +49,7 @@ namespace FNaS.Systems {
             if (settings == null) return;
 
             ResolveVolume();
+            if (volume == null || !volume) return;
             if (colorAdjustments == null) return;
 
             int brightness = Mathf.Clamp(settings.GetInt("video.brightness"), 0, 10);
@@ -60,15 +61,16 @@ namespace FNaS.Systems {
         }
 
         private void ResolveVolume() {
-            if (volume == null) {
+            if (volume == null || !volume) {
                 volume = GetComponent<Volume>();
             }
 
             colorAdjustments = null;
 
-            if (volume != null && volume.profile != null) {
-                volume.profile.TryGet(out colorAdjustments);
-            }
+            if (volume == null || !volume) return;
+            if (volume.profile == null) return;
+
+            volume.profile.TryGet(out colorAdjustments);
         }
     }
 }
