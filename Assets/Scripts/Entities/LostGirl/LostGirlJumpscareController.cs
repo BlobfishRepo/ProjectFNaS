@@ -32,6 +32,7 @@ namespace FNaS.Entities.LostGirl {
         [Header("Audio")]
         [SerializeField] private AudioClip jumpscareClip;
         [SerializeField][Range(0f, 1f)] private float jumpscareVolume = 1f;
+        [SerializeField] private AudioSource jumpscareAudioSource;
 
         private bool isPlaying;
         private int originalJumpscareLayer = -1;
@@ -64,8 +65,8 @@ namespace FNaS.Entities.LostGirl {
         private IEnumerator PlayRoutine(string loseReason) {
             isPlaying = true;
 
-            if (jumpscareClip != null && Camera.main != null) {
-                AudioSource.PlayClipAtPoint(jumpscareClip, Camera.main.transform.position, jumpscareVolume);
+            if (jumpscareAudioSource != null && jumpscareClip != null) {
+                jumpscareAudioSource.PlayOneShot(jumpscareClip, jumpscareVolume);
             }
 
             if (playerMovement != null) {

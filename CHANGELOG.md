@@ -1,4 +1,11 @@
 # Changelog
+## May 3
+### Added
+- Added a Jumpscare audio slider.
+
+### Changed
+- Altered Mimic hint text slightly.
+
 ## May 2
 ### Added
 - Added particles for when a mold patch is disabled.

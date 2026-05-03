@@ -107,6 +107,9 @@ namespace FNaS.Entities.Mimic {
         [Range(0f, 1f)] public float banishVolume = 1f;
         [Range(0f, 1f)] public float punishVolume = 1f;
 
+        [Header("Jumpscare Audio")]
+        [SerializeField] private AudioSource jumpscareAudioSource;
+
         [Header("Debug")]
         public bool verboseLogging = false;
 
@@ -432,7 +435,9 @@ namespace FNaS.Entities.Mimic {
                 jumpscareCamera.enabled = true;
             }
 
-            PlayOneShot(punishClip, punishVolume);
+            if (jumpscareAudioSource != null && punishClip != null) {
+                jumpscareAudioSource.PlayOneShot(punishClip, punishVolume);
+            }
 
             if (flashlight != null) {
                 flashlight.DrainPercent(batteryDrainPercent);

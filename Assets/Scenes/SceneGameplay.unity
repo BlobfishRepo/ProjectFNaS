@@ -13140,6 +13140,7 @@ MonoBehaviour:
   spraySpreadBlockSeconds: 5
   sprayVisualContactHoldTime: 0.1
   sprayVisualRegrowDelay: 0.75
+  sprayVisualClearSpeedMultiplier: 0.65
   sprayVisualRegrowSpeedMultiplier: 2.5
   allowBloodPhase: 1
   bloodTransitionSeconds: 60
@@ -17559,6 +17560,7 @@ MonoBehaviour:
   laughVolume: 1
   banishVolume: 1
   punishVolume: 1
+  jumpscareAudioSource: {fileID: 1462857691}
   verboseLogging: 0
   phase: 0
   dormantTickCounter: 0
@@ -20110,6 +20112,7 @@ MonoBehaviour:
   jumpscareDelayBeforeLose: 0.5
   jumpscareClip: {fileID: 8300000, guid: 0c9d12d21369a534e80bdd09bacf03c2, type: 3}
   jumpscareVolume: 1
+  jumpscareAudioSource: {fileID: 1462857691}
 --- !u!195 &1426053294
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -20492,6 +20495,7 @@ GameObject:
   - component: {fileID: 1462857689}
   - component: {fileID: 1462857688}
   - component: {fileID: 1462857687}
+  - component: {fileID: 1462857691}
   m_Layer: 0
   m_Name: AudioController
   m_TagString: Untagged
@@ -20815,6 +20819,103 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 4230494239477327363, guid: fc71217f73bc5ab4882b66fc52e1f781, type: 2}
+  m_audioClip: {fileID: 0}
+  m_Resource: {fileID: 0}
+  m_PlayOnAwake: 1
+  m_Volume: 1
+  m_Pitch: 1
+  Loop: 0
+  Mute: 0
+  Spatialize: 0
+  SpatializePostEffects: 0
+  Priority: 128
+  DopplerLevel: 1
+  MinDistance: 1
+  MaxDistance: 500
+  Pan2D: 0
+  rolloffMode: 0
+  BypassEffects: 0
+  BypassListenerEffects: 0
+  BypassReverbZones: 0
+  rolloffCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  panLevelCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  spreadCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  reverbZoneMixCustomCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+--- !u!82 &1462857691
+AudioSource:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1462857683}
+  m_Enabled: 1
+  serializedVersion: 4
+  OutputAudioMixerGroup: {fileID: 2418339392215694318, guid: fc71217f73bc5ab4882b66fc52e1f781, type: 2}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 1
@@ -24000,6 +24101,7 @@ MonoBehaviour:
   disableLookDuringJumpscare: 1
   jumpscareClip: {fileID: 8300000, guid: 0c9d12d21369a534e80bdd09bacf03c2, type: 3}
   jumpscareVolume: 1
+  jumpscareAudioSource: {fileID: 1462857691}
 --- !u!114 &1782984182
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -28723,6 +28825,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FNaS.Systems.PresentationNightDirector
   paperWinProgress: {fileID: 0}
   runtimeSettingsApplier: {fileID: 0}
+  stalker: {fileID: 0}
+  mimic: {fileID: 0}
+  lostGirl: {fileID: 0}
+  mold: {fileID: 0}
+  forcedSpawnDelaySeconds: 5
+  forceMimicAtStage40: 1
+  forceLostGirlAtStage60: 1
+  stageFader: {fileID: 0}
   audioSource: {fileID: 2128506903}
   thresholdClip: {fileID: 8300000, guid: b29e4726958277a4b8fd712eae314ae5, type: 3}
   volume: 1

@@ -23,7 +23,7 @@
     {
       "id": "mimic",
       "buttonLabel": "Mimic",
-      "body": "The Mimic spawns as a random object in the apartment that wasn’t there previously. Most positions are visible from the cameras, although the Mimic can also spawn inside your bedroom. Keep the flashlight on it for a few seconds, and it will disappear.\nThe Mimic can’t actually kill you, however getting jumpscared will reduce your flashlight battery and prevent you from stalling the Stalker using the cameras.\n"
+      "body": "The Mimic spawns as a random object in the apartment that wasn’t there previously. All its hiding spots are visible from the cameras, so be sure to check for abnormalities in the darkest corners. Keep the flashlight on it for a few seconds, and it will disappear.\nThe Mimic can’t actually kill you, however getting jumpscared will reduce your flashlight battery and prevent you from stalling the Stalker using the cameras.\n"
     },
     {
       "id": "mold",

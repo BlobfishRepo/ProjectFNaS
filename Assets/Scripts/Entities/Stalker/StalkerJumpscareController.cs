@@ -27,6 +27,7 @@ namespace FNaS.Entities.Stalker {
         [Header("Audio")]
         [SerializeField] private AudioClip jumpscareClip;
         [SerializeField][Range(0f, 1f)] private float jumpscareVolume = 1f;
+        [SerializeField] private AudioSource jumpscareAudioSource;
 
         private bool isPlaying;
         private int jumpscareLayer = -1;
@@ -80,8 +81,8 @@ namespace FNaS.Entities.Stalker {
                 jumpscareCamera.enabled = true;
             }
 
-            if (jumpscareClip != null && Camera.main != null) {
-                AudioSource.PlayClipAtPoint(jumpscareClip, Camera.main.transform.position, jumpscareVolume);
+            if (jumpscareAudioSource != null && jumpscareClip != null) {
+                jumpscareAudioSource.PlayOneShot(jumpscareClip, jumpscareVolume);
             }
 
             if (animator != null) {

@@ -327,6 +327,17 @@ namespace FNaS.Settings {
                 max = 100
             },
             new SettingDefinition {
+                key = "audio.jumpscareVolume",
+                label = "Jumpscare Volume",
+                category = SettingCategory.Audio,
+                controlType = SettingControlType.IntSlider,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultInt = 100,
+                min = 0,
+                max = 100
+            },
+            new SettingDefinition {
                 key = "audio.monitorVolume",
                 label = "Monitor Volume",
                 category = SettingCategory.Audio,
