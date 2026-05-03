@@ -1,4 +1,33 @@
 # Changelog
+## May 2
+### Added
+- Added particles for when a mold patch is disabled.
+
+### Changed
+- Edge indicators changed to blue to match eye icon.
+- Reduced length of Nights 4 and 5. Added battery pack to Night 3. Reduced Mimic AI slightly on Night 4.
+- Presentation night now has a screen fade effect between stages.
+- Updated some text relating to hints and post-it notes.
+- Increased volume of monitor static.
+- 2nd star needs all entities at AI 15 for the custom night to be unlocked.
+- Disabled random groaning to help associate audio cue.
+
+### Removed
+- Removed Mimic spawns in the Main Bedroom and Hallway so that all Mimic spawns are visible on the cameras.
+
+### Fixed
+- Increased Player model height so that player is affected by mold slow again.
+- Added more colliders to avoid flashing Stalker through walls.
+- Adjusted views in the desk and pantry.
+- Fixed pen writing audio playing while reading a post-it note.
+- Adjusted hint text to mention [ESC] functionality.
+- Fixed presentation night intro text cutting off awkwardly.
+- Fixed restarting presentation night not applying iniital settings.
+- Fixed 2nd and 3rd stars allowing for changes to the paper length for the purposes of unlocking.
+- Fixed fun audio clip taking a while to loop.
+- Fixed presentation stages resetting entities.
+- Made cleaning mold patches match the visual when it disappears.
+
 ## May 1
 ### Added
 - Added 2 more entities that can appear on the Main Menu.

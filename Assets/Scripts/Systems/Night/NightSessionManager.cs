@@ -18,7 +18,7 @@ namespace FNaS.Systems {
         public string introSceneName = "SceneSettings";
 
         [Header("Custom Night Star Thresholds")]
-        [SerializeField] private int customNightStar2MinimumAI = 10;
+        [SerializeField] private int customNightStar2MinimumAI = 15;
         [SerializeField] private int customNightStar3MinimumAI = 20;
 
         [Header("Runtime")]
@@ -139,10 +139,7 @@ namespace FNaS.Systems {
                     key == "stalker.ai" ||
                     key == "lostGirl.ai" ||
                     key == "mimic.ai" ||
-                    key == "mold.ai" ||
-                    key == "paper.secondsToWin" ||
-                    key == "paper.glyphScale" ||
-                    key == "paper.textPreset";
+                    key == "mold.ai";
 
                 return settings.AreStarRelevantSettingsAtDefaults(AllowCustomNightKeys);
             }

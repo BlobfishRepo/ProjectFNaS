@@ -64,6 +64,8 @@ namespace FNaS.Entities.Stalker {
         public float groanMinInterval = 18f;
         [Tooltip("Max seconds between random groans while roaming.")]
         public float groanMaxInterval = 35f;
+        [Tooltip("If false, disables random ambient groans while roaming.")]
+        public bool enableRandomGroans = true;
         [Tooltip("If true, random groans stop once AtDoor.")]
         public bool disableRandomGroansAtDoor = true;
         [Tooltip("If >0, repeat door groan while at door every N seconds. If 0, play once when entering door.")]
@@ -520,7 +522,7 @@ namespace FNaS.Entities.Stalker {
 
             if (groanClip == null || audioSource == null) return;
 
-            if (Time.time >= nextGroanTime) {
+            if (enableRandomGroans && Time.time >= nextGroanTime) {
                 PlayGroan(groanClip);
                 ScheduleNextRandomGroan();
             }

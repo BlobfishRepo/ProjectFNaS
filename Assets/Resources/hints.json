@@ -28,7 +28,7 @@
     {
       "id": "mold",
       "buttonLabel": "Mold",
-      "body": "The Mold slowly spreads out from the Pantry and the Bathroom, not directly jumpscaring the player but impeding movement and visibility.\nUse the mold spray to deal on each individual patch. The mold will quickly fade if you are hitting it, although you should keep spraying the same area for a bit or else the mold will grow back quickly.\nIf the mold isn't cleaned for too long, it will transition into blood, strengthening its debufffs.\n\nNote that the mold spray will never run out, unlike the flashlight."
+      "body": "The Mold slowly spreads out from the Pantry and the Bathroom, not directly jumpscaring the player but impeding movement and visibility. There are persistant clumps that seem to be the source of the spread, however they can't be eliminated. \nUse the mold spray [E] to eliminate new mold patches. The mold will quickly fade if you are hitting it, although you should keep spraying the same area for a bit or else the mold will grow back quickly.\nIf the mold isn't cleaned for too long, it will transition into blood, strengthening its debuffs.\n\nNote that the mold spray will never run out, unlike the flashlight."
     },
     {
       "id": "post",

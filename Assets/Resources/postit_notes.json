@@ -8,19 +8,19 @@
     },
     {
       "id": "control_main",
-      "body": "[WASD] lets you move throughout the apartment. Moving the mouse to the edges of the screen changes your view point, and holding [Left Click] when there is a blue eye icon in the bottom-right lets you look around more.\nHitting [R] lets you keep doors open and work on your assignment while at the desk.\n\nFinish your assignment before the end of the night while not succumbing to the nightmares in the apartment.",
+      "body": "[WASD] lets you move throughout the apartment. Moving the mouse to the edges of the screen changes your view point, and holding [Left Click] when there is a blue eye icon in the bottom-right lets you look around more.\nHitting [R] lets you keep doors open and work on your assignment while at the desk.\nIf you need to exit the night, hold [ESC].\n\nFinish your assignment before the end of the night while not succumbing to the nightmares in the apartment.",
       "campaignNights": [1, 2, 3, 4, 5],
       "presentationUnlockPercent": 0
     },
     {
       "id": "stalker",
-      "body": "The Stalker appears in the darkest parts of the apartment and slowly approaches your bedroom.\nKeep your flashlight [F] aimed at it for a few seconds to push it back, but avoid overusing it as your flashlight is running low on battery.\nIf you hear a growling sound, the Stalker might be about to attack. Check the door or look around you, and flash it in time to survive.",
+      "body": "The Stalker appears in the darkest parts of the apartment and slowly approaches your bedroom.\nKeep your flashlight [F] aimed at it for a few seconds to push it back, but avoid overusing it as your flashlight is running low on battery.\n\nBe careful when walking around the apartment. If you hear a growling sound and your vision turns red, the Stalker might be about to attack. Check the door or look around you, and flash it in time to survive.",
       "campaignNights": [1],
       "presentationUnlockPercent": 0
     },
     {
       "id": "lost_girl",
-      "body": "Sometimes, you can see a girl appearing outside your window or TV. She retreats if she is looked at, although she will try to emerge out from her glass and come for you.\nIf you are very fast, you may be able to reach a door in time and block her.",
+      "body": "Sometimes, you can see a girl appearing outside your window or TV. She retreats if you look at her in the eyes, although she will try to emerge out from her glass and come for you.\n\nEach time you hear the clock tick, she will come out. At the third tick, she will run after you if she can see her. Try to lure her out and block her path with a door.",
       "campaignNights": [3],
       "presentationUnlockPercent": 40
     },
@@ -32,7 +32,7 @@
     },
     {
       "id": "mold",
-      "body": "Mold can emerge and spread from the dirtiest corners of the apartment.\nSpray the patches of mold using [Left Click] to pan at certain views, and [E] to apply your new cleaning solution.\nYou can let it fester a bit as it doesn't pose a direct threat to your safety, although letting it fester for too long may make your night just a bit longer.",
+      "body": "Mold can emerge and spread from the dirtiest corners of the apartment.\nWhile there are certain persistent clumps in the bathroom and pantry you can't quite get rid of, you can certainly limit the newly spread patches. Spray the patches of mold by using [Left Click] to look at extreme angles, and [E] to apply your new cleaning solution.\n\nYou can let it fester a bit as it doesn't pose a direct threat to your safety, although letting it fester for too long may make your night just a bit longer.",
       "campaignNights": [2],
       "presentationUnlockPercent": 20
     }

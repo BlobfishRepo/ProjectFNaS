@@ -21,6 +21,8 @@ namespace FNaS.Entities.Mold {
         public Renderer[] targetRenderers;
         public Transform[] dripAnchors;
         public GameObject[] bloodDripPrefabs;
+        [Header("Cleanse VFX")]
+        public ParticleSystem cleanseSparkleParticles;
 
         [Header("Shader Properties")]
         public string fillProperty = "_Fill";
@@ -197,6 +199,9 @@ namespace FNaS.Entities.Mold {
 
             if (playCleanSound && wasMoldPresent) {
                 PlayOneShot(cleanClip, cleanVolume);
+            }
+            if (playCleanSound && wasMoldPresent && cleanseSparkleParticles != null) {
+                cleanseSparkleParticles.Play();
             }
         }
 

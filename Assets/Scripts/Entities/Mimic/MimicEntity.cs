@@ -682,6 +682,36 @@ namespace FNaS.Entities.Mimic {
             }
         }
 
+        public bool ForceSpawnNow() {
+            if (ai <= 0) return false;
+            if (phase == Phase.Active || phase == Phase.Punishing) return false;
+
+            if (punishCoroutine != null) {
+                StopCoroutine(punishCoroutine);
+                punishCoroutine = null;
+            }
+
+            HideAllVariants();
+
+            dormantTickCounter = 0;
+            dangerTimer = 0f;
+            dangerSeconds = 0f;
+            banishTimer = 0f;
+            laughTimer = 0f;
+            cooldownTimer = 0f;
+            currentAnchor = null;
+            currentVariant = null;
+
+            SetBurning(false);
+            ResetIlluminationCache();
+
+            transform.SetPositionAndRotation(startPosition, startRotation);
+
+            phase = Phase.Dormant;
+
+            return TrySpawn();
+        }
+
         [ContextMenu("Refresh Anchor Cache")]
         public void RefreshAnchorCache() {
             anchorSets = FindObjectsOfType<EntityAnchorSet>(true);

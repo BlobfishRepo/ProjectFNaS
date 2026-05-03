@@ -6,6 +6,10 @@ namespace FNaS.Systems {
         public static readonly int[] Thresholds = { 0, 20, 40, 60, 80 };
 
         public static void ApplyForPercent(RuntimeGameSettings settings, int percentStage) {
+            ApplyForPercent(settings, percentStage, true);
+        }
+
+        public static void ApplyForPercent(RuntimeGameSettings settings, int percentStage, bool saveToJson) {
             if (settings == null) return;
 
             // Snap to valid stages only.
@@ -25,7 +29,9 @@ namespace FNaS.Systems {
                 ApplyStage80(settings);
             }
 
-            settings.SaveToJson();
+            if (saveToJson) {
+                settings.SaveToJson();
+            }
         }
 
         private static void ApplyStage0(RuntimeGameSettings settings) {
@@ -36,7 +42,6 @@ namespace FNaS.Systems {
 
             settings.SetBool("batteryPack.enabled", true);
 
-            // Presentation-specific paper setup.
             float duration = settings.GetBool("paper.presentationShortNight") ? 60f : 120f;
             settings.SetFloat("paper.secondsToWin", duration);
 
@@ -44,6 +49,7 @@ namespace FNaS.Systems {
                 "paper.glyphScale",
                 settings.GetFloat("paper.presentationGlyphScale")
             );
+
             settings.SetInt("paper.textPreset", 7);
         }
 
@@ -57,22 +63,22 @@ namespace FNaS.Systems {
         private static void ApplyStage40(RuntimeGameSettings settings) {
             settings.SetInt("stalker.ai", 4);
             settings.SetInt("lostGirl.ai", 0);
-            settings.SetInt("mimic.ai", 0);
+            settings.SetInt("mimic.ai", 1);
             settings.SetInt("mold.ai", 6);
         }
 
         private static void ApplyStage60(RuntimeGameSettings settings) {
             settings.SetInt("stalker.ai", 5);
-            settings.SetInt("lostGirl.ai", 0);
-            settings.SetInt("mimic.ai", 6);
+            settings.SetInt("lostGirl.ai", 5);
+            settings.SetInt("mimic.ai", 1);
             settings.SetInt("mold.ai", 6);
         }
 
         private static void ApplyStage80(RuntimeGameSettings settings) {
             settings.SetInt("stalker.ai", 7);
-            settings.SetInt("lostGirl.ai", 7);
-            settings.SetInt("mimic.ai", 7);
-            settings.SetInt("mold.ai", 7);
+            settings.SetInt("lostGirl.ai", 5);
+            settings.SetInt("mimic.ai", 5);
+            settings.SetInt("mold.ai", 6);
         }
     }
 }

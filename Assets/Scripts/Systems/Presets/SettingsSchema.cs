@@ -356,6 +356,15 @@ namespace FNaS.Settings {
                 defaultBool = true
             },
             new SettingDefinition {
+                key = "player.edgeArrowsUseWhite",
+                label = "Arrow Color (White)",
+                category = SettingCategory.Player,
+                controlType = SettingControlType.Toggle,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultBool = false
+            },
+            new SettingDefinition {
                 key = "paper.presentationShortNight",
                 label = "Short Night",
                 category = SettingCategory.Paper,

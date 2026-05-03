@@ -679,5 +679,16 @@ namespace FNaS.Entities.LostGirl {
 
             return HasLineOfSight(losOrigin, targetPoint);
         }
+
+        public bool ForceSpawnNow() {
+            if (ai <= 0) return false;
+            if (phase == LostGirlPhase.Jumpscare) return false;
+            if (phase == LostGirlPhase.InGlass || phase == LostGirlPhase.Queued || phase == LostGirlPhase.Emerging || phase == LostGirlPhase.Chasing) return false;
+
+            ResetToPreSpawn();
+            SpawnIntoRandomGlass();
+
+            return phase == LostGirlPhase.InGlass || phase == LostGirlPhase.Queued;
+        }
     }
 }

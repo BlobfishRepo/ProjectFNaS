@@ -100,6 +100,8 @@ APARTMENT";
         public float maxPitch = 1.35f;
         public float speedForMaxPitch = 0.8f;
         public float audioSmoothing = 10f;
+        [Header("Post-it Audio Pause")]
+        public PostItHintController postItHintController;
 
         [Header("Behavior")]
         public bool rebuildOnStart = true;
@@ -145,6 +147,9 @@ APARTMENT";
         private bool hasLastPenAudioPosition;
 
         private void Start() {
+            if (postItHintController == null) {
+                postItHintController = FindFirstObjectByType<PostItHintController>();
+            }
             SetupWritingAudio();
 
             if (rebuildOnStart) {
@@ -169,10 +174,13 @@ APARTMENT";
             string customText = settings.GetString("paper.presentationCustomText");
 
             if (!string.IsNullOrWhiteSpace(customText)) {
+                customText = NormalizeUnsupportedCharacters(customText);
                 textToWrite = FilterToSupportedGlyphs(customText);
             }
             else {
-                textToWrite = PaperTextPresets.ResolveText(settings.GetInt("paper.textPreset"));
+                string presetText = PaperTextPresets.ResolveText(settings.GetInt("paper.textPreset"));
+                presetText = NormalizeUnsupportedCharacters(presetText);
+                textToWrite = FilterToSupportedGlyphs(presetText);
             }
 
             activeWritingSoundMode = (WritingSoundMode)Mathf.Clamp(settings.GetInt("fun.paperWritingSoundMode"), 0, 1);
@@ -423,7 +431,11 @@ APARTMENT";
             AudioClip activeClip = GetActiveWritingClip();
             if (activeClip == null) return;
 
-            bool shouldPlay = paperProgress != null && paperProgress.IsWritingActive() && penTip != null;
+            bool shouldPlay =
+                paperProgress != null &&
+                paperProgress.IsWritingActive() &&
+                penTip != null &&
+                !ShouldSuppressWritingAudio();
             if (!shouldPlay) {
                 StopWritingAudio(resetPlaybackPosition: false);
                 smoothedPenSpeed = Mathf.Lerp(smoothedPenSpeed, 0f, Time.deltaTime * audioSmoothing);
@@ -956,6 +968,24 @@ APARTMENT";
             }
 
             return sb.ToString();
+        }
+
+        private string NormalizeUnsupportedCharacters(string input) {
+            if (string.IsNullOrEmpty(input)) return "";
+
+            return input
+                .Replace("’", "'")
+                .Replace("‘", "'")
+                .Replace("“", "\"")
+                .Replace("”", "\"")
+                .Replace("—", "-")
+                .Replace("–", "-")
+                .Replace("\r\n", "\n")
+                .Replace("\r", "\n");
+        }
+
+        private bool ShouldSuppressWritingAudio() {
+            return postItHintController != null && postItHintController.IsNoteOpen;
         }
 
         public int GetCurrentLineIndex() {
