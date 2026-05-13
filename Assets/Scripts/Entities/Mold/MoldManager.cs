@@ -61,8 +61,9 @@ namespace FNaS.Entities.Mold {
         [Min(0.01f)] public float spraySpreadBlockSeconds = 5f;
 
         [Header("Spray Visual Suppression")]
-        [Min(0.01f)] public float sprayVisualContactHoldTime = 0.10f;
+        [Min(0.01f)] public float sprayVisualContactHoldTime = 0.25f;
         [Min(0f)] public float sprayVisualRegrowDelay = 0.75f;
+        [Min(0.01f)] public float sprayVisualClearSpeedMultiplier = 0.65f;
         [Min(0.01f)] public float sprayVisualRegrowSpeedMultiplier = 2.5f;
 
         [Header("Blood Escalation")]
@@ -334,11 +335,10 @@ namespace FNaS.Entities.Mold {
                 float cleanseDuration = Mathf.Max(0.01f, GetCleanseDuration(patch));
 
                 if (beingSprayedNow) {
-                    // Shrink visually using the SAME duration as the real cleanse
                     suppression = Mathf.MoveTowards(
                         suppression,
                         1f,
-                        Time.deltaTime / cleanseDuration
+                        Time.deltaTime * sprayVisualClearSpeedMultiplier / cleanseDuration
                     );
                 }
                 else if (hasRecentContact && Time.time >= lastContactTime + sprayVisualRegrowDelay) {

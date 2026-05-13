@@ -32,6 +32,7 @@ namespace FNaS.Systems {
             Apply(settings, "audio.sfxVolume", "SFXVolume");
             Apply(settings, "audio.uiVolume", "UIVolume");
             Apply(settings, "audio.monsterVolume", "MonsterVolume");
+            Apply(settings, "audio.jumpscareVolume", "JumpscareVolume");
             Apply(settings, "audio.monitorVolume", "MonitorVolume");
         }
 

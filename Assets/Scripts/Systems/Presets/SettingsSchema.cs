@@ -16,7 +16,8 @@ namespace FNaS.Settings {
         FloatSlider,
         IntSlider,
         Toggle,
-        Dropdown
+        Dropdown,
+        TextInput
     }
 
     public enum SettingCategory {
@@ -46,7 +47,9 @@ namespace FNaS.Settings {
         DevGameplay = 1 << 2,
         PlayerSettingsFun = 1 << 3,
 
-        Hidden = 1 << 4
+        Hidden = 1 << 4,
+        PlayerSettingsDebug = 1 << 5,
+        PresentationSettings = 1 << 6
     }
 
     [Serializable]
@@ -178,7 +181,7 @@ namespace FNaS.Settings {
                 category = SettingCategory.Mold,
                 controlType = SettingControlType.IntSlider,
                 screens = SettingScreen.CustomNight | SettingScreen.DevGameplay,
-                affectsStarEligibility = true,
+                affectsStarEligibility = false,
                 defaultInt = 0,
                 min = 0,
                 max = 20
@@ -225,7 +228,6 @@ namespace FNaS.Settings {
                     "Presentation"
                 }
             },
-
             new SettingDefinition {
                 key = "globalAI.baseIntervalSeconds",
                 label = "Global AI Tick Interval",
@@ -250,11 +252,20 @@ namespace FNaS.Settings {
                 max = 240f
             },
             new SettingDefinition {
+                key = "batteryPack.enabled",
+                label = "Battery Pack Enabled",
+                category = SettingCategory.Flashlight,
+                controlType = SettingControlType.Toggle,
+                screens = SettingScreen.DevGameplay,
+                affectsStarEligibility = true,
+                defaultBool = false
+            },
+            new SettingDefinition {
                 key = "video.brightness",
                 label = "Brightness",
                 category = SettingCategory.Video,
                 controlType = SettingControlType.IntSlider,
-                screens = SettingScreen.PlayerSettings,
+                screens = SettingScreen.PlayerSettings | SettingScreen.PresentationSettings,
                 affectsStarEligibility = false,
                 defaultInt = 0,
                 min = 0,
@@ -316,6 +327,17 @@ namespace FNaS.Settings {
                 max = 100
             },
             new SettingDefinition {
+                key = "audio.jumpscareVolume",
+                label = "Jumpscare Volume",
+                category = SettingCategory.Audio,
+                controlType = SettingControlType.IntSlider,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultInt = 100,
+                min = 0,
+                max = 100
+            },
+            new SettingDefinition {
                 key = "audio.monitorVolume",
                 label = "Monitor Volume",
                 category = SettingCategory.Audio,
@@ -335,6 +357,56 @@ namespace FNaS.Settings {
                 affectsStarEligibility = false,
                 defaultBool = false
             },
+            new SettingDefinition {
+                key = "player.useMoveDelay",
+                label = "Movement Delay",
+                category = SettingCategory.Player,
+                controlType = SettingControlType.Toggle,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultBool = true
+            },
+            new SettingDefinition {
+                key = "player.edgeArrowsUseWhite",
+                label = "Arrow Color (White)",
+                category = SettingCategory.Player,
+                controlType = SettingControlType.Toggle,
+                screens = SettingScreen.PlayerSettings,
+                affectsStarEligibility = false,
+                defaultBool = false
+            },
+            new SettingDefinition {
+                key = "paper.presentationShortNight",
+                label = "Short Night",
+                category = SettingCategory.Paper,
+                controlType = SettingControlType.Toggle,
+                screens = SettingScreen.PresentationSettings,
+                affectsStarEligibility = false,
+                defaultBool = false
+            },
+
+            new SettingDefinition {
+                key = "paper.presentationGlyphScale",
+                label = "Text Size",
+                category = SettingCategory.Paper,
+                controlType = SettingControlType.FloatSlider,
+                screens = SettingScreen.PresentationSettings,
+                affectsStarEligibility = false,
+                defaultFloat = 0.3f,
+                min = 0.2f,
+                max = 1.2f
+            },
+
+            new SettingDefinition {
+                key = "paper.presentationCustomText",
+                label = "Custom Text",
+                category = SettingCategory.Paper,
+                controlType = SettingControlType.TextInput,
+                screens = SettingScreen.PresentationSettings,
+                affectsStarEligibility = false,
+                defaultInt = 0
+            },
+
             new SettingDefinition {
                 key = "fun.paperWritingSoundMode",
                 label = "Writing Sound",
@@ -364,6 +436,16 @@ namespace FNaS.Settings {
                 defaultFloat = 1f,
                 min = 0.5f,
                 max = 2f
+            },
+            new SettingDefinition {
+                key = "debug.showGlobalAITimer",
+                label = "Show AI Timer",
+                category = SettingCategory.Systems,
+                controlType = SettingControlType.Toggle,
+                debugOnly = false,
+                screens = SettingScreen.PlayerSettingsDebug,
+                affectsStarEligibility = false,
+                defaultBool = false
             },
             new SettingDefinition {
                 key = "debug.playerMovementMode",

@@ -1,0 +1,44 @@
+{
+  "hints": [
+    {
+      "id": "controls",
+      "buttonLabel": "Controls",
+      "body": "Use WASD to move around. Available directions are shown in the movement compass.\nThe mouse is used to look around by moving it to edges of the screen marked by a white line. If you see a blue eye icon in the middle of the movement compass, you can hold [Left Click] to check more extreme angles.\n[Left Click] is also used to click buttons on the camera, which is vital to monitoring all corners of the apartment. \n\nUse [R] to interact with doors (hold [R] to open) and to work on your assignment (press [R] once) at the desk.\n Use [F] to use your flashlight, and [E] to use your cleaning solution.\n\nPost-it notes have special controls, with [A] and [D] switching between notes and [R] permanently hiding a note.\nFinally if you wish to exit the night, hold [ESC] for a few seconds to return to the main menu."
+    },
+    {
+      "id": "objective",
+      "buttonLabel": "Objective",
+      "body": "As a college student, you have to finish your creatieve writing assignment before the end of the night. Hit [R] when looking at the Paper or the Monitor to work on your assignment.\n\nDoing the assignment will take a few minutes, so be sure to spend as much time writing while monitoring threats using the cameras.\nThe top of the paper will show you how many lines you have to write for this assignment, so use this to monitor your progress.\n\nYou also have extra batteries for this night and tomorrow night, so feel free to explore the apartment using the flashlight while you still can."
+    },
+    {
+      "id": "stalker",
+      "buttonLabel": "Stalker",
+      "body": "The Stalker moves as follows: kitchen -> in the corner by the main entrance -> pantry -> bathroom -> main door. While the exact speed the Stalker moves is determined by AI values, once the Stalker is at the door there is a seconds-based timer to kill if you don’t manage to flash it in time.\nThe flashlight can be used to push the Stalker back, resetting it to the kitchen or the main entrance.\nBe careful not to move past the Stalker (particularly when moving past the main entrance) or stay at the same place at the Stalker without flashing it, as that will lead to a guaranteed death.\nLooking at the Stalker on the cameras also prevents it from moving."
+    },
+    {
+      "id": "lostgirl",
+      "buttonLabel": "Lost Girl",
+      "body": "The Lost Girl can spawn either in the TV or in your bedroom. She will slowly appear out of the wall/TV, before appearing in the world and chasing the player. If she collides with a door, she will despawn.\nPay attention to the clock-ticking sound cue, as that will tell you exactly when she will spawn in.\nIf you look at her, the Lost Girl will move back into the wall/TV (although she will remain in that position until dealt with)."
+    },
+    {
+      "id": "mimic",
+      "buttonLabel": "Mimic",
+      "body": "The Mimic spawns as a random object in the apartment that wasn’t there previously. All its hiding spots are visible from the cameras, so be sure to check for abnormalities in the darkest corners. Keep the flashlight on it for a few seconds, and it will disappear.\nThe Mimic can’t actually kill you, however getting jumpscared will reduce your flashlight battery and prevent you from stalling the Stalker using the cameras.\n"
+    },
+    {
+      "id": "mold",
+      "buttonLabel": "Mold",
+      "body": "The Mold slowly spreads out from the Pantry and the Bathroom, not directly jumpscaring the player but impeding movement and visibility. There are persistant clumps that seem to be the source of the spread, however they can't be eliminated. \nUse the mold spray [E] to eliminate new mold patches. The mold will quickly fade if you are hitting it, although you should keep spraying the same area for a bit or else the mold will grow back quickly.\nIf the mold isn't cleaned for too long, it will transition into blood, strengthening its debuffs.\n\nNote that the mold spray will never run out, unlike the flashlight."
+    },
+    {
+      "id": "post",
+      "buttonLabel": "Post-It Notes",
+      "body": "Post-it notes can be found on your monitor, giving small hints about new threats.\nEvery entity is paused while you're reading a post-it note, so feel free to read them without pressure.\n\n You can use [A] and [D] to quickly switch between notes, or hit [R] to permanently hide a note."
+    },
+    {
+      "id": "settings",
+      "buttonLabel": "Useful Settings",
+      "body": "Tweak brightness and volume settings if needed.\n\nYou can also disable post-it notes from appearing and remove the brief delay between moving from nodes."
+    }
+  ]
+}

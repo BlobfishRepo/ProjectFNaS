@@ -14,6 +14,9 @@ namespace FNaS.Systems {
         public bool earnedStar3_CustomThreshold2 = false;
 
         public int starsEarned = 0;
+
+        public bool hasSeenMainMenuInfoPopup = false;
+        public bool hasSeenPresentationInfoPopup = false;
     }
 
     public static class NightProgressSave {
@@ -70,6 +73,22 @@ namespace FNaS.Systems {
             data.customNightUnlocked |= data.earnedStar1_Night5 || data.completedNight5;
         }
 
+        public static bool HasSeenMainMenuInfoPopup() => Load().hasSeenMainMenuInfoPopup;
+
+        public static void MarkMainMenuInfoPopupSeen() {
+            NightProgressSaveData data = Load();
+            data.hasSeenMainMenuInfoPopup = true;
+            Save(data);
+        }
+
+        public static bool HasSeenPresentationInfoPopup() => Load().hasSeenPresentationInfoPopup;
+
+        public static void MarkPresentationInfoPopupSeen() {
+            NightProgressSaveData data = Load();
+            data.hasSeenPresentationInfoPopup = true;
+            Save(data);
+        }
+
         public static void ResetCampaignProgressPreserveUnlocks() {
             NightProgressSaveData old = Load();
 
@@ -79,7 +98,10 @@ namespace FNaS.Systems {
                 customNightUnlocked = old.customNightUnlocked,
                 earnedStar1_Night5 = old.earnedStar1_Night5,
                 earnedStar2_CustomThreshold1 = old.earnedStar2_CustomThreshold1,
-                earnedStar3_CustomThreshold2 = old.earnedStar3_CustomThreshold2
+                earnedStar3_CustomThreshold2 = old.earnedStar3_CustomThreshold2,
+
+                hasSeenMainMenuInfoPopup = old.hasSeenMainMenuInfoPopup,
+                hasSeenPresentationInfoPopup = old.hasSeenPresentationInfoPopup
             });
         }
 

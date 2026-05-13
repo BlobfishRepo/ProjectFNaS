@@ -52,7 +52,6 @@ namespace FNaS.Systems {
         public AudioSource uiAudioSource;
         public AudioClip openClip;
         public AudioClip closeClip;
-
         [Header("Debug")]
         public bool verboseLogging = false;
 
@@ -63,6 +62,8 @@ namespace FNaS.Systems {
         private readonly Dictionary<string, Sprite> overlayImagesById = new(StringComparer.Ordinal);
         private readonly List<string> visibleNoteIds = new();
         private readonly HashSet<string> hiddenNoteIds = new(StringComparer.Ordinal);
+
+        public bool IsNoteOpen => noteOpen;
 
         private bool noteOpen;
         private int currentVisibleSlot = -1;

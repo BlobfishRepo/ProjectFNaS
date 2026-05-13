@@ -129,11 +129,9 @@ Used for:
 ## ⚙ Settings
 
 Adjustable before starting:
-- Player movement speed  
-- Door interaction distance  
-- AI difficulty values  
-- Flashlight battery duration  
-- Additional behavior toggles  
+- Various volume sliders
+- Global Brightness
+- Gameplay settings
 
 ---
 

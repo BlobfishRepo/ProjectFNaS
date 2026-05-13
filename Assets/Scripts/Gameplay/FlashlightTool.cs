@@ -10,7 +10,6 @@ namespace FNaS.Systems {
 
         [Header("Indicator (optional)")]
         public Light flashlightLight;
-        public GameObject indicatorObject;
 
         [Header("Battery UI")]
         public Image batteryImage;
@@ -74,7 +73,7 @@ namespace FNaS.Systems {
 
         public bool isOn { get; private set; }
 
-        private float batteryRemaining;
+        [SerializeField] private float batteryRemaining;
         private PlayerInputActions input;
 
         private float flickerTimer;
@@ -186,9 +185,6 @@ namespace FNaS.Systems {
             if (flashlightLight != null)
                 flashlightLight.enabled = on;
 
-            if (indicatorObject != null)
-                indicatorObject.SetActive(true); // always visible (important change)
-
             UpdateBatteryUI();
         }
 
@@ -204,10 +200,10 @@ namespace FNaS.Systems {
             if (pct <= 0f) {
                 target = spriteEmpty;
             }
-            else if (pct < 0.20f) {
+            else if (pct < 0.35f) {
                 target = spriteLow;
             }
-            else if (pct < 0.65f) {
+            else if (pct < 0.70f) {
                 target = spriteMedium;
             }
             else {
@@ -377,6 +373,23 @@ namespace FNaS.Systems {
                 isOn = false;
                 ApplyIndicator(forceOff: false);
             }
+        }
+
+        public float BatteryPercent {
+            get {
+                return maxBatterySeconds > 0f
+                    ? Mathf.Clamp01(batteryRemaining / maxBatterySeconds)
+                    : 0f;
+            }
+        }
+
+        public bool IsBatteryLowOrEmpty(float threshold = 0.20f) {
+            return BatteryPercent <= Mathf.Clamp01(threshold);
+        }
+
+        public void RefillBattery() {
+            batteryRemaining = Mathf.Max(0f, maxBatterySeconds);
+            ApplyIndicator(forceOff: false);
         }
 
         private bool ShouldBlockInput() {

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FNaS.Settings;
 using FNaS.Systems;
 using FNaS.UI.Settings;
@@ -25,6 +26,7 @@ namespace FNaS.UI {
         [SerializeField] private GameObject playerSettingsPanel;
         [SerializeField] private GameObject presentationSettingsPanel;
         [SerializeField] private GameObject devGameplayPanel;
+        [SerializeField] private GameObject hintsPanel;
 
         [Header("Buttons")]
         [SerializeField] private Button continueCampaignButton;
@@ -42,11 +44,21 @@ namespace FNaS.UI {
         [SerializeField] private GameObject star3Object;
 
         [Header("Background")]
-        [SerializeField] private GameObject stalkerBackground;
+        [SerializeField] private GameObject backgroundObject;
+        [SerializeField] private Image backgroundImage;
+        [SerializeField] private Sprite defaultStalkerBackground;
+        [SerializeField] private List<Sprite> randomMainMenuBackgrounds = new();
+
+        [Header("Info Popup")]
+        [SerializeField] private InfoPopupOverlay infoPopup;
+        [SerializeField, TextArea(4, 12)] private string mainMenuInfoText;
+        [SerializeField, TextArea(4, 12)] private string presentationInfoText;
 
         [Header("Indicators")]
         [SerializeField] private GameObject devSettingsChangedIndicator;
         [SerializeField] private GameObject funSettingsEnabledIndicator;
+
+        private static bool hasShownTitleOnceThisRun;
 
         private RuntimeGameSettings runtimeSettings;
         private PlayerInputActions inputActions;
@@ -56,7 +68,8 @@ namespace FNaS.UI {
             CustomNight,
             PlayerSettings,
             PresentationSettings,
-            DevGameplay
+            DevGameplay,
+            Hints
         }
 
         private TitlePanel currentPanel = TitlePanel.MainMenu;
@@ -105,15 +118,52 @@ namespace FNaS.UI {
 
         private void Start() {
             ResolveReferences();
+
+            bool firstTitleLoadThisRun = !hasShownTitleOnceThisRun;
+            hasShownTitleOnceThisRun = true;
+
+            PickMainMenuBackground(forceRandom: !firstTitleLoadThisRun);
+
             ShowMainMenu();
             RefreshAll();
+            TryShowMainMenuInfoFirstTime();
+        }
+
+        private void TryShowMainMenuInfoFirstTime() {
+            if (infoPopup == null) return;
+            if (NightProgressSave.HasSeenMainMenuInfoPopup()) return;
+
+            NightProgressSave.MarkMainMenuInfoPopupSeen();
+            infoPopup.Show(mainMenuInfoText);
+        }
+
+        private void TryShowPresentationInfoFirstTime() {
+            if (infoPopup == null) return;
+            if (NightProgressSave.HasSeenPresentationInfoPopup()) return;
+
+            NightProgressSave.MarkPresentationInfoPopupSeen();
+            infoPopup.Show(presentationInfoText);
+        }
+
+        public void ShowMainMenuInfoPopupManual() {
+            if (infoPopup == null) return;
+            infoPopup.Show(mainMenuInfoText);
+        }
+
+        public void ShowPresentationInfoPopupManual() {
+            if (infoPopup == null) return;
+            infoPopup.Show(presentationInfoText);
         }
 
         private void OnToggleDebug(InputAction.CallbackContext ctx) {
             ResolveReferences();
             if (runtimeSettings == null) return;
 
-            if (currentPanel == TitlePanel.PlayerSettings || currentPanel == TitlePanel.PresentationSettings) {
+            if (currentPanel == TitlePanel.PresentationSettings) {
+                return;
+            }
+
+            if (currentPanel == TitlePanel.PlayerSettings) {
                 runtimeSettings.PlayerSettingsDebugUnlocked = !runtimeSettings.PlayerSettingsDebugUnlocked;
                 runtimeSettings.SaveToJson();
                 RebuildCurrentPanel();
@@ -187,11 +237,16 @@ namespace FNaS.UI {
 
             if (runtimeSettings != null) {
                 showDevChanged = runtimeSettings.HasNonDefaultStarRelevantDevGameplaySettings();
-                showFunEnabled = runtimeSettings.HasNonDefaultFunSettingsEnabled();
+
+                showFunEnabled =
+                    runtimeSettings.HasNonDefaultFunSettingsEnabled() ||
+                    runtimeSettings.GetBool("debug.showGlobalAITimer");
             }
 
             if (devSettingsChangedIndicator != null) {
-                devSettingsChangedIndicator.SetActive(showDevChanged);
+                devSettingsChangedIndicator.SetActive(
+                    currentPanel == TitlePanel.CustomNight && showDevChanged
+                );
             }
 
             if (funSettingsEnabledIndicator != null) {
@@ -207,8 +262,46 @@ namespace FNaS.UI {
             if (playerSettingsPanel != null) playerSettingsPanel.SetActive(panel == TitlePanel.PlayerSettings);
             if (presentationSettingsPanel != null) presentationSettingsPanel.SetActive(panel == TitlePanel.PresentationSettings);
             if (devGameplayPanel != null) devGameplayPanel.SetActive(panel == TitlePanel.DevGameplay);
-            if (stalkerBackground != null)
-                stalkerBackground.SetActive(panel == TitlePanel.MainMenu);
+            if (hintsPanel != null) hintsPanel.SetActive(panel == TitlePanel.Hints);
+
+            if (backgroundObject != null) {
+                backgroundObject.SetActive(panel == TitlePanel.MainMenu);
+            }
+        }
+
+        private void SetDefaultMainMenuBackground() {
+            if (backgroundImage == null || defaultStalkerBackground == null) return;
+
+            backgroundImage.sprite = defaultStalkerBackground;
+            backgroundImage.enabled = true;
+        }
+
+        private void SetRandomMainMenuBackground() {
+            if (backgroundImage == null) return;
+
+            if (randomMainMenuBackgrounds == null || randomMainMenuBackgrounds.Count == 0) {
+                SetDefaultMainMenuBackground();
+                return;
+            }
+
+            Sprite chosen = randomMainMenuBackgrounds[Random.Range(0, randomMainMenuBackgrounds.Count)];
+
+            if (chosen == null) {
+                SetDefaultMainMenuBackground();
+                return;
+            }
+
+            backgroundImage.sprite = chosen;
+            backgroundImage.enabled = true;
+        }
+
+        private void PickMainMenuBackground(bool forceRandom) {
+            if (forceRandom) {
+                SetRandomMainMenuBackground();
+            }
+            else {
+                SetDefaultMainMenuBackground();
+            }
         }
 
         private void RebuildCurrentPanel() {
@@ -225,8 +318,10 @@ namespace FNaS.UI {
                 case TitlePanel.PlayerSettings:
                     if (playerSettingsMenuBuilder != null) {
                         SettingScreen playerScreens = SettingScreen.PlayerSettings;
+
                         if (runtimeSettings.PlayerSettingsDebugUnlocked) {
                             playerScreens |= SettingScreen.PlayerSettingsFun;
+                            playerScreens |= SettingScreen.PlayerSettingsDebug;
                         }
 
                         playerSettingsMenuBuilder.Rebuild(runtimeSettings, false, playerScreens);
@@ -235,10 +330,7 @@ namespace FNaS.UI {
 
                 case TitlePanel.PresentationSettings:
                     if (presentationSettingsMenuBuilder != null) {
-                        SettingScreen presentationScreens = SettingScreen.PlayerSettings;
-                        if (runtimeSettings.PlayerSettingsDebugUnlocked) {
-                            presentationScreens |= SettingScreen.PlayerSettingsFun;
-                        }
+                        SettingScreen presentationScreens = SettingScreen.PresentationSettings;
 
                         presentationSettingsMenuBuilder.Rebuild(runtimeSettings, false, presentationScreens);
                     }
@@ -254,60 +346,93 @@ namespace FNaS.UI {
             RefreshIndicators();
         }
 
+        public void OnQuitPressed() {
+#if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+
+        private void ResetGameplayDefaultsPreservingPlayerSettings() {
+            if (runtimeSettings == null) return;
+
+            var preservedFloats = new Dictionary<string, float>();
+            var preservedInts = new Dictionary<string, int>();
+            var preservedBools = new Dictionary<string, bool>();
+
+            foreach (var def in SettingsSchema.Definitions) {
+                if (def == null || string.IsNullOrWhiteSpace(def.key)) continue;
+
+                bool preserve =
+                    def.category == SettingCategory.Fun ||
+                    (def.screens & SettingScreen.PlayerSettings) != 0 ||
+                    def.key.Contains("volume") ||
+                    def.key.Contains("brightness");
+
+                if (!preserve) continue;
+
+                switch (def.controlType) {
+                    case SettingControlType.FloatSlider:
+                        preservedFloats[def.key] = runtimeSettings.GetFloat(def.key);
+                        break;
+
+                    case SettingControlType.IntSlider:
+                    case SettingControlType.Dropdown:
+                        preservedInts[def.key] = runtimeSettings.GetInt(def.key);
+                        break;
+
+                    case SettingControlType.Toggle:
+                        preservedBools[def.key] = runtimeSettings.GetBool(def.key);
+                        break;
+                }
+            }
+
+            runtimeSettings.ResetToDefaults();
+
+            foreach (var kvp in preservedFloats) {
+                runtimeSettings.SetFloat(kvp.Key, kvp.Value);
+            }
+
+            foreach (var kvp in preservedInts) {
+                runtimeSettings.SetInt(kvp.Key, kvp.Value);
+            }
+
+            foreach (var kvp in preservedBools) {
+                runtimeSettings.SetBool(kvp.Key, kvp.Value);
+            }
+
+            runtimeSettings.SaveToJson();
+        }
+
         public void ShowMainMenu() {
+            bool returningFromAnotherMenu = currentPanel != TitlePanel.MainMenu;
+
+            if (returningFromAnotherMenu) {
+                PickMainMenuBackground(forceRandom: true);
+            }
+
             SetActivePanel(TitlePanel.MainMenu);
             RefreshAll();
         }
 
         public void ShowCustomNight() {
             ResolveReferences();
+
+            if (runtimeSettings == null) return;
+
             if (nightSessionManager == null || !nightSessionManager.IsCustomNightUnlocked()) {
                 return;
             }
 
-            // Opening Custom Night from the main menu should start from defaults,
-            // but preserve all fun.* settings.
-            if (runtimeSettings != null) {
-                var preservedFunFloats = new System.Collections.Generic.Dictionary<string, float>();
-                var preservedFunInts = new System.Collections.Generic.Dictionary<string, int>();
-                var preservedFunBools = new System.Collections.Generic.Dictionary<string, bool>();
+            ResetKeysToDefault(
+                "paper.textPreset",
+                "paper.glyphScale",
+                "paper.secondsToWin",
+                "batteryPack.enabled"
+            );
 
-                foreach (var def in SettingsSchema.Definitions) {
-                    if (def == null || string.IsNullOrWhiteSpace(def.key)) continue;
-                    if (def.category != SettingCategory.Fun) continue;
-
-                    switch (def.controlType) {
-                        case SettingControlType.FloatSlider:
-                            preservedFunFloats[def.key] = runtimeSettings.GetFloat(def.key);
-                            break;
-
-                        case SettingControlType.IntSlider:
-                        case SettingControlType.Dropdown:
-                            preservedFunInts[def.key] = runtimeSettings.GetInt(def.key);
-                            break;
-
-                        case SettingControlType.Toggle:
-                            preservedFunBools[def.key] = runtimeSettings.GetBool(def.key);
-                            break;
-                    }
-                }
-
-                runtimeSettings.ResetToDefaults();
-
-                foreach (var kvp in preservedFunFloats) {
-                    runtimeSettings.SetFloat(kvp.Key, kvp.Value);
-                }
-
-                foreach (var kvp in preservedFunInts) {
-                    runtimeSettings.SetInt(kvp.Key, kvp.Value);
-                }
-
-                foreach (var kvp in preservedFunBools) {
-                    runtimeSettings.SetBool(kvp.Key, kvp.Value);
-                }
-
-                runtimeSettings.SaveToJson();
-            }
+            runtimeSettings.SaveToJson();
 
             SetActivePanel(TitlePanel.CustomNight);
             RefreshAll();
@@ -315,6 +440,7 @@ namespace FNaS.UI {
 
         public void ShowCustomNightPreserveCurrent() {
             ResolveReferences();
+
             if (nightSessionManager == null || !nightSessionManager.IsCustomNightUnlocked()) {
                 return;
             }
@@ -331,6 +457,7 @@ namespace FNaS.UI {
         public void ShowPresentationSettings() {
             SetActivePanel(TitlePanel.PresentationSettings);
             RefreshAll();
+            TryShowPresentationInfoFirstTime();
         }
 
         public void ShowDevGameplay() {
@@ -339,6 +466,11 @@ namespace FNaS.UI {
             }
 
             SetActivePanel(TitlePanel.DevGameplay);
+            RefreshAll();
+        }
+
+        public void ShowHints() {
+            SetActivePanel(TitlePanel.Hints);
             RefreshAll();
         }
 
@@ -379,9 +511,33 @@ namespace FNaS.UI {
             ResolveReferences();
             if (runtimeSettings == null) return;
 
-            runtimeSettings.ResetToDefaults();
-            runtimeSettings.SaveToJson();
+            ResetGameplayDefaultsPreservingPlayerSettings();
             RefreshAll();
+        }
+
+        private void ResetKeysToDefault(params string[] keys) {
+            foreach (var key in keys) {
+                if (!SettingsSchema.TryGetDefinition(key, out var def)) continue;
+
+                switch (def.controlType) {
+                    case SettingControlType.FloatSlider:
+                        runtimeSettings.SetFloat(key, def.defaultFloat);
+                        break;
+
+                    case SettingControlType.IntSlider:
+                    case SettingControlType.Dropdown:
+                        runtimeSettings.SetInt(key, def.defaultInt);
+                        break;
+
+                    case SettingControlType.Toggle:
+                        runtimeSettings.SetBool(key, def.defaultBool);
+                        break;
+
+                    case SettingControlType.TextInput:
+                        runtimeSettings.SetString(key, "");
+                        break;
+                }
+            }
         }
     }
 }

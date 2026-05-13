@@ -25,16 +25,18 @@ namespace FNaS.Systems {
         }
 
         private IEnumerator HandleWin() {
-            if (delayAfterWinSeconds > 0f) {
-                yield return new WaitForSecondsRealtime(delayAfterWinSeconds);
-            }
-
             NightSessionManager session = NightSessionManager.Instance;
             RuntimeGameSettings settings = RuntimeGameSettings.Instance;
 
             if (session == null) yield break;
 
             if (session.PlayMode == NightPlayMode.Campaign) {
+                if (delayAfterWinSeconds > 0f) {
+                    yield return new WaitForSecondsRealtime(delayAfterWinSeconds);
+                }
+
+                Time.timeScale = 1f;
+
                 int finishedNight = session.CurrentCampaignNight;
                 NightProgressSave.MarkNightCompleted(finishedNight);
 
@@ -62,14 +64,11 @@ namespace FNaS.Systems {
                     }
                 }
 
-                session.ClearSession();
-                SceneManager.LoadScene(session.introSceneName);
                 yield break;
             }
 
             if (session.PlayMode == NightPlayMode.Presentation) {
-                session.ClearSession();
-                SceneManager.LoadScene(session.introSceneName);
+                yield break;
             }
         }
     }

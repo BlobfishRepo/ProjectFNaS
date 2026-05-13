@@ -5,12 +5,15 @@ using UnityEngine;
 
 namespace FNaS.UI.Settings {
     public class SettingsMenuBuilder : MonoBehaviour {
+        [SerializeField] private float sectionSpacing = 10f;
+
         [Header("References")]
         [SerializeField] private Transform contentRoot;
         [SerializeField] private SettingsSectionHeader sectionHeaderPrefab;
         [SerializeField] private SliderSettingRow sliderRowPrefab;
         [SerializeField] private ToggleSettingRow toggleRowPrefab;
         [SerializeField] private DropdownSettingRow dropdownRowPrefab;
+        [SerializeField] private TextInputSettingRow textInputRowPrefab;
 
         private readonly List<GameObject> spawnedObjects = new();
 
@@ -27,6 +30,10 @@ namespace FNaS.UI.Settings {
                     continue;
 
                 if (lastCategory != def.category) {
+                    if (lastCategory.HasValue) {
+                        CreateSpacer(sectionSpacing);
+                    }
+
                     CreateSectionHeader(SettingsSchema.GetCategoryLabel(def.category));
                     lastCategory = def.category;
                 }
@@ -47,8 +54,23 @@ namespace FNaS.UI.Settings {
                     case SettingControlType.Dropdown:
                         CreateDropdown(def, runtimeSettings);
                         break;
+
+                    case SettingControlType.TextInput:
+                        CreateTextInput(def, runtimeSettings);
+                        break;
                 }
             }
+        }
+
+        private void CreateSpacer(float height) {
+            GameObject spacer = new GameObject("Section Spacer", typeof(RectTransform), typeof(UnityEngine.UI.LayoutElement));
+            spacer.transform.SetParent(contentRoot, false);
+
+            var layout = spacer.GetComponent<UnityEngine.UI.LayoutElement>();
+            layout.preferredHeight = Mathf.Max(0f, height);
+            layout.minHeight = Mathf.Max(0f, height);
+
+            spawnedObjects.Add(spacer);
         }
 
         private void CreateSectionHeader(string title) {
@@ -115,6 +137,19 @@ namespace FNaS.UI.Settings {
                     runtimeSettings.SetInt(def.key, value);
                     runtimeSettings.SaveToJson();
                     ApplyRuntimeSettingsNow();
+                }
+            );
+            spawnedObjects.Add(row.gameObject);
+        }
+
+        private void CreateTextInput(SettingDefinition def, RuntimeGameSettings runtimeSettings) {
+            var row = Instantiate(textInputRowPrefab, contentRoot);
+            row.Setup(
+                def.label,
+                runtimeSettings.GetString(def.key),
+                value => {
+                    runtimeSettings.SetString(def.key, value);
+                    runtimeSettings.SaveToJson();
                 }
             );
             spawnedObjects.Add(row.gameObject);

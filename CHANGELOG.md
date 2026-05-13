@@ -1,4 +1,104 @@
 # Changelog
+## May 3
+### Added
+- Added a Jumpscare audio slider.
+
+### Changed
+- Altered Mimic hint text slightly.
+
+## May 2
+### Added
+- Added particles for when a mold patch is disabled.
+
+### Changed
+- Edge indicators changed to blue to match eye icon.
+- Reduced length of Nights 4 and 5. Added battery pack to Night 3. Reduced Mimic AI slightly on Night 4.
+- Presentation night now has a screen fade effect between stages.
+- Updated some text relating to hints and post-it notes.
+- Increased volume of monitor static.
+- 2nd star needs all entities at AI 15 for the custom night to be unlocked.
+- Disabled random groaning to help associate audio cue.
+
+### Removed
+- Removed Mimic spawns in the Main Bedroom and Hallway so that all Mimic spawns are visible on the cameras.
+
+### Fixed
+- Increased Player model height so that player is affected by mold slow again.
+- Added more colliders to avoid flashing Stalker through walls.
+- Adjusted views in the desk and pantry.
+- Fixed pen writing audio playing while reading a post-it note.
+- Adjusted hint text to mention [ESC] functionality.
+- Fixed presentation night intro text cutting off awkwardly.
+- Fixed restarting presentation night not applying iniital settings.
+- Fixed 2nd and 3rd stars allowing for changes to the paper length for the purposes of unlocking.
+- Fixed fun audio clip taking a while to loop.
+- Fixed presentation stages resetting entities.
+- Made cleaning mold patches match the visual when it disappears.
+
+## May 1
+### Added
+- Added 2 more entities that can appear on the Main Menu.
+- Added Hints page, with detailed notes on the behavior on each entity and other mechanics.
+- Added information pop-ups to the Main Menu and Presentation Menus.
+- Presentation Menu now has a field to add custom text to write on the paper. 
+- Lost Girl now has a sound effect upon despawning.
+- Added burning sound effect to Mimic.
+- Stalker now makes screen red as he is getting closer to killing you.
+
+### Changed
+- Presentation Menu settings tweaked, with most of the settings now only accessible through the Settings menu.
+- Paper now displays total amount of lines in the text at the top.
+- Lost Girl movement tweaked slightly.
+- Slightly reduced volume of some of the loader noises (Jumpscare, Lost Girl appear in apartment).
+- General UI tweaks to avoid clipping of UI elements depending on the aspect ratio. Adjusted position of special settings indicators.
+- Updated text, particularly hints and some of the post-it notes.
+- Adjusted AI values for Campaign nights.
+- Stalker now kills at 2 door ticks instead of 1.
+- Backend: removed all unused assets
+
+### Fixed
+- Added box colliders to some walls to mitigate flashlights going through walls.
+- Fixed dev setting indicator incorrectly showing when Mold AI was changed.
+- Prevented player from moving while in post-it screen.
+- Fixed Post-it dimmer not hiding full screen.
+
+## April 30
+### Added
+- Added Quit and Hints (WIP) buttons to the Main Menu.
+- Added scroll bar to long settings pages.
+
+### Changed
+- **IMPORTANT**: Changed company to FNaSTeam, which changed where the default files are stored to "LocalLow>FNaSTeam>Five Nights at Silvers".
+- Changed sizes of buttons to indicate importance. Settings button changed to a gear icon.
+- General UI tweaks across menu, with changes to text color and size in particular.
+- Opening Custom Night no longer resets settings, but added a Reset to Default setting.
+- Added a debug setting to show movement opportunity timer.
+
+## April 29
+### Added
+- Added a toggleable option that adds a short delay every time the player reaches a node.
+- Added a battery pack on certain nights, which allows the player to refill battery when low.
+
+### Changed
+- Presentation mode difficulty significantly reduced, with first 20% having no entities present.
+- Made flashing effect for post-it notes and battery pack more obvious by using a shader that makes the whole texture glow when relevant.
+- Made Jumpscares more visible in general. 
+- Stalker:
+  - Stalker model made slightly brighter. 
+  - Increased minimum time for Stalker to kill 
+  at same node from 3 to 5 seconds.
+  - Stalker footsteps made distinct from player footsteps.
+  - Moving into Stalker at door results in a loss.
+- Mimic power drain on jumpscare increased from 10% to 15%. Mimic now prevents usage of flashlight upon punishing the player.
+- Flashlight red and yellow battery ranges tweaked, with the red portion accounting for a larger portion of the overall percentage.
+
+### Removed
+- Stalker model no longer has base emission.
+
+### Fixed
+- Stalker only jumpscares player while player is not moving to make jumpscare animation consistent.
+- Custom Night (Locked) now fits within the button.
+
 ## April 25
 ### Added
 - Added final placeholder assignment text presets.

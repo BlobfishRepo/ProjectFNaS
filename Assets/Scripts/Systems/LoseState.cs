@@ -2,6 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
+using FNaS.Settings;
 
 namespace FNaS.Systems {
     public class LoseState : MonoBehaviour {
@@ -21,7 +22,11 @@ namespace FNaS.Systems {
         [Header("Scene Flow")]
         [SerializeField] private string fallbackMenuSceneName = "SceneSettings";
 
+        [Header("Input Lockout")]
+        [SerializeField] private float resultInputDelaySeconds = 1f;
+
         private PlayerInputActions input;
+        private float resultInputAllowedAtRealtime;
 
         private void Awake() {
             input = new PlayerInputActions();
@@ -47,11 +52,16 @@ namespace FNaS.Systems {
             }
         }
 
+        private bool CanAcceptResultInput() {
+            return Time.realtimeSinceStartup >= resultInputAllowedAtRealtime;
+        }
+
         public void TriggerLose(string why) {
             if (hasLost) return;
 
             hasLost = true;
             reason = why;
+            resultInputAllowedAtRealtime = Time.realtimeSinceStartup + resultInputDelaySeconds;
 
             Debug.Log($"LOSE TRIGGERED: {why}");
 
@@ -72,13 +82,31 @@ namespace FNaS.Systems {
 
         private void OnRestartPressed(InputAction.CallbackContext ctx) {
             if (!hasLost) return;
+            if (!CanAcceptResultInput()) return;
 
             Time.timeScale = 1f;
+
+            NightSessionManager session = NightSessionManager.Instance;
+            RuntimeGameSettings settings = RuntimeGameSettings.Instance;
+
+            if (session != null && settings != null) {
+                if (session.PlayMode == NightPlayMode.Presentation) {
+                    session.BeginPresentationNight(settings);
+                }
+                else if (session.PlayMode == NightPlayMode.Campaign) {
+                    session.ApplyCampaignNight(settings);
+                }
+                else if (session.PlayMode == NightPlayMode.CustomNight) {
+                    session.BeginCustomNight(settings);
+                }
+            }
+
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
         }
 
         private void OnMenuPressed(InputAction.CallbackContext ctx) {
             if (!hasLost) return;
+            if (!CanAcceptResultInput()) return;
 
             Time.timeScale = 1f;
 
@@ -95,6 +123,7 @@ namespace FNaS.Systems {
         public void ResetLose() {
             hasLost = false;
             reason = "";
+            resultInputAllowedAtRealtime = 0f;
 
             if (losePanel != null) {
                 losePanel.SetActive(false);

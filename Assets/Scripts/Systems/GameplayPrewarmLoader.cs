@@ -8,8 +8,9 @@ namespace FNaS.Systems {
         public PaperWritingStrokeDisplay paper;
         public StrokeGlyphLibrary glyphLibrary;
 
-        [Header("Optional")]
-        public MonoBehaviour[] disableDuringPrewarm;
+        [Header("Pause")]
+        [Tooltip("If true, prewarm uses GameplayPauseManager's exact pause target list.")]
+        public bool pauseGameplayDuringPrewarm = true;
 
         [Header("Timing")]
         public int framesBeforePreload = 1;
@@ -24,11 +25,9 @@ namespace FNaS.Systems {
             IsFinished = false;
 
             SetBlackImmediate();
-            SetBehavioursEnabled(false);
 
             yield return StartCoroutine(PrewarmRoutine());
 
-            SetBehavioursEnabled(true);
             IsFinished = true;
         }
 
@@ -71,16 +70,6 @@ namespace FNaS.Systems {
                 blackFadeGroup.alpha = 1f;
                 blackFadeGroup.blocksRaycasts = true;
                 blackFadeGroup.interactable = false;
-            }
-        }
-
-        private void SetBehavioursEnabled(bool enabled) {
-            if (disableDuringPrewarm == null) return;
-
-            for (int i = 0; i < disableDuringPrewarm.Length; i++) {
-                if (disableDuringPrewarm[i] != null) {
-                    disableDuringPrewarm[i].enabled = enabled;
-                }
             }
         }
     }

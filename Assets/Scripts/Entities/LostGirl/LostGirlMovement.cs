@@ -25,8 +25,6 @@ namespace FNaS.Entities.LostGirl {
         [Header("Movement")]
         public ActiveMoveMode moveMode = ActiveMoveMode.ChargeSnapshot;
         public float moveSpeed = 8f;
-
-        [Tooltip("How often ChargeSnapshot refreshes toward the player's latest position.")]
         public float snapshotRefreshInterval = 0.3f;
 
         [Header("NavMesh")]
@@ -34,6 +32,10 @@ namespace FNaS.Entities.LostGirl {
         public float destinationSampleDistance = 1.25f;
         public float repathInterval = 0.10f;
         public float invalidPathGraceSeconds = 0.20f;
+
+        [Header("Door Bonk")]
+        public bool runBrieflyBeforeInvalidPathFail = true;
+        public float invalidPathBonkRunSeconds = 0.75f;
 
         [Header("Spawn")]
         public float spawnSnapDistance = 0.5f;
@@ -60,6 +62,10 @@ namespace FNaS.Entities.LostGirl {
         private Vector3 lastStuckCheckPosition;
         private bool initialDestinationIssued;
         private Vector3 lastLoggedDestination = new(float.NaN, float.NaN, float.NaN);
+
+        private bool isBonkingTowardBlockedTarget;
+        private float bonkTimer;
+        private Vector3 bonkDirection;
 
         public bool IsActive => isActive;
         public Vector3 SnapshotTarget => snapshotTarget;
@@ -129,6 +135,9 @@ namespace FNaS.Entities.LostGirl {
             lastSnapshotRefreshTime = Time.time;
             lastStuckCheckPosition = transform.position;
             initialDestinationIssued = false;
+            isBonkingTowardBlockedTarget = false;
+            bonkTimer = 0f;
+            bonkDirection = transform.forward;
             lastLoggedDestination = new Vector3(float.NaN, float.NaN, float.NaN);
 
             if (playerTarget != null) {
@@ -153,6 +162,8 @@ namespace FNaS.Entities.LostGirl {
             invalidPathTimer = 0f;
             stuckTimer = 0f;
             initialDestinationIssued = false;
+            isBonkingTowardBlockedTarget = false;
+            bonkTimer = 0f;
 
             if (agent != null && agent.enabled) {
                 agent.isStopped = true;
@@ -176,6 +187,11 @@ namespace FNaS.Entities.LostGirl {
 
         private void Update() {
             if (!isActive || agent == null || !agent.enabled) return;
+
+            if (isBonkingTowardBlockedTarget) {
+                UpdateBonkRun();
+                return;
+            }
 
             RefreshSnapshotTargetIfNeeded();
 
@@ -244,7 +260,54 @@ namespace FNaS.Entities.LostGirl {
             }
 
             invalidPathTimer += Time.deltaTime;
-            if (invalidPathTimer >= invalidPathGraceSeconds) {
+            if (invalidPathTimer < invalidPathGraceSeconds) return;
+
+            if (runBrieflyBeforeInvalidPathFail && invalidPathBonkRunSeconds > 0f) {
+                BeginBonkRun();
+            }
+            else {
+                Fail(FailureReason.InvalidPath, null);
+            }
+        }
+
+        private void BeginBonkRun() {
+            Vector3? target = GetCurrentTarget();
+            Vector3 desired = target.HasValue ? target.Value : transform.position + transform.forward;
+
+            bonkDirection = desired - transform.position;
+            bonkDirection.y = 0f;
+
+            if (bonkDirection.sqrMagnitude <= 0.0001f) {
+                bonkDirection = transform.forward;
+                bonkDirection.y = 0f;
+            }
+
+            bonkDirection.Normalize();
+
+            isBonkingTowardBlockedTarget = true;
+            bonkTimer = 0f;
+
+            agent.ResetPath();
+            agent.isStopped = false;
+
+            LogWarning("Path blocked; beginning short bonk run before despawn.");
+        }
+
+        private void UpdateBonkRun() {
+            bonkTimer += Time.deltaTime;
+
+            if (bonkDirection.sqrMagnitude > 0.0001f) {
+                Quaternion targetRot = Quaternion.LookRotation(bonkDirection, Vector3.up);
+                transform.rotation = Quaternion.RotateTowards(
+                    transform.rotation,
+                    targetRot,
+                    720f * Time.deltaTime
+                );
+
+                agent.Move(bonkDirection * moveSpeed * Time.deltaTime);
+            }
+
+            if (bonkTimer >= invalidPathBonkRunSeconds) {
                 Fail(FailureReason.InvalidPath, null);
             }
         }

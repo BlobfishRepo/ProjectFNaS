@@ -1,9 +1,11 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using FNaS.Settings;
+using FNaS.Systems;
 
 namespace FNaS.Gameplay {
-    public class EdgeArrowUI : MonoBehaviour {
+    public class EdgeArrowUI : MonoBehaviour, IRuntimeSettingsConsumer {
         [Header("References")]
         [SerializeField] private ViewController viewController;
         [SerializeField] private PlayerWaypointController mover;
@@ -17,26 +19,36 @@ namespace FNaS.Gameplay {
         [Header("Style")]
         [Range(0f, 1f)]
         [SerializeField] private float visibleAlpha = 0.18f;
+
         [SerializeField] private float fadeInSeconds = 0.06f;
         [SerializeField] private float fadeOutSeconds = 0.06f;
 
+        [Header("Colors")]
+        [SerializeField] private Color defaultBlueColor = new Color(0.2f, 0.45f, 1f);
+        [SerializeField] private Color whiteColor = Color.white;
+
         private Coroutine fadeRoutine;
         private float currentAlpha = 0f;
+        private bool useWhiteArrows;
 
         private void Awake() {
-            if (!viewController) viewController = FindFirstObjectByType<ViewController>();
-            if (!mover) mover = FindFirstObjectByType<PlayerWaypointController>();
+            ResolveReferences();
+            ApplyRuntimeSettings(RuntimeGameSettings.Instance);
 
             SetAllAlpha(0f);
             UpdateArrowsVisible(false, false, false, false);
         }
 
         private void OnEnable() {
-            if (!viewController) viewController = FindFirstObjectByType<ViewController>();
-            if (!mover) mover = FindFirstObjectByType<PlayerWaypointController>();
+            ResolveReferences();
 
             if (viewController != null) {
                 viewController.OnEnteredWaypointOrView += FadeInQuick;
+            }
+
+            if (RuntimeGameSettings.Instance != null) {
+                RuntimeGameSettings.Instance.OnSettingsChanged += HandleSettingsChanged;
+                ApplyRuntimeSettings(RuntimeGameSettings.Instance);
             }
 
             SetAllAlpha(0f);
@@ -46,11 +58,17 @@ namespace FNaS.Gameplay {
             if (viewController != null) {
                 viewController.OnEnteredWaypointOrView -= FadeInQuick;
             }
+
+            if (RuntimeGameSettings.Instance != null) {
+                RuntimeGameSettings.Instance.OnSettingsChanged -= HandleSettingsChanged;
+            }
         }
 
         private void Update() {
-            if (viewController == null || mover == null)
-                return;
+            if (viewController == null || mover == null) {
+                ResolveReferences();
+                if (viewController == null || mover == null) return;
+            }
 
             if (mover.IsMoving) {
                 StopFade();
@@ -73,6 +91,20 @@ namespace FNaS.Gameplay {
             UpdateArrowsVisible(canL, canR, canU, canD);
         }
 
+        public void ApplyRuntimeSettings(RuntimeGameSettings settings) {
+            useWhiteArrows = settings != null && settings.GetBool("player.edgeArrowsUseWhite");
+            ApplyArrowColor();
+        }
+
+        private void HandleSettingsChanged() {
+            ApplyRuntimeSettings(RuntimeGameSettings.Instance);
+        }
+
+        private void ResolveReferences() {
+            if (!viewController) viewController = FindFirstObjectByType<ViewController>();
+            if (!mover) mover = FindFirstObjectByType<PlayerWaypointController>();
+        }
+
         private static bool HasEdge(View v, EdgeDir dir) {
             var link = v.GetEdge(dir);
             if (link.action == View.LinkAction.None) return false;
@@ -87,6 +119,15 @@ namespace FNaS.Gameplay {
             if (downArrow) downArrow.gameObject.SetActive(down);
         }
 
+        private void ApplyArrowColor() {
+            Color target = useWhiteArrows ? whiteColor : defaultBlueColor;
+
+            SetRgb(leftArrow, target);
+            SetRgb(rightArrow, target);
+            SetRgb(upArrow, target);
+            SetRgb(downArrow, target);
+        }
+
         private void SetAllAlpha(float a) {
             currentAlpha = a;
             SetAlpha(leftArrow, a);
@@ -95,9 +136,20 @@ namespace FNaS.Gameplay {
             SetAlpha(downArrow, a);
         }
 
+        private static void SetRgb(Graphic g, Color rgb) {
+            if (!g) return;
+
+            Color c = g.color;
+            c.r = rgb.r;
+            c.g = rgb.g;
+            c.b = rgb.b;
+            g.color = c;
+        }
+
         private static void SetAlpha(Graphic g, float a) {
             if (!g) return;
-            var c = g.color;
+
+            Color c = g.color;
             c.a = a;
             g.color = c;
         }
